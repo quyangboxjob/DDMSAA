@@ -1,0 +1,164 @@
+﻿# ============================================================
+# spec-08-security-util.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.2（セキュリティ設定）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           stack.jwt_* / framework_mappings.thread_context / request_filter_mvc
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: infrastructure
+package_root: com.example.ddmsaa.infrastructure
+
+types:
+
+  - fqcn: com.example.ddmsaa.infrastructure.jwt.JwtUtil
+    kind: class
+    annotations:
+      - "@Component"
+    purpose: "JWT の発行・検証・クレーム取得を行うユーティリティ。HS256 アルゴリズム（jjwt 0.13.0）。鍵は app.jwt.secret（環境変数 JWT_SECRET）から取得。"
+    constructors:
+      - "JwtUtil()"
+    methods:
+      - "String issue(String userId, String role)"
+      - "io.jsonwebtoken.Claims validateAndGetClaims(String token)"
+      - "boolean validate(String token)"
+      - "String getSubject(String token)"
+      - "String getRole(String token)"
+
+  - fqcn: com.example.ddmsaa.infrastructure.jwt.JwtAuthenticationFilter
+    kind: class
+    extends: org.springframework.web.filter.OncePerRequestFilter
+    purpose: "Authorization ヘッダの Bearer トークンを検証し、UserContext および SecurityContextHolder へログイン者情報を設定するフィルタ。@Component 不付与。SecurityConfig が @Bean として登録する。"
+    constructors:
+      - "JwtAuthenticationFilter(JwtUtil jwtUtil)"
+    methods:
+      - "void doFilterInternal(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response, jakarta.servlet.FilterChain filterChain) throws jakarta.servlet.ServletException, java.io.IOException"
+      - "boolean shouldNotFilter(jakarta.servlet.http.HttpServletRequest request) throws jakarta.servlet.ServletException"
+
+  - fqcn: com.example.ddmsaa.infrastructure.jwt.UserContext
+    kind: class
+    purpose: "ログイン者のユーザーIDとロールを static ThreadLocal で保持するホルダー。JwtAuthenticationFilter の finally ブロックで clear() を呼びスレッドリークを防止する。"
+    constructors: []
+    methods:
+      - "static void set(String userId, String role)"
+      - "static String getUserId()"
+      - "static String getRole()"
+      - "static void clear()"
+
+  - fqcn: com.example.ddmsaa.infrastructure.auth.AuthStateStore
+    kind: class
+    package: com.example.ddmsaa.infrastructure.auth
+    annotations:
+      - "@Component"
+    purpose: "Redis を通じた Magic Link トークンおよびログイン失敗カウント・ロック状態を管理する認証一時状態ストア。Magic Link は GETDEL で一回使い切り、失敗カウントは INCR + EXPIRE で原子的に管理する。"
+    constructors:
+      - "AuthStateStore(org.springframework.data.redis.core.StringRedisTemplate redisTemplate)"
+    methods:
+      - "void saveMagicLinkToken(String token, String userId, int ttlSeconds)"
+      - "String consumeMagicLinkToken(String token)"
+      - "int incrementLoginFailure(String userId)"
+      - "boolean isLocked(String userId)"
+      - "void clearLoginFailure(String userId)"
+
+# ============================================================
+# 行動契約（境界条件）
+# ============================================================
+behavior_contracts:
+
+  JwtUtil:
+    thread_safety: ステートレス。複数スレッドから同時呼び出し可
+    contracts:
+      - method: issue
+        condition: "userId が null または空"
+        action: IllegalArgumentException を送出
+      - method: issue
+        condition: "app.jwt.secret 未設定"
+        action: IllegalStateException を送出
+      - method: validateAndGetClaims
+        purpose: "検証と Claims 取得を1回の暗号検証で完結させるメインメソッド。フィルタは validate()+getSubject()+getRole() の3回呼び出しを行わず、本メソッドを使用すること。"
+        condition: "token が null または空白"
+        action: "AuthException(E0040) を送出"
+      - method: validateAndGetClaims
+        condition: 署名が不正または形式異常
+        action: "AuthException(E0041) を送出"
+      - method: validateAndGetClaims
+        condition: 有効期限切れ
+        action: "AuthException(E0001) を送出"
+      - method: validateAndGetClaims
+        condition: 正常
+        action: "io.jsonwebtoken.Claims を返す（sub / role 取得可能）"
+      - method: validate
+        note: "validateAndGetClaims() の薄いラッパー。後方互換のために残す。"
+        condition: "token が null または空白"
+        action: "AuthException(E0040) を送出"
+      - method: validate
+        condition: 署名が不正または形式異常
+        action: "AuthException(E0041) を送出"
+      - method: validate
+        condition: 有効期限切れ
+        action: "AuthException(E0001) を送出"
+      - method: validate
+        condition: 正常
+        action: "true を返す"
+      - method: "getSubject / getRole"
+        condition: validate 済みトークンを渡す
+        action: 各値を返す
+    implementation_notes:
+      - "内部の parseClaims(String token) は Jwts.parser().verifyWith(key).requireIssuer(issuer).build() で構成すること（requireIssuer を省略すると issuer 不正トークンを通過させる脆弱性になる）。"
+
+  JwtAuthenticationFilter:
+    behavior:
+      - condition: "Authorization: Bearer <token> ヘッダが存在し、validateAndGetClaims が AuthException を送出"
+        action: "SecurityContextHolder.clearContext() → response.setStatus(401) → return。filterChain.doFilter() を呼び出さずフィルタチェーンを即終了する（auth bypass 防止）。"
+      - condition: "Authorization ヘッダが存在せず、または Bearer プレフィックスなし"
+        action: "認証を設定せずフィルタチェーンを継続する（Spring Security の anyRequest().authenticated() と AuthenticationEntryPoint が後続処理する）。"
+      - condition: "検証成功時"
+        action: "validateAndGetClaims() から Claims を取得し（1回の暗号検証のみ）、UserContext.set(userId, role)・SecurityContextHolder 設定後にフィルタチェーンを継続する。"
+    mandatory_constraint: "UserContext.clear() は finally ブロックで必ず呼び出す。認証成否に関わらずリークを防止する。"
+
+  UserContext:
+    mandatory_constraint: "set を呼び出したら、必ず finally ブロックで clear() を呼び出すこと。スレッドプールのスレッド再利用による汚染を防ぐ。"
+    contracts:
+      - method: "set(userId, role)"
+        condition: "—"
+        action: ThreadLocal に設定する
+      - method: getUserId()
+        condition: set 済み
+        action: ユーザーIDを返す
+      - method: getUserId()
+        condition: "set 未実施（非 HTTP スレッド等）"
+        action: null を返す（例外なし）
+      - method: getRole()
+        condition: set 未実施
+        action: null を返す（例外なし）
+      - method: clear()
+        condition: "—"
+        action: 冪等（未設定時に呼び出しても例外なし）
+
+  AuthStateStore:
+    contracts:
+      - method: "saveMagicLinkToken(token, userId, ttlSeconds)"
+        condition: token が既存
+        action: 上書きする（resend ユースケース）
+      - method: consumeMagicLinkToken(token)
+        condition: "正常（初回呼び出し）"
+        action: "ユーザーIDを返し、同時にトークンを削除する（GETDEL、原子的操作）"
+      - method: consumeMagicLinkToken(token)
+        condition: "2回目以降の呼び出し / 期限切れ"
+        action: null を返す（例外なし）
+      - method: consumeMagicLinkToken(token)
+        condition: 並行して2回同時呼び出し
+        action: "一方だけがユーザーIDを取得し、もう一方は null を取得する（Redis GETDEL の原子性による）"
+      - method: "incrementLoginFailure(userId)"
+        condition: "—"
+        action: "カウントをインクリメントし、新しいカウント値を返す。TTL = app.auth.login-lockout-seconds でリセット"
+      - method: "isLocked(userId)"
+        condition: "カウント ≥ app.auth.max-login-failure-count"
+        action: true を返す
+      - method: "isLocked(userId)"
+        condition: "カウントが閾値未満、またはキーが存在しない"
+        action: false を返す
+      - method: "clearLoginFailure(userId)"
+        condition: "—"
+        action: 冪等（キーが存在しない場合も例外なし）

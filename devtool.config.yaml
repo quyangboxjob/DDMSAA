@@ -1,0 +1,114 @@
+schemaVersion: 1
+projectName: DDMSAA
+brandName: DDMSAA
+technology:
+  architecture: spa
+  backend: springboot
+  persistence: mybatis
+  frontend: react
+  db: postgresql
+paths:
+  docs: docs
+  skills: .claude/skills
+  backend: .
+  frontendComponents: src/components
+files:
+  functionList: 基本設計/共通/spec-00-doc-standard-ui.md
+  index: 基本設計/README.md
+  openapi: 基本設計/共通/spec-07-api-list.yaml
+stages:
+  - key: ca
+    label: 現行分析
+    labelEn: Current Analysis
+    dir: 現行分析
+    kind: flat
+    sub: current analysis
+    enabled: false
+  - key: rd
+    label: 要件定義
+    labelEn: Requirements Definition
+    dir: 要件定義
+    kind: flat
+    sub: requirements
+    enabled: false
+  - key: rules
+    label: 開発規約
+    labelEn: Development Rules
+    dir: 開発規約
+    kind: flat
+    sub: given
+    enabled: true
+  - key: basic
+    label: 基本設計
+    labelEn: Basic Design
+    dir: 基本設計
+    kind: module
+    sub: 外部設計
+    suffix: business-ui
+    enabled: true
+  - key: detail
+    label: 詳細設計
+    labelEn: Detailed Design
+    dir: 詳細設計
+    kind: module
+    sub: 内部設計
+    suffix: detail-sd
+    enabled: true
+  - key: ut
+    label: 単体テスト
+    labelEn: Unit Testing
+    dir: 単体テスト
+    kind: module
+    sub: unittest
+    suffix: unittest-sd
+    enabled: true
+  - key: it
+    label: 結合テスト
+    labelEn: Integration Testing
+    dir: 結合テスト
+    kind: module
+    sub: integrationtest
+    suffix: integrationtest-sd
+    enabled: true
+  - key: st
+    label: システムテスト
+    labelEn: System Testing
+    dir: システムテスト
+    kind: scenario
+    sub: シナリオ単位
+    enabled: true
+  - key: uat
+    label: UAT
+    labelEn: User Acceptance Testing
+    dir: UATテスト
+    kind: module
+    sub: 受入試験
+    suffix: uat-sd
+    enabled: true
+  - key: prod
+    label: 本番
+    labelEn: Production
+    dir: 本番
+    kind: flat
+    sub: リリース判定
+    enabled: true
+categories:
+  business:
+    label: 業務
+    basicDir: 業務設計
+    stageDir: 業務
+  system:
+    label: システム
+    basicDir: システム
+    stageDir: システム
+  monitor:
+    label: 監視
+    basicDir: 監視
+    stageDir: 監視
+basicSections:
+  - label: 共通
+    dir: 共通
+  - label: 基盤
+    dir: 基盤
+  - label: データベース
+    dir: データベース

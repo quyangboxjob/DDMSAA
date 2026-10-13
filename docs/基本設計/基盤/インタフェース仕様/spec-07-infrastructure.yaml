@@ -1,0 +1,214 @@
+﻿# ============================================================
+# spec-07-infrastructure.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.5（ファイルストレージ）§4.3.3（データベースと SQL マッパー）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           stack.object_storage / stack.http_client / stack.sql_mapper / framework_mappings.audit_handler
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: infrastructure
+package_root: com.example.ddmsaa.infrastructure
+
+types:
+
+  # ----------------------------------------------------------------
+  # §7 ファイルストレージ（infrastructure.storage）
+  # 準拠: spec-04-common-component-ui.md §7
+  # ----------------------------------------------------------------
+
+  - fqcn: com.example.ddmsaa.infrastructure.storage.FileStorageService
+    kind: interface
+    package: com.example.ddmsaa.infrastructure.storage
+    purpose: 外部オブジェクトストレージへのアップロード・ダウンロード・削除・署名付きURL生成を抽象化するインタフェース
+    methods:
+      - "void upload(String objectKey, InputStream content, long contentLength, String contentType)"
+      - "InputStream download(String objectKey)"
+      - "void delete(String objectKey)"
+      - "String presignedUrl(String objectKey, int expirySeconds)"
+
+  - fqcn: com.example.ddmsaa.infrastructure.storage.LocalFileStorageService
+    kind: class
+    package: com.example.ddmsaa.infrastructure.storage
+    implements:
+      - com.example.ddmsaa.infrastructure.storage.FileStorageService
+    annotations:
+      - "@Component"
+      - "@ConditionalOnProperty(name = \"app.file.storage-type\", havingValue = \"local\", matchIfMissing = true)"
+    purpose: >
+      ローカルファイルシステムをバックエンドとする FileStorageService の既定実装。
+      app.file.storage-type=local または未設定（matchIfMissing=true）のとき有効。
+      dev/test を外部依存ゼロで動かすための既定。保存先は app.file.local.base-dir
+      （既定 ${java.io.tmpdir}/ddmsaa-files）配下。
+    constructors:
+      - "LocalFileStorageService(String baseDir)"
+    methods:
+      - "void upload(String objectKey, InputStream content, long contentLength, String contentType)"
+      - "InputStream download(String objectKey)"
+      - "void delete(String objectKey)"
+      - "String presignedUrl(String objectKey, int expirySeconds)"
+
+  - fqcn: com.example.ddmsaa.infrastructure.storage.S3FileStorageService
+    kind: class
+    package: com.example.ddmsaa.infrastructure.storage
+    implements:
+      - com.example.ddmsaa.infrastructure.storage.FileStorageService
+    annotations:
+      - "@ConditionalOnProperty(name = \"app.file.storage-type\", havingValue = \"s3\")"
+      - "@Component"
+    purpose: AWS S3 をバックエンドとする FileStorageService の実装（AWS SDK for Java v2）。app.file.storage-type=s3 のとき有効（本番向け・Local と排他）。endpoint / path-style 指定によりローカル開発用 MinIO（S3 互換）にも接続できる
+    constructors:
+      - "S3FileStorageService(String region, String bucket, String prefix, String endpoint, boolean pathStyle, int presignTtlSeconds)"
+    methods:
+      - "void upload(String objectKey, InputStream content, long contentLength, String contentType)"
+      - "InputStream download(String objectKey)"
+      - "void delete(String objectKey)"
+      - "String presignedUrl(String objectKey, int expirySeconds)"
+
+  # ----------------------------------------------------------------
+  # §8 サービス間通信（infrastructure.rest）
+  # 準拠: spec-04-common-component-ui.md §8
+  # ----------------------------------------------------------------
+
+  - fqcn: com.example.ddmsaa.infrastructure.rest.RestClientFactory
+    kind: class
+    package: com.example.ddmsaa.infrastructure.rest
+    annotations:
+      - "@Component"
+    purpose: サービス間 HTTP 呼び出し用の ServiceClient を生成するファクトリ。base-url 解決・ヘッダー透過・タイムアウト設定を自動適用する
+    constructors:
+      - "RestClientFactory(Environment environment)"
+    methods:
+      - "ServiceClient create(String serviceName)"
+
+  - fqcn: com.example.ddmsaa.infrastructure.rest.ServiceClient
+    kind: interface
+    package: com.example.ddmsaa.infrastructure.rest
+    purpose: サービス間 HTTP 通信の抽象クライアント。GET / POST / PUT / DELETE を提供し、呼び出し元に型安全なレスポンスを返す
+    methods:
+      - "<T> T get(String path, Class<T> responseType)"
+      - "<T> T post(String path, Object body, Class<T> responseType)"
+      - "<T> T put(String path, Object body, Class<T> responseType)"
+      - "void delete(String path)"
+
+  # ----------------------------------------------------------------
+  # §9 MyBatis と DB 基盤（infrastructure.db）
+  # 準拠: spec-04-common-component-ui.md §9.3
+  # ----------------------------------------------------------------
+
+  - fqcn: com.example.ddmsaa.infrastructure.db.MetaObjectHandler
+    kind: class
+    package: com.example.ddmsaa.infrastructure.db
+    implements:
+      - org.apache.ibatis.plugin.Interceptor
+    annotations:
+      - "@Component"
+      - "@Intercepts({@Signature(type = org.apache.ibatis.executor.Executor.class, method = \"update\", args = {org.apache.ibatis.mapping.MappedStatement.class, Object.class})})"
+    purpose: "MyBatis Interceptor として INSERT 実行時に created_at・updated_at・created_by・updated_by を、UPDATE 実行時に updated_at・updated_by を UserContext（または SYSTEM フォールバック）から自動設定する監査列ハンドラ。"
+    constructors:
+      - "MetaObjectHandler()"
+    methods:
+      - "Object intercept(org.apache.ibatis.plugin.Invocation invocation) throws Throwable"
+
+  # ----------------------------------------------------------------
+  # §6 暗号化：MyBatis TypeHandler は採用しない（廃止）
+  # 準拠: spec-04-common-component-ui.md §6（暗号化は手動方式に統一）
+  #
+  # 暗号化列（my_number / account_number / request_content）は service 層で
+  # common.security.FieldEncryptor.encrypt/decrypt を明示的に呼んで処理する。
+  # 透過的 TypeHandler（旧 EncryptedStringTypeHandler）は不採用とする。理由：
+  #   @Component + BaseTypeHandler<String>（@MappedTypes 無し）で Spring bean 化すると、
+  #   mybatis-spring-boot が全 String 型の既定 TypeHandler として自動登録し、
+  #   user_id 等の平文列まで暗号化して全 String 系クエリを破壊するため。
+  #   （例：ログインの WHERE user_id = ? に暗号文が入り常に 0 件 → ログイン不能）
+  # ----------------------------------------------------------------
+
+# ============================================================
+# 行動契約（境界条件）
+# ============================================================
+behavior_contracts:
+
+  MetaObjectHandler:
+    audit_columns:
+      INSERT:
+        - { field: createdAt,  type: OffsetDateTime, value: "OffsetDateTime.now()" }
+        - { field: updatedAt,  type: OffsetDateTime, value: "OffsetDateTime.now()" }
+        - { field: createdBy,  type: String,         value: "UserContext.getUserId() または 'SYSTEM'" }
+        - { field: updatedBy,  type: String,         value: "UserContext.getUserId() または 'SYSTEM'" }
+      UPDATE:
+        - { field: updatedAt,  type: OffsetDateTime, value: "OffsetDateTime.now()" }
+        - { field: updatedBy,  type: String,         value: "UserContext.getUserId() または 'SYSTEM'" }
+    contracts:
+      - condition: "UserContext.getUserId() が null（非 HTTP スレッド・バッチ等）"
+        action: "'SYSTEM' をフォールバック値として使用する。早期リターンしない。"
+      - condition: "parameter が null"
+        action: "intercept を即終了（proceed を呼び出す）。"
+      - condition: "対象エンティティにフィールドが存在しない場合"
+        action: "リフレクション setFieldIfExists で存在チェック後スキップ（例外なし）。"
+
+  FileStorageService:
+    layer_note: >
+      infrastructure.storage は「保存・取得・削除・署名URL生成」のみを責務とする純ストレージ層。
+      contentType 許可リスト・サイズ上限などの業務ポリシー検証は業務層（Controller/Service）および
+      Spring Multipart 設定（spring.servlet.multipart.max-file-size 等）で行い、本層には実装しない。
+      サイズ超過は Spring が MaxUploadSizeExceededException を送出し GlobalExceptionHandler が E0010(413) にマップする。
+    contracts:
+      - condition: "upload: objectKey または content が null"
+        action: IllegalArgumentException を送出
+      - condition: "download: objectKey が存在しない（S3 NoSuchKeyException）"
+        action: "EntityNotFoundException(E0005) を送出"
+      - condition: "presignedUrl: objectKey が null"
+        action: IllegalArgumentException を送出
+      - condition: "presignedUrl の実体存在"
+        action: >
+          S3Presigner による署名は URL 生成のみで実体へアクセスしないため、存在チェック・E0005 は行わない
+          （実体確認が必要な場合は業務層で別途 headObject 等を実施する）。expirySeconds は正の int（null 不可）。
+      - condition: "delete: objectKey が存在しない"
+        action: 正常終了（冪等、例外なし）
+      - condition: "S3 呼び出しで上記以外の例外（SdkException）"
+        action: "RuntimeException でラップして再送出（NoSuchKey 起因の E0005 と混同しないこと）。"
+
+  storage_binding:
+    rule: >
+      FileStorageService の Bean はプロファイル問わず必ず 1 個。
+      app.file.storage-type=local（既定・matchIfMissing=true）→ LocalFileStorageService、
+      =s3 → S3FileStorageService。両者は @ConditionalOnProperty で排他とする。
+      @ConditionalOnMissingBean は使用しない（component-scan 下で評価順が不定になり Bean 不在が偶発するため）。
+    LocalFileStorageService_contracts:
+      - condition: "upload: objectKey または content が null"
+        action: IllegalArgumentException を送出
+      - condition: "upload: 正常"
+        action: "base-dir 配下（app.file.local.base-dir）へ書込。親ディレクトリは自動作成。"
+      - condition: "download: ファイルが存在しない"
+        action: "EntityNotFoundException(E0005) を送出"
+      - condition: "delete: ファイルが存在しない"
+        action: 正常終了（冪等、例外なし）
+      - condition: "presignedUrl: objectKey が null"
+        action: IllegalArgumentException を送出
+      - condition: "presignedUrl: 正常"
+        action: "dev では実署名なしで file:// パス（対象ファイルの URI）を返す。expirySeconds は無視。"
+      - condition: "IO 例外"
+        action: "RuntimeException でラップして再送出（不存在起因の E0005 と混同しないこと）。"
+
+  RestClientFactory:
+    auto_headers:
+      - header: "X-User-Id / X-User-Role"
+        source: UserContext.getUserId() / UserContext.getRole()
+        condition: >
+          認証済みスレッド（UserContext.getUserId() が非 null）のみ付与。
+          Gateway が下流へ伝播する内部識別方式（X-User-Id / X-User-Role）と統一する。
+          生 Bearer トークンは UserContext に保持しないため Authorization 転送は行わない。
+      - header: X-Request-Id
+        source: MDC の traceId
+        condition: 常に付与。MDC が空の場合は UUID（ハイフンなし）を生成して付与する
+    contracts:
+      - condition: "serviceName が app.services.* に未登録"
+        action: >-
+          create(serviceName) 呼び出し時に IllegalStateException を送出（fail-fast）。
+          ファクトリは起動時に対象 service 名の集合を持たないため、初回解決時に検証する。
+      - condition: 接続タイムアウト
+        action: "BusinessException(E0013) を送出（HTTP 502 相当）"
+      - condition: 読み取りタイムアウト
+        action: "BusinessException(E0043) を送出（HTTP 504 相当）"
+      - condition: "ダウンストリームが 4xx を返却"
+        action: "そのままレスポンスを BusinessException にラップして再送出"

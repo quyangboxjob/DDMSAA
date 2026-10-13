@@ -1,0 +1,84 @@
+﻿# ============================================================
+# spec-03-exception-handler.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.1（例外カテゴリ）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           framework_mappings.global_exception_handler / exception_bindings
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: common
+package: com.example.ddmsaa.common.exception
+
+# 例外型 → HTTP ステータス・messageId の固定マッピングは 開発規約/spec-backend-coding-rule.md §4 に従う
+# （GlobalExceptionHandler の各ハンドラはその対応どおりに実装する）。
+
+types:
+
+  - fqcn: com.example.ddmsaa.common.exception.GlobalExceptionHandler
+    kind: class
+    annotation: "@RestControllerAdvice"
+    purpose: 全 MVC サービス（auth-service / business-service-core）の例外を統一捕捉し ResponseEntity<ErrorResponse> を返却するグローバルハンドラ
+    constructors: []
+    methods:
+      - "ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleAuth(AuthException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleDataAccessException(DataAccessException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleException(Exception ex, HttpServletRequest request)"
+
+  - fqcn: com.example.ddmsaa.common.exception.AuthException
+    kind: class
+    extends: RuntimeException
+    purpose: 認証失敗を表すカスタム例外。messageId と可変長引数 args を保持し HTTP 401 にマッピングされる
+    constructors:
+      - "AuthException(String messageId, String... args)"
+    methods:
+      - "String getMessageId()"
+      - "String[] getArgs()"
+
+  - fqcn: com.example.ddmsaa.common.exception.BusinessException
+    kind: class
+    extends: RuntimeException
+    purpose: 業務ルール違反を表すカスタム例外。messageId と可変長引数 args を保持し HTTP 409 にマッピングされる
+    constructors:
+      - "BusinessException(String messageId, String... args)"
+    methods:
+      - "String getMessageId()"
+      - "String[] getArgs()"
+
+  - fqcn: com.example.ddmsaa.common.exception.EntityNotFoundException
+    kind: class
+    extends: RuntimeException
+    purpose: リソース未存在を表すカスタム例外。デフォルトコンストラクタおよび messageId/args コンストラクタを持ち HTTP 404 にマッピングされる
+    constructors:
+      - "EntityNotFoundException()"
+      - "EntityNotFoundException(String messageId, String... args)"
+    methods:
+      - "String getMessageId()"
+      - "String[] getArgs()"
+
+# ============================================================
+# 行動契約（境界条件）
+# ============================================================
+behavior_contracts:
+
+  GlobalExceptionHandler:
+    base_response:
+      rule: "全ハンドラは ErrorResponse.of(messageId, request.getRequestURI(), MDC.get('traceId')) で基底を生成する。"
+    message_args_propagation:
+      rule: >-
+        args を保持する例外（AuthException / BusinessException / EntityNotFoundException）の各ハンドラは、
+        ex.getArgs() を ErrorResponse.setMessageArgs() へ設定して伝播すること。
+        設定漏れはメッセージ引数（プレースホルダ置換値）の欠落を招く。
+    field_errors:
+      rule: >-
+        MethodArgumentNotValidException / ConstraintViolationException は
+        フィールドエラー一覧を ErrorResponse.setDetails(List<FieldError>) へ設定する。
+    dependency:
+      rule: "DataAccessException を扱うため、common モジュールは spring-tx（provided）に依存する（spec-project-structure.yaml 参照）。"

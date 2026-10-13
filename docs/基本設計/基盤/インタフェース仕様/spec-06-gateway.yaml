@@ -1,0 +1,213 @@
+﻿# ============================================================
+# spec-06-gateway.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §3.2（Gateway 設計）§4.3.2（CORS）§4.3.1（例外）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           stack.gateway_* / framework_mappings.request_filter_reactive / security_config_reactive
+#           framework_mappings.cors_reactive / gateway_error_handler / exception_bindings
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: api-gateway
+package_root: com.example.ddmsaa.gateway
+
+types:
+
+  # ----------------------------------------------------------
+  # filter.TraceIdGlobalFilter
+  # 基本設計 §3.1
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.gateway.filter.TraceIdGlobalFilter
+    kind: class
+    implements:
+      - org.springframework.cloud.gateway.filter.GlobalFilter
+      - org.springframework.core.Ordered
+    annotations:
+      - "@Component"
+    purpose: "受信した X-Request-Id を採用または UUID（ハイフン除去・32文字）を生成し MDC へ traceId として格納した上で下流リクエストに透過し、応答に X-Trace-Id を付与する。doFinally で MDC.remove を呼び出してクリアする。リアクティブスレッド間の MDC 伝播は contextWrite(Context.of('traceId', value)) と GatewayApplication での Hooks.enableAutomaticContextPropagation() の組み合わせで実現する。X-Trace-Id 応答ヘッダは response.beforeCommit() コールバック内で設定する。"
+    constructors:
+      - "TraceIdGlobalFilter()"
+    methods:
+      - "reactor.core.publisher.Mono<Void> filter(org.springframework.web.server.ServerWebExchange exchange, org.springframework.cloud.gateway.filter.GatewayFilterChain chain)"
+      - "int getOrder()"
+
+  # ----------------------------------------------------------
+  # filter.JwtAuthGlobalFilter
+  # 基本設計 §3.2
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.gateway.filter.JwtAuthGlobalFilter
+    kind: class
+    implements:
+      - org.springframework.cloud.gateway.filter.GlobalFilter
+      - org.springframework.core.Ordered
+    annotations:
+      - "@Component"
+    purpose: permit-all パス（/api/v1/auth/** / /actuator/health）以外で Authorization ヘッダの Bearer JWT を検証し、成功時に X-User-Id / X-User-Role を下流ヘッダへ付与する。失敗シナリオは error_mapping を参照。
+    constructors:
+      - "JwtAuthGlobalFilter(String secret, String issuer, com.example.ddmsaa.gateway.error.ErrorResponseWriter errorResponseWriter)"
+    methods:
+      - "reactor.core.publisher.Mono<Void> filter(org.springframework.web.server.ServerWebExchange exchange, org.springframework.cloud.gateway.filter.GatewayFilterChain chain)"
+      - "int getOrder()"
+
+  # ----------------------------------------------------------
+  # error.GatewayErrorHandler
+  # 基本設計 §6.1
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.gateway.error.GatewayErrorHandler
+    kind: class
+    implements:
+      - org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
+    annotations:
+      - "@Component"
+      - "@Order(-1)"
+    purpose: "全リアクティブ例外を統一 JSON 形式（messageId / timestamp / path / traceId）へ変換して返す。ResponseStatusExceptionHandler を extends しない（extends するとレスポンスボディ書き込みと競合する）。"
+    constructors:
+      - "GatewayErrorHandler(com.example.ddmsaa.gateway.error.ErrorResponseWriter errorResponseWriter)"
+    methods:
+      - "reactor.core.publisher.Mono<Void> handle(org.springframework.web.server.ServerWebExchange exchange, Throwable ex)"
+
+  # ----------------------------------------------------------
+  # error.ErrorResponseWriter
+  # 基本設計 §6.2
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.gateway.error.ErrorResponseWriter
+    kind: class
+    annotations:
+      - "@Component"
+    purpose: Gateway のエラー応答（messageId / timestamp / path / traceId）を JSON で ServerHttpResponse へ書き出す共有コンポーネント。ObjectMapper で直書きし common モジュールの ErrorResponse には依存しない。
+    constructors:
+      - "ErrorResponseWriter()"
+    methods:
+      - "reactor.core.publisher.Mono<Void> write(org.springframework.web.server.ServerWebExchange exchange, org.springframework.http.HttpStatus status, String messageId, String traceId)"
+
+  # ----------------------------------------------------------
+  # config.CorsConfig
+  # 基本設計 §4
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.gateway.config.CorsConfig
+    kind: class
+    annotations:
+      - "@Configuration"
+    purpose: CorsWebFilter を @Bean で定義する Java 実装 CORS 設定クラス。allowedOriginPatterns / allowedMethods / allowedHeaders / exposedHeaders / allowCredentials / maxAge を設定し、OPTIONS プリフライトを JwtAuthGlobalFilter より先に処理する。
+    constructors:
+      - "CorsConfig(String allowedOrigins)"
+    methods:
+      - "org.springframework.web.cors.reactive.CorsWebFilter corsWebFilter()"
+
+  # ----------------------------------------------------------
+  # config.SecurityConfig
+  # 基本設計 §7.1
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.gateway.config.SecurityConfig
+    kind: class
+    annotations:
+      - "@Configuration"
+      - "@EnableWebFluxSecurity"
+    purpose: WebFlux 用 SecurityWebFilterChain を定義する。CSRF を無効化し anyExchange().permitAll() で全パスを許可する（認可は JwtAuthGlobalFilter に委譲）。セッションレス設定。BCryptPasswordEncoder / UserDetailsService / JDBC 等のブロッキング依存を含まない。
+    constructors:
+      - "SecurityConfig()"
+    methods:
+      - "org.springframework.security.web.server.SecurityWebFilterChain filterChain(org.springframework.security.config.web.server.ServerHttpSecurity http)"
+
+# ----------------------------------------------------------
+# filter_order（基本設計 §3）
+# ----------------------------------------------------------
+gateway_application:
+  fqcn: com.example.ddmsaa.gateway.GatewayApplication
+  startup_requirement: "main() メソッドで SpringApplication.run() の前に Hooks.enableAutomaticContextPropagation() を呼び出すこと。TraceIdGlobalFilter の contextWrite による MDC 伝播の前提。"
+
+filter_order:
+  TraceIdGlobalFilter: "Ordered.HIGHEST_PRECEDENCE"
+  JwtAuthGlobalFilter: "Ordered.HIGHEST_PRECEDENCE + 1"
+
+# ----------------------------------------------------------
+# permit_all_paths（JwtAuthGlobalFilter 検証スキップ対象）
+# 基本設計 §3.2
+# ----------------------------------------------------------
+permit_all_paths:
+  - /api/v1/auth/**
+  - /actuator/health
+
+# ----------------------------------------------------------
+# error_mapping（基本設計 §3.2 / §6.3）
+# シナリオ → HTTP ステータス → messageId
+# ----------------------------------------------------------
+error_mapping:
+  - scenario: Authorization ヘッダ欠落（Token 欠落）
+    source: JwtAuthGlobalFilter
+    exception: "(filter 内判定ロジック)"
+    http_status: 401
+    message_id: E0040
+
+  - scenario: JWT 期限切れ（exp 超過）
+    source: JwtAuthGlobalFilter
+    exception: io.jsonwebtoken.ExpiredJwtException
+    http_status: 401
+    message_id: E0001
+
+  - scenario: JWT 署名不正 / issuer 不一致 / 不正形式
+    source: JwtAuthGlobalFilter
+    exception: io.jsonwebtoken.JwtException
+    http_status: 401
+    message_id: E0041
+
+  - scenario: ルート未一致（404）
+    source: GatewayErrorHandler
+    exception: org.springframework.web.server.ResponseStatusException(404)
+    http_status: 404
+    message_id: E0042
+
+  - scenario: 認可不足（下流 403 / ResponseStatusException(403)）
+    source: GatewayErrorHandler
+    exception: org.springframework.web.server.ResponseStatusException(403)
+    http_status: 403
+    message_id: E0002
+    note: "403=E0002 は MVC 側（開発規約/spec-backend-coding-rule.md §4）と統一。GatewayErrorHandler.determineMessageId のフォールバック。"
+
+  - scenario: 下流サービス接続到達不可
+    source: GatewayErrorHandler
+    exception: java.net.ConnectException / org.springframework.web.server.ResponseStatusException(502)
+    http_status: 502
+    message_id: E0013
+
+  - scenario: 下流サービス応答タイムアウト
+    source: GatewayErrorHandler
+    exception: java.util.concurrent.TimeoutException / org.springframework.web.server.ResponseStatusException(504)
+    http_status: 504
+    message_id: E0043
+
+  - scenario: Gateway 内部エラー（その他）
+    source: GatewayErrorHandler
+    exception: java.lang.Exception
+    http_status: 500
+    message_id: E0012
+
+# ----------------------------------------------------------
+# パッケージ構成（基本設計 §10）
+# ----------------------------------------------------------
+behavior_contracts:
+  TraceIdGlobalFilter:
+    - item: "MDC 伝播"
+      rule: "MDC.put() は呼び出しスレッドにしか反映されない。Reactor スケジューラのスレッド切り替え後に MDC が消える問題を防ぐため、contextWrite(Context.of(MDC_KEY, traceId)) と Hooks.enableAutomaticContextPropagation() を併用すること。"
+    - item: "応答ヘッダ X-Trace-Id"
+      rule: "response.getHeaders().add() を chain.filter() 呼び出し後に実行してはならない（レスポンスコミット済みで失敗する）。response.beforeCommit(() -> { response.getHeaders().set(HEADER_TRACE_ID, traceId); return Mono.empty(); }) を chain.filter() 呼び出し前に登録すること。"
+    - item: "MDC クリーンアップ"
+      rule: "doFinally(signal -> MDC.remove(MDC_KEY)) を chain.filter() チェーンに付加すること。"
+
+  GatewayErrorHandler:
+    - item: "traceId 取得"
+      rule: "MDC.get('traceId') はリアクティブスレッド切り替え後に null になる。Mono.deferContextual(ctx -> ...) で Reactor Context から ctx.getOrDefault('traceId', MDC.get('traceId')) の順で取得すること。"
+    - item: "継承禁止"
+      rule: "ResponseStatusExceptionHandler を extends してはならない。extends するとスーパークラスの handle() がレスポンス書き込みを試み、ErrorResponseWriter と競合してレスポンスボディが壊れる。"
+
+package_structure:
+  com.example.ddmsaa.gateway:
+    config:
+      - CorsConfig
+      - SecurityConfig
+    filter:
+      - TraceIdGlobalFilter
+      - JwtAuthGlobalFilter
+    error:
+      - GatewayErrorHandler
+      - ErrorResponseWriter

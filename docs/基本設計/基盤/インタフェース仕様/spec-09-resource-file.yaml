@@ -1,0 +1,542 @@
+﻿# ============================================================
+# spec-09-resource-file.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.5（メッセージ配置）§7（設定テンプレート）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           build_bindings / config_bindings / stack.migration_*
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+# ============================================================
+# 1. messages/common-messages.yaml — common モジュール
+# ============================================================
+resource_files:
+
+  - id: common_messages_ja
+    module: common
+    package: com.example.ddmsaa.common
+    path: common/src/main/resources/messages/common-messages.yaml
+    kind: resource_file
+    format: yaml
+    purpose: >
+      メッセージカタログ日本語正本。messageId → 日本語メッセージ文のキー・バリュー YAML。
+      バックエンドは messageId のみを返却し、フロントが本カタログで表示文言を解決する。
+    structure:
+      top_level_key: messages
+      entry_schema: "messageId: { category: INFO|WARNING|ERROR, message: String }"
+      messageId_format: "基本設計/共通/spec-00-doc-standard-ui.md §3 に従う"
+      placeholder_format: "{0}, {1} ...（args 配列順次置換）"
+    key_namespaces:
+      - prefix: "I"
+        category: INFO
+        description: 正常完了・案内メッセージ
+      - prefix: "W"
+        category: WARNING
+        description: 注意・確認・ハイライト
+      - prefix: "E"
+        category: ERROR
+        description: エラーメッセージ
+    constraints:
+      - すべての messageId は本ファイルに存在しなければならない（生成門 G-Msg）
+      - 使用していない messageId を参照するコードは生成門により拒否される
+      - common jar への依存のみで classpath 共有。ローカルコピー禁止
+      - 改行コードは 開発規約/spec-backend-coding-rule.md §12 に従う
+
+  - id: common_messages_zh
+    module: common
+    package: com.example.ddmsaa.common
+    path: common/src/main/resources/messages/common-messages.zh.yaml
+    kind: resource_file
+    format: yaml
+    purpose: メッセージカタログ中国語バリアント。messageId・category は日本語正本と同一。message 文言のみ中国語。
+    structure:
+      top_level_key: messages
+      entry_schema: "messageId: { category: INFO|WARNING|ERROR, message: String }"
+      messageId_format: "<CAT><NNNN>（日本語正本と同一採番）"
+
+  - id: common_messages_en
+    module: common
+    package: com.example.ddmsaa.common
+    path: common/src/main/resources/messages/common-messages.en.yaml
+    kind: resource_file
+    format: yaml
+    purpose: メッセージカタログ英語バリアント。messageId・category は日本語正本と同一。message 文言のみ英語。
+    structure:
+      top_level_key: messages
+      entry_schema: "messageId: { category: INFO|WARNING|ERROR, message: String }"
+      messageId_format: "<CAT><NNNN>（日本語正本と同一採番）"
+
+# ============================================================
+# 2. application.yml テンプレート — 各サービス
+# ============================================================
+
+  - id: api_gateway_application_yml
+    module: api-gateway
+    package: com.example.ddmsaa.gateway
+    path: api-gateway/src/main/resources/application.yml
+    kind: resource_file
+    format: yaml
+    purpose: api-gateway の Spring Boot 設定テンプレート。ポート 8080。WebFlux Gateway ルーティング・JWT検証・CORS設定を含む。
+    key_namespaces:
+      - key: server.port
+        type: Integer
+        value: 8080
+        description: サービスポート
+      - key: spring.application.name
+        type: String
+        value: api-gateway
+        description: アプリケーション名
+      - key: spring.cloud.gateway.server.webflux.routes
+        type: List<RouteDefinition>
+        description: >
+          Gateway ルート定義リスト。
+          id=auth → uri=${app.services.auth.base-url}, predicates=[Path=/api/v1/auth/**];
+          id=business-core → uri=${app.services.core.base-url}, predicates=[Path=/api/v1/**]
+      - key: app.jwt.secret
+        type: String
+        env_var: JWT_SECRET
+        required: true
+        description: JWT 署名秘密鍵（環境変数必須）
+      - key: app.jwt.issuer
+        type: String
+        default: ddmsaa
+        description: JWT issuer クレーム値
+      - key: app.services.auth.base-url
+        type: String
+        default: "http://localhost:8081"
+        description: auth-service のベース URL
+      - key: app.services.core.base-url
+        type: String
+        default: "http://localhost:8082"
+        description: business-service-core のベース URL
+      - key: app.cors.allowed-origins
+        type: String
+        default: "http://localhost:3000"
+        description: CORS 許可オリジン（環境変数 CORS_ALLOWED_ORIGINS で上書き可）
+      - key: management.endpoints.web.exposure.include
+        type: String
+        value: health
+        description: Actuator 公開エンドポイント
+    constraints:
+      - api-gateway は infrastructure 非依存のため spring.datasource / spring.flyway を持たない
+      - TraceIdFilter は GlobalFilter（WebFlux リアクティブ）として実装
+
+  - id: auth_service_application_yml
+    module: auth-service
+    package: com.example.ddmsaa.auth
+    path: auth-service/src/main/resources/application.yml
+    kind: resource_file
+    format: yaml
+    purpose: auth-service の Spring Boot 設定テンプレート。ポート 8081。DB・Redis・JWT・Magic Link 認証設定を含む。
+    key_namespaces:
+      - key: server.port
+        type: Integer
+        value: 8081
+        description: サービスポート
+      - key: spring.application.name
+        type: String
+        value: auth-service
+        description: アプリケーション名
+      - key: spring.datasource.url
+        type: String
+        description: "PostgreSQL 接続 URL（currentSchema=public 必須）"
+      - key: spring.datasource.username
+        type: String
+        env_var: DB_USERNAME
+        description: DB ユーザ名
+      - key: spring.datasource.password
+        type: String
+        env_var: DB_PASSWORD
+        description: DB パスワード
+      - key: spring.datasource.driver-class-name
+        type: String
+        value: org.postgresql.Driver
+        description: JDBC ドライバクラス名
+      - key: spring.flyway.enabled
+        type: Boolean
+        value: true
+        description: Flyway マイグレーション有効化
+      - key: spring.flyway.locations
+        type: String
+        value: "classpath:db/migration"
+        description: マイグレーションスクリプト配置パス
+      - key: spring.flyway.schemas
+        type: String
+        value: public
+        description: 対象スキーマ
+      - key: spring.flyway.default-schema
+        type: String
+        value: public
+        description: デフォルトスキーマ
+      - key: spring.flyway.baseline-on-migrate
+        type: Boolean
+        value: true
+        description: 既存 DB を baseline として扱う
+      - key: spring.flyway.baseline-version
+        type: String
+        value: "0"
+        description: baseline バージョン番号
+      - key: spring.data.redis.host
+        type: String
+        default: localhost
+        env_var: REDIS_HOST
+        description: Redis ホスト
+      - key: spring.data.redis.port
+        type: Integer
+        default: 6379
+        env_var: REDIS_PORT
+        description: Redis ポート
+      - key: spring.data.redis.password
+        type: String
+        env_var: REDIS_PASSWORD
+        description: Redis パスワード
+      - key: mybatis.configuration.map-underscore-to-camel-case
+        type: Boolean
+        value: true
+        description: snake_case → camelCase 自動変換
+      - key: mybatis.mapper-locations
+        type: String
+        value: "classpath:mapper/*.xml"
+        description: MyBatis XML マッパー配置パス（auth-service のみ）
+      - key: app.jwt.secret
+        type: String
+        env_var: JWT_SECRET
+        required: true
+        description: JWT 署名秘密鍵（環境変数必須）
+      - key: app.jwt.issuer
+        type: String
+        default: ddmsaa
+        description: JWT issuer クレーム値
+      - key: app.jwt.expiration-seconds
+        type: Integer
+        default: 3600
+        unit: 秒
+        description: JWT 有効期限秒数
+      - key: app.auth.magic-link.ttl-seconds
+        type: Integer
+        default: 3600
+        unit: 秒
+        description: "Magic Link トークン TTL（所有: auth-service）"
+      - key: app.auth.max-login-failure-count
+        type: Integer
+        default: 5
+        unit: 回
+        description: "ログイン失敗上限回数（所有: auth-service）"
+      - key: app.auth.login-lockout-seconds
+        type: Integer
+        default: 1800
+        unit: 秒
+        description: "ロックアウト TTL（所有: auth-service）"
+      - key: app.auth.magic-link.base-url
+        type: String
+        default: "http://localhost:3000/auth/verify"
+        description: "Magic Link メール本文に埋め込む検証用ベース URL（所有: auth-service）"
+      - key: app.auth.mail-from
+        type: String
+        default: "no-reply@ddmsaa.local"
+        description: Magic Link 送信元メールアドレス
+      - key: spring.mail.host
+        type: String
+        env_var: MAIL_HOST
+        description: SMTP ホスト。JavaMailSender 構成用。未構成時はメール送信をスキップし warn ログのみ
+      - key: spring.mail.port
+        type: Integer
+        env_var: MAIL_PORT
+        default: 587
+        description: SMTP ポート
+      - key: spring.mail.username
+        type: String
+        env_var: MAIL_USERNAME
+        description: SMTP ユーザ名
+      - key: spring.mail.password
+        type: String
+        env_var: MAIL_PASSWORD
+        description: SMTP パスワード
+      - key: spring.mail.default-encoding
+        type: String
+        default: UTF-8
+        description: メール既定エンコーディング
+      - key: app.cors.allowed-origins
+        type: String
+        default: "http://localhost:3000"
+        env_var: CORS_ALLOWED_ORIGINS
+        description: CORS 許可オリジン（infrastructure.SecurityConfig の CorsConfigurationSource 用）
+    constraints:
+      - spring.datasource.url は currentSchema=public を必ず含める
+      - BCrypt / パスワード列 / refresh token は一切使用しない（モード② Magic Link のみ）
+      - spring.mail.* は Magic Link 送信に使用。未構成でも起動は継続し送信時に warn ログでスキップする
+
+  - id: business_service_core_application_yml
+    module: business-service-core
+    package: com.example.ddmsaa.core
+    path: business-service-core/src/main/resources/application.yml
+    kind: resource_file
+    format: yaml
+    purpose: business-service-core の Spring Boot 設定テンプレート。ポート 8082。DB・Redis・JWT・ファイルストレージ・エクスポート設定を含む。
+    key_namespaces:
+      - key: server.port
+        type: Integer
+        value: 8082
+        description: サービスポート
+      - key: spring.application.name
+        type: String
+        value: business-service-core
+        description: アプリケーション名
+      - key: spring.datasource.url
+        type: String
+        env_var: SPRING_DATASOURCE_URL
+        required: true
+        description: PostgreSQL 接続 URL（環境変数必須、デフォルト値なし）
+      - key: spring.datasource.username
+        type: String
+        env_var: SPRING_DATASOURCE_USERNAME
+        required: true
+        description: DB ユーザ名（環境変数必須）
+      - key: spring.datasource.password
+        type: String
+        env_var: SPRING_DATASOURCE_PASSWORD
+        required: true
+        description: DB パスワード（環境変数必須）
+      - key: spring.datasource.hikari.maximum-pool-size
+        type: Integer
+        value: 30
+        description: HikariCP 最大接続プールサイズ
+      - key: spring.datasource.hikari.minimum-idle
+        type: Integer
+        value: 5
+        description: HikariCP 最小アイドル接続数
+      - key: spring.datasource.hikari.connection-timeout
+        type: Integer
+        value: 10000
+        unit: ミリ秒
+        description: 接続取得タイムアウト
+      - key: spring.datasource.hikari.idle-timeout
+        type: Integer
+        value: 300000
+        unit: ミリ秒
+        description: アイドル接続タイムアウト
+      - key: spring.datasource.hikari.max-lifetime
+        type: Integer
+        value: 1800000
+        unit: ミリ秒
+        description: 接続最大生存時間
+      - key: spring.flyway.enabled
+        type: Boolean
+        value: true
+        description: Flyway マイグレーション有効化
+      - key: spring.flyway.locations
+        type: String
+        value: "classpath:db/migration"
+        description: マイグレーションスクリプト配置パス
+      - key: spring.flyway.schemas
+        type: String
+        value: public
+        description: 対象スキーマ
+      - key: spring.flyway.default-schema
+        type: String
+        value: public
+        description: デフォルトスキーマ
+      - key: spring.flyway.baseline-on-migrate
+        type: Boolean
+        value: true
+        description: 既存 DB を baseline として扱う
+      - key: spring.flyway.baseline-version
+        type: String
+        value: "0"
+        description: baseline バージョン番号
+      - key: mybatis.configuration.map-underscore-to-camel-case
+        type: Boolean
+        value: true
+        description: snake_case → camelCase 自動変換
+      - key: pagehelper.helper-dialect
+        type: String
+        value: postgresql
+        description: PageHelper 方言設定（business-service-core のみ）
+      - key: app.jwt.secret
+        type: String
+        env_var: JWT_SECRET
+        required: true
+        description: JWT 署名秘密鍵（環境変数必須）
+      - key: app.jwt.issuer
+        type: String
+        default: ddmsaa
+        description: JWT issuer クレーム値
+      - key: app.jwt.expiration-seconds
+        type: Integer
+        default: 3600
+        unit: 秒
+        description: JWT 有効期限秒数
+      - key: app.services.auth.base-url
+        type: String
+        default: "http://localhost:8081"
+        description: auth-service のベース URL（サービス間通信用）
+      - key: app.services.connect-timeout-seconds
+        type: Integer
+        default: 5
+        unit: 秒
+        description: サービス間通信接続タイムアウト
+      - key: app.services.read-timeout-seconds
+        type: Integer
+        default: 30
+        unit: 秒
+        description: サービス間通信読み取りタイムアウト
+      - key: app.crypto.aes-key
+        type: String
+        env_var: AES_KEY
+        required: true
+        description: AES-GCM 暗号化鍵（Base64 エンコード済み 32 バイト、環境変数必須）
+      - key: app.file.storage-type
+        type: Enum
+        values: [local, s3]
+        default: local
+        env_var: FILE_STORAGE_TYPE
+        description: "ファイルストレージ種別。既定 local（dev 外部依存ゼロ）。本番は s3。LocalFileStorageService/S3FileStorageService を @ConditionalOnProperty で排他選択"
+      - key: app.file.local.base-dir
+        type: String
+        default: "${java.io.tmpdir}/ddmsaa-files"
+        env_var: FILE_LOCAL_BASE_DIR
+        description: "LocalFileStorageService の保存先ディレクトリ（storage-type=local 時）"
+      - key: app.file.s3.region
+        type: String
+        env_var: S3_REGION
+        default: "ap-northeast-1"
+        description: S3 リージョン
+      - key: app.file.s3.bucket
+        type: String
+        env_var: S3_BUCKET
+        default: ddmsaa
+        description: S3 バケット名
+      - key: app.file.s3.prefix
+        type: String
+        env_var: S3_PREFIX
+        required: false
+        description: オブジェクトキー接頭辞（任意）
+      - key: app.file.s3.endpoint
+        type: String
+        env_var: S3_ENDPOINT
+        required: false
+        description: "S3 互換エンドポイント URL（任意。ローカル開発用 MinIO 接続時のみ指定。例 http://localhost:9000）"
+      - key: app.file.s3.path-style
+        type: Boolean
+        env_var: S3_PATH_STYLE
+        default: false
+        description: パススタイルアクセス（任意。ローカル開発用 MinIO 接続時は true）
+      - key: app.file.s3.presign-ttl-seconds
+        type: Integer
+        env_var: S3_PRESIGN_TTL_SECONDS
+        default: 300
+        unit: 秒
+        description: 署名付き URL の標準有効期間
+      - key: app.export.file-expiry-days
+        type: Integer
+        default: 7
+        unit: 日
+        description: "エクスポートファイル保持日数（所有: business-service-core）"
+      - key: app.cors.allowed-origins
+        type: String
+        default: "http://localhost:3000"
+        env_var: CORS_ALLOWED_ORIGINS
+        description: CORS 許可オリジン（infrastructure.SecurityConfig の CorsConfigurationSource 用）
+    constraints:
+      - mybatis.mapper-locations は business-service-core には不要（auth-service のみ）
+      - app.crypto.aes-key 未設定時は起動時 IllegalStateException（fail-fast）
+      - HikariCP 設定は business-service-core のみ（auth-service には不要）
+
+# ============================================================
+# 3. db/migration 配置規則 — infrastructure モジュール
+# ============================================================
+
+  - id: flyway_migration_scripts
+    module: infrastructure
+    package: com.example.ddmsaa.infrastructure
+    path: infrastructure/src/main/resources/db/migration/
+    kind: resource_directory
+    purpose: >
+      Flyway マイグレーションスクリプト配置ディレクトリ。
+      infrastructure モジュールに配置し、auth-service / business-service-core が
+      infrastructure への依存を通じて classpath で共有する（同源のため分岐しない）。
+    naming_rules:
+      versioned:
+        pattern: "V{n}__{description}.sql"
+        description: >
+          バージョン付きマイグレーションスクリプト。
+          n = 正の整数（単調増加）、description = スネークケース説明文。
+          例: V1__initial_data_migration.sql, V2__add_user_nickname.sql
+        examples:
+          - V1__initial_data_migration.sql
+          - V2__add_users_index.sql
+          - V3__add_user_nickname.sql
+      repeatable:
+        pattern: "R__{description}.sql"
+        description: >
+          リピータブルマイグレーションスクリプト。
+          チェックサム変更時に再実行される。ビュー・関数の再定義等に使用。
+        examples:
+          - R__refresh_views.sql
+    constraints:
+      - 初期 schema（採番関数 next_business_id(prefix)・トリガー set_updated_at を含む）は機構A（docker setup）で構築し、構築後の変更と初期移行データを本ディレクトリの Flyway スクリプトで扱う
+      - SQL 内容の正本は データベース（SSOT）
+      - auth-service は V1 以降のみ適用（baseline-version=0 で既存 DB を認領）
+      - UT / 開発サンプルデータは Flyway 管理外（test profile / 手動 psql）
+      - api-gateway は infrastructure 非依存のため本ディレクトリを持たない
+    flyway_config_shared:
+      description: auth-service / business-service-core 共通 spring.flyway 設定
+      keys:
+        - key: spring.flyway.enabled
+          value: true
+        - key: spring.flyway.locations
+          value: "classpath:db/migration"
+        - key: spring.flyway.schemas
+          value: public
+        - key: spring.flyway.default-schema
+          value: public
+        - key: spring.flyway.baseline-on-migrate
+          value: true
+        - key: spring.flyway.baseline-version
+          value: "0"
+
+# ============================================================
+# 4. logback-spring.xml 配置規則 — 実行モジュール
+#    ※ 構造の正本は spec-11-log-config.yaml。本節は配置先のみを定義し、
+#      パターン / appender / springProfile / ログレベル / totalSizeCap 等の詳細は
+#      11 に一本化する（旧・本節の logging.pattern.level 別表記は廃止）。
+# ============================================================
+
+  - id: logback_spring_xml_api_gateway
+    module: api-gateway
+    package: com.example.ddmsaa.gateway
+    path: api-gateway/src/main/resources/logback-spring.xml
+    kind: resource_file
+    format: xml
+    purpose: api-gateway 用 Logback 設定。構造は spec-11-log-config.yaml を正本とする。
+    spec_ref: spec-11-log-config.yaml
+    constraints:
+      - 構造（パターン / appender / springProfile / ログレベル / totalSizeCap）は spec-11-log-config.yaml に完全準拠する
+      - MODULE_NAME プロパティに api-gateway を設定する
+      - 共有 jar（common / infrastructure）には logback-spring.xml を配置しない
+
+  - id: logback_spring_xml_auth_service
+    module: auth-service
+    package: com.example.ddmsaa.auth
+    path: auth-service/src/main/resources/logback-spring.xml
+    kind: resource_file
+    format: xml
+    purpose: auth-service 用 Logback 設定。構造は spec-11-log-config.yaml を正本とする。
+    spec_ref: spec-11-log-config.yaml
+    constraints:
+      - 構造（パターン / appender / springProfile / ログレベル / totalSizeCap）は spec-11-log-config.yaml に完全準拠する
+      - MODULE_NAME プロパティに auth-service を設定する
+      - 共有 jar（common / infrastructure）には logback-spring.xml を配置しない
+
+  - id: logback_spring_xml_business_service_core
+    module: business-service-core
+    package: com.example.ddmsaa.core
+    path: business-service-core/src/main/resources/logback-spring.xml
+    kind: resource_file
+    format: xml
+    purpose: business-service-core 用 Logback 設定。構造は spec-11-log-config.yaml を正本とする。
+    spec_ref: spec-11-log-config.yaml
+    constraints:
+      - 構造（パターン / appender / springProfile / ログレベル / totalSizeCap）は spec-11-log-config.yaml に完全準拠する
+      - MODULE_NAME プロパティに business-service-core を設定する
+      - 共有 jar（common / infrastructure）には logback-spring.xml を配置しない

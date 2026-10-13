@@ -1,0 +1,115 @@
+# =====================================================================
+# 06 DB 物理設計（YAML データソース）
+# ---------------------------------------------------------------------
+# 用途：テーブル・項目・インデックス・制約の機械可読な定義。スクリプトで DDL / エンティティクラス / ER 図を生成できる。
+# 使い方：本ファイルを複製 → 例を置換 → 必要に応じて tables 配下のテーブルを増減する。
+#       spec-06-db-physical-ui.md と対で用いる（md は ER 図と説明、yaml はデータソース）。
+# 注意：YAML のインデントはスペースのみ（タブ不可）。同じ階層は揃えること。
+# 規約：type には DBMS の実際の型を用いる。pk/fk/not_null は省略時 false。
+# =====================================================================
+
+meta:
+  system: "DDMSAA"
+  dbms: PostgreSQL
+  version: "16"
+  charset: UTF-8
+  timezone: Asia/Tokyo
+
+# ---------------------------------------------------------------------
+# conventions：共通規約。すべての業務テーブルで common_columns を統一して付与する（履歴テーブル・コードテーブルは deleted_at を省略）。
+# ---------------------------------------------------------------------
+conventions:
+  naming: snake_case             # テーブル名・列名の命名スタイル（開発規約/spec-naming-rule.md に従う）
+  boolean_prefix: is_            # 真偽値列のプレフィックス（例：is_active）
+  timestamp_suffix: _at          # 日時列のサフィックス（例：created_at）
+  enum_storage: INT + コードテーブル FK   # 開発規約/spec-database-rule.md §4.1-CODE に従う
+  encrypted_type: varchar(512)   # 暗号化列（アプリケーション層で暗号化）の型
+  pk_strategy: 開発規約/spec-database-rule.md §4.1 に従う   # テーブルごとの実際の主キーは tables の定義を正とする
+  common_columns:                # 各業務テーブルに共通で追加する列
+    - { logical: 作成日時, physical: created_at, type: timestamptz, not_null: true, default: CURRENT_TIMESTAMP }
+    - { logical: 作成者,   physical: created_by, type: varchar(10), not_null: true, default: "'SYSTEM'" }
+    - { logical: 更新日時, physical: updated_at, type: timestamptz, not_null: true, default: CURRENT_TIMESTAMP, note: トリガーで自動更新 }
+    - { logical: 更新者,   physical: updated_by, type: varchar(10), not_null: true, default: "'SYSTEM'" }
+    - { logical: 削除日時, physical: deleted_at, type: timestamptz, note: "論理削除（NULL=有効）。履歴テーブルは省略" }
+
+# ---------------------------------------------------------------------
+# tables：テーブル定義リスト。以下の3テーブルは例（ユーザ / 部門マスタ / ロールコード）
+# ---------------------------------------------------------------------
+# rule: db.table-definitions
+tables:
+
+  - id: TBL-users
+    physical_name: users
+    logical_name: ユーザ
+    type: 業務                   # 業務 / マスタ / 履歴 / 中間 / ビュー
+    description: ユーザの基本情報
+    columns:
+      - { logical: ユーザID,   physical: user_id,       type: varchar(10),  pk: true, not_null: true, note: "業務キー。アプリケーション層でプレフィックス+4桁を採番" }
+      - { logical: 部門ID,     physical: department_id, type: varchar(10),  fk: true, not_null: true, references: "departments.id" }
+      - { logical: ユーザ名,   physical: user_name,     type: varchar(100), not_null: true }
+      - { logical: メールアドレス, physical: email,     type: varchar(255), not_null: true }
+      - { logical: 電話番号,   physical: phone_number,  type: varchar(512), encrypted: true, note: "暗号化して保存（暗号文型）" }
+      - { logical: ロール,     physical: role,          type: int,          fk: true, not_null: true, references: "user_role_codes.user_role_code", note: "コードは T07（例：1=ADMIN, 2=MANAGER, 3=USER）" }
+      - { logical: 停止日,     physical: disabled_date, type: date }
+    indexes:
+      - { name: pk_users,            columns: [user_id],       type: 主キー,       purpose: 業務キーの主キー }
+      - { name: idx_users_department_id, columns: [department_id], type: 一般,      purpose: 部門別検索 }
+      - { name: uq_users_email,      columns: [email],         type: 部分ユニーク, where: "deleted_at IS NULL", purpose: メールの一意性（未削除行のみ） }
+    constraints:
+      - { name: fk_users_departments, type: 外部キー, content: "department_id → departments.id" }
+      - { name: fk_users_user_role_codes, type: 外部キー, content: "role → user_role_codes.user_role_code" }
+
+  - id: TBL-departments
+    physical_name: departments
+    logical_name: 部門マスタ
+    type: マスタ
+    description: 部門定義
+    columns:
+      - { logical: 部門ID, physical: id,              type: varchar(10),  pk: true, not_null: true, default: "next_business_id('DP', 4)", note: "DP+4桁を採番" }
+      - { logical: 部門名, physical: department_name, type: varchar(100), not_null: true }
+    indexes:
+      - { name: pk_departments,                columns: [id],              type: 主キー,       purpose: 主キー }
+      - { name: uq_departments_department_name, columns: [department_name], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 部門名の一意性（未削除行のみ） }
+    constraints: []
+
+  - id: TBL-user-role-codes
+    physical_name: user_role_codes
+    logical_name: ロールコード
+    type: マスタ                 # コードテーブル（列挙 T07 の値域）。deleted_at は持たない
+    description: ロール列挙（T07）のコード表
+    columns:
+      - { logical: ロールコード, physical: user_role_code, type: int,         pk: true, not_null: true, note: "T07 の属性コード。採番しない" }
+      - { logical: ロール名,     physical: user_role_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
+    indexes:
+      - { name: pk_user_role_codes,           columns: [user_role_code], type: 主キー, purpose: 主キー }
+      - { name: uq_user_role_codes_user_role_name, columns: [user_role_name], type: ユニーク, purpose: 名称の一意性 }
+    constraints: []
+
+  # ↓↓↓ テーブルごとに以下の雛形を複製して置換する ↓↓↓
+  # - id: TBL-xxx
+  #   physical_name: xxx
+  #   logical_name: 〇〇
+  #   type: 業務
+  #   description: 〇〇
+  #   columns:
+  #     - { logical: 〇〇, physical: xxx, type: varchar(50), pk: false, fk: false, not_null: true, default: , note: }
+  #   indexes: []
+  #   constraints: []
+
+# ---------------------------------------------------------------------
+# relations：ER 関係（任意。スクリプトで Mermaid ER 図を生成しやすくする）
+#   cardinality の例： "1:1" / "1:N" / "N:1" / "1:0..1"
+# ---------------------------------------------------------------------
+relations:
+  - { from: users, to: departments,   cardinality: "N:1", label: 所属 }
+  - { from: users, to: user_role_codes, cardinality: "N:1", label: ロール }
+  # 実態に合わせて補足する。例：
+  # - { from: users, to: user_contacts, cardinality: "1:0..1", label: 連絡先 }
+
+# ---------------------------------------------------------------------
+# master_data：マスタ初期値の出典（任意）
+# ---------------------------------------------------------------------
+master_data:
+  - { table: departments, description: 部門マスタ, source: 登録リスト/CSV }
+  - { table: user_role_codes, description: ロールコード, source: T07 }
+  # 実態に合わせて補足する

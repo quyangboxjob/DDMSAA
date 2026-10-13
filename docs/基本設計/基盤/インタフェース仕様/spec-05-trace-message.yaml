@@ -1,0 +1,158 @@
+﻿# ============================================================
+# spec-05-trace-message.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.4（トレース）§4.3.5（メッセージ）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           framework_mappings.request_filter_mvc / request_context_logger / log_pattern_trace
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: common
+package_root: com.example.ddmsaa.common
+
+types:
+
+  - fqcn: com.example.ddmsaa.common.message.MessageCatalog
+    kind: interface
+    module: common
+    package: com.example.ddmsaa.common.message
+    purpose: メッセージ ID からサーバ側ログ用文言を解決するカタログインタフェース。実装クラスを @Component で登録する。
+    methods:
+      - "String resolve(String messageId, Object... args)"
+      - "boolean exists(String messageId)"
+
+  - fqcn: com.example.ddmsaa.common.message.YamlMessageCatalog
+    kind: class
+    module: common
+    package: com.example.ddmsaa.common.message
+    purpose: 起動時に messages/*.yaml を全件ロードし {0}/{1} プレースホルダを args で置換して返す MessageCatalog 実装。スレッドセーフ（ロード済みマップは不変保持）。
+    annotations:
+      - "@Component"
+    implements:
+      - com.example.ddmsaa.common.message.MessageCatalog
+    constructors: []
+    methods:
+      - "String resolve(String messageId, Object... args)"
+      - "boolean exists(String messageId)"
+
+  - fqcn: com.example.ddmsaa.common.web.filter.TraceIdFilter
+    kind: class
+    module: common
+    package: com.example.ddmsaa.common.web.filter
+    purpose: MVC 用リクエストフィルタ。X-Request-Id ヘッダから traceId を取得（なければ UUID ハイフン除去を生成）し MDC に設定、応答ヘッダ X-Trace-Id に付与する。finally ブロックで MDC.clear() を実行しスレッドリークを防止する。Gateway 用実装は spec_06 で定義する。
+    annotations:
+      - "@Component"
+      - "@Order(Ordered.HIGHEST_PRECEDENCE)"
+    extends: org.springframework.web.filter.OncePerRequestFilter
+    constructors: []
+    methods:
+      - "void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException"
+
+  - fqcn: com.example.ddmsaa.common.security.FieldEncryptor
+    kind: class
+    module: common
+    package: com.example.ddmsaa.common.security
+    purpose: "AES-GCM（IV 12 バイト、認証タグ 128 ビット）による機密フィールドの暗号化・復号ユーティリティ。出力形式は Base64(iv‖cipher)。鍵は app.crypto.aes-key（環境変数 AES_KEY）から取得し、未設定時は起動時 IllegalStateException。"
+    annotations:
+      - "@Component"
+    constructors:
+      - "FieldEncryptor()"
+    methods:
+      - "String encrypt(String plaintext)"
+      - "String decrypt(String ciphertext)"
+
+  - fqcn: com.example.ddmsaa.common.security.DataMaskUtil
+    kind: class
+    module: common
+    package: com.example.ddmsaa.common.security
+    purpose: 文字列マスキングのための static ユーティリティクラス。null または空文字はそのまま返却し例外を送出しない。
+    constructors: []
+    methods:
+      - "static String maskKeepLast(String value, int last)"
+      - "static String maskAll(String value)"
+    behavior_contracts:
+      maskKeepLast:
+        - condition: "value が null または isBlank()"
+          action: value をそのまま返す（例外なし）
+        - condition: "last < 0"
+          action: IllegalArgumentException を送出
+        - condition: "last >= value.length()"
+          action: value をそのまま返す（全表示）
+        - condition: 正常
+          action: "先頭 (length - last) 文字を * に置換し、末尾 last 文字を残す"
+
+  - fqcn: com.example.ddmsaa.common.security.MaskingService
+    kind: interface
+    module: common
+    package: com.example.ddmsaa.common.security
+    purpose: ロールと自己参照フラグに基づき業務 DTO の機密フィールドをマスクする no-op フックインタフェース。基盤層はデフォルト実装（target をそのまま返す）のみを提供し、業務層のオーバーライド実装でフィールドマスクマトリクスを定義する。
+    methods:
+      - "<T> T maskByRole(T target, String viewerRole, boolean isSelf)"
+
+  - fqcn: com.example.ddmsaa.common.security.DefaultMaskingService
+    kind: class
+    module: common
+    package: com.example.ddmsaa.common.security
+    purpose: >
+      MaskingService の基盤デフォルト実装。target をそのまま返す no-op。
+      業務層が @Primary 等でオーバーライド実装を提供しない場合の既定 Bean。
+      これが無いと spec-10-business-core の ServiceImpl（MaskingService を注入）が Bean 解決に失敗するため、
+      基盤層で必ず本クラスを生成する。
+    annotations:
+      - "@Component"
+    implements:
+      - com.example.ddmsaa.common.security.MaskingService
+    constructors: []
+    methods:
+      - "<T> T maskByRole(T target, String viewerRole, boolean isSelf)"
+
+# ============================================================
+# 行動契約（境界条件）
+# ============================================================
+behavior_contracts:
+
+  FieldEncryptor:
+    thread_safety: ステートレス（呼び出しごとに新しい IV を生成）。複数スレッドから同時呼び出し可
+    idempotency: なし（同じ平文でも呼び出しごとに異なる暗号文を生成する）
+    contracts:
+      - condition: 引数が null
+        encrypt: null を返す
+        decrypt: null を返す
+      - condition: "引数が空文字列 \"\""
+        encrypt: "\"\" を返す"
+        decrypt: "\"\" を返す"
+      - condition: "app.crypto.aes-key 未設定"
+        encrypt: "IllegalStateException を送出（起動時 fail-fast）"
+        decrypt: 同左
+      - condition: 正常値
+        encrypt: "AES-GCM 暗号化 → Base64(iv‖cipher) を返す"
+        decrypt: "Base64デコード → IV分離 → 復号した平文を返す"
+
+  YamlMessageCatalog:
+    initialization: アプリケーション起動時に messages/*.yaml を全件ロード。ロード後はイミュータブル
+    thread_safety: 読み取り専用。複数スレッドから同時呼び出し可
+    contracts:
+      - condition: "messageId が登録済み、args なし"
+        resolve: 登録されたメッセージ文字列を返す
+        exists: true
+      - condition: "messageId が登録済み、args あり"
+        resolve: "{0}、{1} 等を args で置換したメッセージを返す"
+        exists: true
+      - condition: messageId が未登録
+        resolve: "messageId をそのまま返す（例外なし）"
+        exists: false
+      - condition: messageId が null
+        resolve: null を返す
+        exists: false
+      - condition: "@PostConstruct init() で YAML ロードに失敗（ファイル読み込みエラー等）"
+        action: "例外をログ出力後 IllegalStateException で再送出し起動を停止する（サイレント継続禁止。空マップのまま起動すると全 messageId がキー文字列のまま API レスポンスに露出する）。"
+
+  MaskingService:
+    thread_safety: ステートレス。複数スレッドから同時呼び出し可
+    contracts:
+      - condition: target が null
+        action: null を返す（例外なし）
+      - condition: 基盤デフォルト実装
+        action: target をそのまま返す（フィールドを変更しない）
+      - condition: 業務実装（オーバーライド）
+        action: マスク済みの新しいインスタンスを返す（target は変更しない）

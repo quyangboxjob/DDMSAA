@@ -1,0 +1,287 @@
+﻿# ============================================================
+# spec-11-log-config.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.4（トレース / ログ）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           framework_mappings.log_config_file / log_pattern_trace / request_context_logger
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+spec:
+  id: "11"
+  name: ログ設定（logback-spring.xml 構造仕様）
+  version: "1.0"
+  date: "2026-06-30"
+  source_doc: "基本設計/基盤/spec-04-common-component-ui.md §5.1 §5.2"
+
+# ============================================================
+# §1 配置ルール
+# ============================================================
+placement:
+  description: >
+    logback-spring.xml は実行モジュールにのみ配置する。
+    共有 jar（common / infrastructure）には配置しない。
+  deploy_targets:
+    - module: api-gateway
+      package_root: com.example.ddmsaa.gateway
+      path: api-gateway/src/main/resources/logback-spring.xml
+      note: WebFlux（リアクティブ）実行モジュール
+    - module: auth-service
+      package_root: com.example.ddmsaa.auth
+      path: auth-service/src/main/resources/logback-spring.xml
+      note: MVC 実行モジュール
+    - module: business-service-core
+      package_root: com.example.ddmsaa.core
+      path: business-service-core/src/main/resources/logback-spring.xml
+      note: MVC 実行モジュール
+  excluded_modules:
+    - module: common
+      package_root: com.example.ddmsaa.common
+      reason: 共有 jar のため logback-spring.xml を配置しない
+    - module: infrastructure
+      package_root: com.example.ddmsaa.infrastructure
+      reason: 共有 jar のため logback-spring.xml を配置しない
+
+# ============================================================
+# §2 MDC キー定義
+# ============================================================
+mdc_keys:
+  - key: traceId
+    type: String
+    setter_component:
+      mvc: TraceIdFilter
+      reactive: TraceIdGlobalFilter
+    description: >
+      受信ヘッダ X-Request-Id の値、または UUID（ハイフン除去）を自動生成。
+      リクエスト開始時に MDC.put("traceId", traceId) で設定し、
+      リクエスト終了時（finally / doFinally）に MDC.clear() でクリアする。
+    clear_timing: リクエスト終了時（finally / doFinally）
+  - key: userId
+    type: String
+    setter_component:
+      mvc: JwtAuthenticationFilter
+      reactive: JwtAuthGlobalFilter
+    description: >
+      JWT 検証成功後に MDC.put("userId", userId) で設定する（ユーザーID）。
+      UserContext.clear() と連動して finally ブロックでクリアされる。
+    value_example: "U00123"
+    clear_timing: リクエスト終了時（JwtAuthenticationFilter の finally ブロック）
+
+# ============================================================
+# §3 ログパターン仕様
+# ============================================================
+log_pattern:
+  pattern: "%X{traceId:--} %X{userId:--} %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+  required_fields:
+    - placeholder: "%X{traceId:--}"
+      mdc_key: traceId
+      fallback: "--"
+      description: TraceIdFilter / TraceIdGlobalFilter が設定するトレース ID
+    - placeholder: "%X{userId:--}"
+      mdc_key: userId
+      fallback: "--"
+      description: JwtAuthenticationFilter / JwtAuthGlobalFilter が設定するユーザーID
+    - placeholder: "%d{yyyy-MM-dd HH:mm:ss.SSS}"
+      description: タイムスタンプ（ミリ秒精度）
+    - placeholder: "%-5level"
+      description: ログレベル（左寄せ 5 文字幅）
+    - placeholder: "[%thread]"
+      description: スレッド名
+    - placeholder: "%logger{36}"
+      description: ロガー名（最大 36 文字）
+    - placeholder: "%msg%n"
+      description: ログメッセージ＋改行
+
+# ============================================================
+# §4 Appender 設定パターン
+# ============================================================
+appenders:
+  - name: CONSOLE
+    class: ch.qos.logback.core.ConsoleAppender
+    usage: 開発環境（development profile）
+    encoder:
+      class: ch.qos.logback.classic.encoder.PatternLayoutEncoder
+      pattern: "%X{traceId:--} %X{userId:--} %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+    target: System.out
+    activation_profile: "default（開発）"
+    xml_snippet: |
+      <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+          <pattern>%X{traceId:--} %X{userId:--} %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+      </appender>
+
+  - name: FILE
+    class: ch.qos.logback.core.rolling.RollingFileAppender
+    usage: 本番環境オプション（production profile）
+    encoder:
+      class: ch.qos.logback.classic.encoder.PatternLayoutEncoder
+      pattern: "%X{traceId:--} %X{userId:--} %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+    rolling_policy:
+      class: ch.qos.logback.core.rolling.TimeBasedRollingPolicy
+      file_name_pattern: "logs/${MODULE_NAME}-%d{yyyy-MM-dd}.log"
+      max_history: 30
+      total_size_cap: "3GB"
+    activation_profile: "production（本番オプション）"
+    xml_snippet: |
+      <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/${MODULE_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+          <fileNamePattern>logs/${MODULE_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+          <maxHistory>30</maxHistory>
+          <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+          <pattern>%X{traceId:--} %X{userId:--} %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+      </appender>
+
+# ============================================================
+# §5 ログレベル定義
+# ============================================================
+log_levels:
+  root:
+    level: INFO
+    description: デフォルト（全 profile 共通）
+  package_overrides:
+    - package: com.example.ddmsaa
+      level_by_profile:
+        development: DEBUG
+        production: INFO
+      description: >
+        開発時は DEBUG、本番時は INFO。
+        Spring プロファイル（logback-spring.xml の springProfile タグ）で切り替える。
+
+# ============================================================
+# §6 Spring プロファイル切り替え構造
+# ============================================================
+spring_profile_structure:
+  description: >
+    logback-spring.xml 内で <springProfile> タグを用いてプロファイルごとに
+    Appender とログレベルを切り替える。
+  profiles:
+    - name: "development（デフォルト / !production）"
+      appender_ref: CONSOLE
+      com_ddmsaa_level: DEBUG
+      root_level: INFO
+    - name: production
+      appender_ref:
+        - CONSOLE
+        - FILE
+      com_ddmsaa_level: INFO
+      root_level: INFO
+  xml_snippet: |
+    <configuration>
+      <!-- §3 ログパターン定義 -->
+      <property name="LOG_PATTERN"
+        value="%X{traceId:--} %X{userId:--} %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"/>
+
+      <!-- §4 CONSOLE Appender（開発） -->
+      <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+          <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+      </appender>
+
+      <!-- §4 FILE Appender（本番オプション） -->
+      <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/${MODULE_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+          <fileNamePattern>logs/${MODULE_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+          <maxHistory>30</maxHistory>
+          <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+          <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+      </appender>
+
+      <!-- 開発プロファイル -->
+      <springProfile name="!production">
+        <logger name="com.example.ddmsaa" level="DEBUG"/>
+        <root level="INFO">
+          <appender-ref ref="CONSOLE"/>
+        </root>
+      </springProfile>
+
+      <!-- 本番プロファイル -->
+      <springProfile name="production">
+        <logger name="com.example.ddmsaa" level="INFO"/>
+        <root level="INFO">
+          <appender-ref ref="CONSOLE"/>
+          <appender-ref ref="FILE"/>
+        </root>
+      </springProfile>
+    </configuration>
+
+# ============================================================
+# §7 関連コンポーネント（MDC 設定主体）
+# ============================================================
+related_components:
+  - fqcn: com.example.ddmsaa.gateway.filter.TraceIdGlobalFilter
+    module: api-gateway
+    package: com.example.ddmsaa.gateway.filter
+    kind: class
+    implements:
+      - org.springframework.cloud.gateway.filter.GlobalFilter
+    annotation:
+      - "@Component"
+      - "@Order(Ordered.HIGHEST_PRECEDENCE)"
+    purpose: >
+      WebFlux（リアクティブ）実行モジュール（api-gateway）で
+      MDC に traceId を設定し、応答ヘッダ X-Trace-Id を付与する。
+    methods:
+      - "reactor.core.publisher.Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain)"
+
+  - fqcn: com.example.ddmsaa.common.web.filter.TraceIdFilter
+    module: common
+    package: com.example.ddmsaa.common.web.filter
+    kind: class
+    extends: org.springframework.web.filter.OncePerRequestFilter
+    annotation:
+      - "@Component"
+      - "@Order(Ordered.HIGHEST_PRECEDENCE)"
+    purpose: >
+      MVC 実行モジュール（auth-service / business-service-core）で
+      MDC に traceId を設定し、応答ヘッダ X-Trace-Id を付与する。
+    methods:
+      - "void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException"
+
+  - fqcn: com.example.ddmsaa.infrastructure.jwt.JwtAuthenticationFilter
+    module: infrastructure
+    package: com.example.ddmsaa.infrastructure.jwt
+    kind: class
+    extends: org.springframework.web.filter.OncePerRequestFilter
+    annotation: []
+    purpose: >
+      Bearer トークン検証後に MDC.put("userId", userId) を設定する。
+      SecurityConfig が @Bean として登録する（@Component 付与なし）。
+    methods:
+      - "void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException"
+      - "boolean shouldNotFilter(HttpServletRequest request) throws ServletException"
+
+# ============================================================
+# §8 禁止事項・制約
+# ============================================================
+constraints:
+  - id: C-LOG-01
+    description: >
+      共有 jar（common / infrastructure）に logback-spring.xml を配置してはならない。
+      配置先は api-gateway / auth-service / business-service-core のみ。
+  - id: C-LOG-02
+    description: >
+      ログパターンには必ず %X{traceId:--} および %X{userId:--} を含めること。
+      MDC キー名の変更・省略は禁止。
+  - id: C-LOG-03
+    description: >
+      機微情報（my_number / account_number / request_content 等）を
+      平文でログに書き込むことを禁止する（DataMaskUtil / MaskingService で
+      マスク後に出力すること）。
+  - id: C-LOG-04
+    description: >
+      MDC のクリアは必ず finally ブロック（MVC）または doFinally オペレータ
+      （WebFlux）で実行すること。スレッドリークを防止するため省略禁止。
+  - id: C-LOG-05
+    description: >
+      com.example.ddmsaa パッケージのログレベルは開発時 DEBUG、本番時 INFO とする。
+      root レベルは INFO 固定とする。springProfile タグを用いてプロファイルで切り替える。

@@ -1,0 +1,141 @@
+﻿# ============================================================
+# spec-04-unified-response.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.7（応答と状態規約 / 統一応答形式）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           value_object_form / framework_mappings.no_auto_wrap
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: common
+package: com.example.ddmsaa.common.response
+
+# ------------------------------------------------------------
+# アクセサ規約（コメント）
+#   Result       : record 形式 fieldName() のみ（getXxx() 禁止）
+#   PageResult   : record 形式 fieldName() のみ（getXxx() 禁止）
+#   FieldError   : record 形式 fieldName() のみ（getXxx() 禁止）
+#   ErrorResponse: class（getXxx() / setXxx() 形式）
+#   record <-> class の変換禁止（呼び出し側を壊す）
+# ------------------------------------------------------------
+
+types:
+
+  # ----------------------------------------------------------
+  # 1. Result<T>
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.common.response.Result
+    kind: record
+    purpose: >
+      正常系統一レスポンスラップ型。不変値オブジェクト。
+      null フィールドは JSON 出力から省略する（@JsonInclude(NON_NULL)）。
+    annotation:
+      - "@JsonInclude(JsonInclude.Include.NON_NULL)"
+    generics:
+      - "T"
+    components:
+      - {name: code,        type: int}
+      - {name: message,     type: String}
+      - {name: messageId,   type: String}
+      - {name: messageArgs, type: "String[]"}
+      - {name: traceId,     type: String}
+      - {name: timestamp,   type: OffsetDateTime}
+      - {name: data,        type: T}
+    methods:
+      - "static <T> Result<T> ok(T data)"
+      - "static <T> Result<T> ok(T data, String messageId, String... args)"
+
+  # ----------------------------------------------------------
+  # 2. PageResult<T>
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.common.response.PageResult
+    kind: record
+    purpose: >
+      ページング結果統一レスポンスラップ型。不変値オブジェクト。
+      pages は ceil(total / pageSize) で自動計算する。total=0 の場合は pages=0。
+      getItems() / getSize() 等の別名定義禁止（アクセサ名揺れ防止）。
+      pageSize=0 の場合は IllegalArgumentException を送出する。
+      records が null の場合は空リストとして扱う。
+    generics:
+      - "T"
+    components:
+      - {name: records,  type: "List<T>"}
+      - {name: total,    type: long}
+      - {name: pageNum,  type: int}
+      - {name: pageSize, type: int}
+      - {name: pages,    type: int}
+    methods:
+      - "static <T> PageResult<T> of(List<T> records, long total, int pageNum, int pageSize)"
+
+  # ----------------------------------------------------------
+  # 3. ErrorResponse
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.common.response.ErrorResponse
+    kind: class
+    purpose: >
+      異常系統一レスポンスラップ型。可変コンテナ（getXxx()/setXxx() 形式）。
+      path / traceId は of() で設定する。messageArgs / message / details は setter で補完する。
+      details への FieldError 格納は 400 バリデーション失敗時のみ。
+    constructors:
+      - "ErrorResponse()"
+    methods:
+      - "String getMessageId()"
+      - "String[] getMessageArgs()"
+      - "String getMessage()"
+      - "OffsetDateTime getTimestamp()"
+      - "String getPath()"
+      - "String getTraceId()"
+      - "List<FieldError> getDetails()"
+      - "void setMessageId(String messageId)"
+      - "void setMessageArgs(String[] messageArgs)"
+      - "void setMessage(String message)"
+      - "void setTimestamp(OffsetDateTime timestamp)"
+      - "void setPath(String path)"
+      - "void setTraceId(String traceId)"
+      - "void setDetails(List<FieldError> details)"
+      - "static ErrorResponse of(String messageId, String path, String traceId)"
+
+  # ----------------------------------------------------------
+  # 4. FieldError
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.common.response.FieldError
+    kind: record
+    purpose: >
+      バリデーション失敗の単一フィールドエラー情報。不変値オブジェクト。
+      ErrorResponse.details に格納される。
+    components:
+      - name: field
+        type: String
+      - name: reason
+        type: String
+    constructors:
+      - "FieldError(String field, String reason)"
+    methods:
+      - "String field()"
+      - "String reason()"
+
+# ============================================================
+# 行動契約（境界条件）
+# ============================================================
+behavior_contracts:
+
+  PageResult:
+    contracts:
+      - condition: "PageResult.of(records, total, pageNum, pageSize) の pages 計算"
+        action: "pages = ceil(total / pageSize)。total = 0 の場合は pages = 0"
+      - condition: pageNum の最小値
+        action: "1（0-origin ではない）"
+      - condition: "pageNum > pages かつ total > 0"
+        action: "records が空リストの PageResult を返す（例外なし）"
+      - condition: "pageSize が 0 以下（<= 0）"
+        action: IllegalArgumentException を送出
+      - condition: "total が負数（< 0）"
+        action: IllegalArgumentException を送出
+      - condition: records が null
+        action: 空リストとして扱う
+
+  value_object_swap_prohibition:
+    rule: 不変値オブジェクト（record）と可変コンテナ（class）の交換は禁止
+    reason: アクセサ形式が変わるため呼び出し側が破壊的変更となる
+    immutable: [Result, PageResult, FieldError]
+    mutable: [ErrorResponse]

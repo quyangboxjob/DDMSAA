@@ -1,0 +1,129 @@
+# =============================================================================
+# データベーススキーマ定義 - DDMSAA
+# =============================================================================
+# 本ファイルは spec-06-db-physical.yaml と同期する機械可読のスキーマ定義（DDL 生成の中間層）。
+# 構造変更は先に spec-06-db-physical.yaml / spec-06-db-physical-ui.md を改訂し、その後に本ファイルへ同期する。
+# 両者が矛盾する場合は spec-06-db-physical.yaml を正とし、本ファイルを修正する。
+#
+# 適用範囲:
+#   - PostgreSQL 16（データベース名: ddmsaa / schema: public）
+#   - 文字セット: UTF8 / タイムゾーン: システムタイムゾーン（spec-01-system-architecture-ui.md）
+#
+# 規約: テーブル名・主キー・共通列・列挙・時刻・制約/索引名は
+#   開発規約/spec-naming-rule.md および 開発規約/spec-database-rule.md に従う。
+# =============================================================================
+
+# ============================================= ロールコード（列挙 T07 のコードテーブル）
+user_role_codes:
+  description: "ロールコード"
+  columns:
+    user_role_code:
+      type: INT
+      primary_key: true
+      comment: "ロールコード（T07 の属性コード。採番しない）"
+    user_role_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "ロール名（T07 の英語名＝API 値）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "トリガーで更新" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+  indexes:
+    - name: "uq_user_role_codes_user_role_name"
+      columns: ["user_role_name"]
+      type: "UNIQUE"
+
+# ============================================= ユーザ
+users:
+  description: "ユーザ"
+  columns:
+    user_id:
+      type: VARCHAR(10)
+      primary_key: true
+      comment: "ユーザID（業務キー。アプリケーション層で採番、DEFAULT なし）"
+    department_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "部門ID (FK→departments.id)"
+    user_name:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "ユーザ名"
+    email:
+      type: VARCHAR(255)
+      nullable: false
+      comment: "メールアドレス（未削除行で一意）"
+    phone_number:
+      type: VARCHAR(512)
+      nullable: true
+      encrypted: true
+      comment: "電話番号（暗号化して保存）"
+    role:
+      type: INT
+      nullable: false
+      comment: "ロール (FK→user_role_codes.user_role_code。コードは T07、例：1=ADMIN, 2=MANAGER, 3=USER)"
+    disabled_date:
+      type: DATE
+      nullable: true
+      comment: "停止日"
+    created_at:
+      type: TIMESTAMPTZ
+      nullable: false
+      default: "CURRENT_TIMESTAMP"
+    created_by:
+      type: VARCHAR(10)
+      nullable: false
+      default: "'SYSTEM'"
+    updated_at:
+      type: TIMESTAMPTZ
+      nullable: false
+      default: "CURRENT_TIMESTAMP"
+      comment: "トリガーで更新"
+    updated_by:
+      type: VARCHAR(10)
+      nullable: false
+      default: "'SYSTEM'"
+    deleted_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "論理削除（NULL=有効）"
+  indexes:
+    - name: "idx_users_department_id"
+      columns: ["department_id"]
+      type: "BTREE"
+    - name: "uq_users_email"
+      columns: ["email"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"
+  foreign_keys:
+    - name: "fk_users_departments"
+      column: "department_id"
+      references: "departments(id)"
+    - name: "fk_users_user_role_codes"
+      column: "role"
+      references: "user_role_codes(user_role_code)"
+
+# ============================================= 部門マスタ
+departments:
+  description: "部門マスタ"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('DP', 4)"
+      comment: "部門ID（DP+4桁を採番）"
+    department_name:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "部門名（未削除行で一意）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "トリガーで更新" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "論理削除（NULL=有効）" }
+  indexes:
+    - name: "uq_departments_department_name"
+      columns: ["department_name"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"

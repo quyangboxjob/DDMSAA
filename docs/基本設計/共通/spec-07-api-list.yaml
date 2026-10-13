@@ -1,0 +1,255 @@
+# =====================================================================
+# 07 API 一覧・定義（OpenAPI 3.0 形式 / 機械可読 SSOT）
+# ---------------------------------------------------------------------
+# 用途：API の機械可読な定義。Swagger UI / Postman にインポートしたり、openapi-generator でコード生成したりできる。
+# 使い方：本ファイルを複製 → 例を置換 → 必要に応じて paths 配下のエンドポイントを増減する。spec-07-api-list-ui.md と対で用いる。
+# 規約（spec-naming-rule / 共通基盤と一致）：
+#   - operationId = camelCase の動詞（createUser）。**API の唯一の正式識別子**であり、API-0NN は使用しない。
+#   - リソースパスは複数形・kebab（/users、/system-locks）、項目は camelCase、列挙値は UPPER_SNAKE。
+#   - 統一レスポンス Result<T> / PageResult<T> / ErrorResponse。**messageId(+messageArgs) のみを返し、表示文言は返さない**。
+#   - HTTP ステータスの固定集合は 基本設計/共通/spec-07-api-list-ui.md に従う。
+# 注意：YAML のインデントはスペースのみ（タブ不可）。以下の例は「ユーザ系」を借用しており、正式利用時に置換する。
+# =====================================================================
+
+openapi: 3.0.3
+
+info:
+  title: "DDMSAA API"
+  description: "DDMSAA の REST API 定義（共通基盤準拠）"
+  version: 0.1.0
+
+servers:
+  - url: /api/v1
+    description: 共通ベースパス
+
+security:
+  - bearerAuth: []             # デフォルトは認証必須。公開エンドポイントは個別に security: []
+
+# ---------------------------------------------------------------------
+# tags：機能の大分類ごとにグループ化
+# ---------------------------------------------------------------------
+tags:
+  - name: auth
+    description: 認証（F-AUTH-*）
+  - name: users
+    description: ユーザ管理（F-USR-*）
+  # 実際の大分類に合わせて補足
+
+# ---------------------------------------------------------------------
+# paths：各 URL の下に HTTP メソッドごとにエンドポイントを定義（operationId=camelCase の動詞）
+#   以下は例であり、正式利用時に置換する
+# ---------------------------------------------------------------------
+# rule: api.endpoint-definitions
+paths:
+
+  /auth/login-init:
+    post:
+      tags: [auth]
+      operationId: loginInit          # camelCase の動詞（正式識別子）
+      summary: ログイン開始（ユーザID。停止/ロックを判定後 Magic Link を送信）
+      description: ユーザIDを入力し、停止・システムロックを確認した後、個人メールへ Magic Link を送信する。停止/ロック時も同一の応答を返す（理由は区別しない）。
+      security: []                     # 公開
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginInitRequest' }
+      responses:
+        '200':
+          description: 受付（送信した場合は案内。非対象でも同一応答）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultObject' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /users:
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: ユーザ新規登録・採番
+      description: ユーザを登録し、ユーザIDを採番する。管理者のみ呼び出し可能。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserCreateDTO' }
+      responses:
+        '200':
+          description: 登録成功（採番後のユーザIDを返す）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultString' }
+              example: { code: "0", message: "success", messageId: "I00NN", messageArgs: ["U0001"], data: "U0001", traceId: "abc123", timestamp: "2026-06-10T10:00:00+09:00" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    get:
+      tags: [users]
+      operationId: pageUsers
+      summary: ユーザ一覧（フィルタ・検索・ページング・公開項目のみ）
+      parameters:
+        - { name: pageNum, in: query, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: keyword, in: query, required: false, schema: { type: string }, description: ユーザID/氏名の部分一致 }
+        - { name: role, in: query, required: false, schema: { $ref: '#/components/schemas/Role' } }
+        - { name: departmentId, in: query, required: false, schema: { type: string }, example: "DP0001" }
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultObject' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /users/{userId}/disable:
+    parameters:
+      - { name: userId, in: path, required: true, schema: { type: string }, example: "U0001" }
+    post:                              # フロー操作は POST を用いる（PUT ではない）
+      tags: [users]
+      operationId: disableUser
+      summary: 停止処理（停止日を設定し論理削除）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DisableDTO' }
+      responses:
+        '200':
+          description: 停止処理成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ↓↓↓ エンドポイントごとに以下の雛形を複製して置換する ↓↓↓
+  # /xxx:
+  #   get|post|put|delete:
+  #     tags: [〇〇]
+  #     operationId: 〇〇            # camelCase の動詞
+  #     summary: 〇〇
+  #     requestBody/parameters: ...
+  #     responses: { '200': {...}, '4xx': { $ref: '#/components/responses/...' } }
+
+# ---------------------------------------------------------------------
+# components：統一レスポンスエンベロープ（Result/PageResult/ErrorResponse）、スキーマ、セキュリティスキーム
+# ---------------------------------------------------------------------
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: 不正なリクエスト / チェックエラー（400）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { messageId: "E00NN", message: "入力内容に誤りがあります", timestamp: "2026-06-10T10:00:00+09:00", path: "/api/v1/xxx", traceId: "abc123", details: [ { field: "email", reason: "必須項目です" } ] }
+    Unauthorized:
+      description: 未認証（401）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: 権限不足（403）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: リソースなし（404）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: 状態の競合（409）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+
+    # rule: api.envelope-schemas
+    # ---- 統一レスポンスエンベロープ ----
+    Result:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "0" }
+        message: { type: string, description: "サーバ側の既定文言（フォールバック）。表示は messageId を正とする", example: "success" }
+        messageId: { type: string, description: "messages の表示用メッセージID（I/W）。フロントエンドが解決して表示する", example: "I00NN" }
+        messageArgs: { type: array, items: { type: string }, description: "messageId の {0},{1} の置換値" }
+        traceId: { type: string, example: "abc123" }
+        timestamp: { type: string, format: date-time, example: "2026-06-10T10:00:00+09:00" }
+    ResultObject:
+      allOf:
+        - $ref: '#/components/schemas/Result'
+        - type: object
+          properties: { data: { type: object, nullable: true } }
+    ResultString:
+      allOf:
+        - $ref: '#/components/schemas/Result'
+        - type: object
+          properties: { data: { type: string, example: "U0001" } }
+    ResultVoid:
+      allOf:
+        - $ref: '#/components/schemas/Result'
+        - type: object
+          properties: { data: { type: object, nullable: true, example: null } }
+    PageResult:
+      type: object
+      required: [records, total, pageNum, pageSize, pages]
+      properties:
+        records: { type: array, items: { type: object } }
+        total: { type: integer, format: int64, example: 120 }
+        pageNum: { type: integer, format: int32, example: 1 }
+        pageSize: { type: integer, format: int32, example: 20 }
+        pages: { type: integer, format: int32, example: 6 }
+    ErrorResponse:
+      type: object
+      required: [messageId, message, timestamp, path]
+      properties:
+        messageId: { type: string, description: "messages のエラーメッセージID（E）。識別・表示を一本化", example: "E00NN" }
+        messageArgs: { type: array, items: { type: string } }
+        message: { type: string, description: "サーバ側の既定文言（フォールバック/ログ用）", example: "入力内容に誤りがあります" }
+        timestamp: { type: string, format: date-time, example: "2026-06-10T10:00:00+09:00" }
+        path: { type: string, example: "/api/v1/users" }
+        traceId: { type: string, example: "abc123" }
+        details:
+          type: array
+          items: { $ref: '#/components/schemas/FieldError' }
+    FieldError:
+      type: object
+      properties:
+        field: { type: string, example: "email" }
+        reason: { type: string, example: "必須項目です" }
+
+    # ---- 列挙（UPPER_SNAKE。値域はデータ辞書 T07 を正とする）----
+    Role:
+      type: string
+      description: ロール（例。ロールはプロジェクトで定義する）
+      enum: [ADMIN, MANAGER, USER]
+      example: USER
+
+    # ---- 業務データ構造の例（項目は camelCase）----
+    LoginInitRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: string, example: "U0001", description: ユーザID }
+    UserCreateDTO:
+      type: object
+      required: [userName, email, role, departmentId]
+      properties:
+        userName: { type: string, maxLength: 100, example: "山田 太郎" }
+        email: { type: string, maxLength: 255, description: メールアドレス（認証用・必須）, example: "taro@example.com" }
+        phoneNumber: { type: string, description: 電話番号（任意）, example: "090-1234-5678" }
+        role: { $ref: '#/components/schemas/Role' }
+        departmentId: { type: string, example: "DP0001" }
+    DisableDTO:
+      type: object
+      required: [disableDate]
+      properties:
+        disableDate: { type: string, format: date, description: 停止日, example: "2026-09-30" }

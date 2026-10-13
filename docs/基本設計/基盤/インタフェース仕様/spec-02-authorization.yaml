@@ -1,0 +1,74 @@
+﻿# ============================================================
+# spec-02-authorization.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.3.2（セキュリティ設定）§9.5（認証モード）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           framework_mappings.security_config_mvc / security_config_reactive / method_auth / session_policy
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+types:
+
+  # ----------------------------------------------------------------
+  # 1. SecurityConfig（MVC 用 — auth-service / business-service-core 共用）
+  #    モジュール: infrastructure
+  # ----------------------------------------------------------------
+  - fqcn: com.example.ddmsaa.infrastructure.config.SecurityConfig
+    module: infrastructure
+    package: com.example.ddmsaa.infrastructure.config
+    kind: class
+    annotations:
+      - "@Configuration"
+      - "@EnableWebSecurity"
+      - "@EnableMethodSecurity"
+    purpose: >
+      MVC サービス（auth-service / business-service-core）共用の Spring Security 設定クラス。
+      SessionCreationPolicy.STATELESS・CSRF 無効・CORS 設定・JwtAuthenticationFilter 登録・
+      permitAll パス（/api/v1/auth/**、/actuator/**）設定を行う。
+      フィルタ層での認証失敗（JWT なし）に JSON 401 を返す AuthenticationEntryPoint、
+      フィルタ層での認可失敗に JSON 403 を返す AccessDeniedHandler を登録する。
+      本クラスは com.example.ddmsaa.infrastructure に置き、両サービスが scanBasePackages で共有する。
+    constructors:
+      - "SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter)"
+    bean_provider_note: >
+      本クラスは JwtAuthenticationFilter を注入して使用するが、JwtAuthenticationFilter 自身は
+      @Component ではない（spec-11-log-config §7 参照）。その @Bean 登録は、各実行サービスが持つ薄い
+      @Configuration が担う: auth-service = com.example.ddmsaa.auth.config.SecurityConfig、
+      business-service-core = com.example.ddmsaa.core.config.SecurityConfig。両クラスは
+      "@Bean JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil)" のみを宣言する
+      （SecurityFilterChain は本 infrastructure クラスに委譲）。この 2 クラスも生成対象に含める。
+    methods:
+      - "SecurityFilterChain filterChain(HttpSecurity http) throws Exception"
+      - "CorsConfigurationSource corsConfigurationSource()"
+    behavior_contracts:
+      AuthenticationEntryPoint:
+        trigger: "JwtAuthenticationFilter がトークンを処理せず（Authorization ヘッダなし）、anyRequest().authenticated() が認証未設定リクエストを拒否する場合"
+        response: "HTTP 401、Content-Type: application/json、ボディ: {messageId: E0004, path, traceId, timestamp}"
+        note: "GlobalExceptionHandler の @ExceptionHandler(AuthenticationException.class) はフィルタ層の AuthenticationException に到達しないため、EntryPoint が必須。"
+      AccessDeniedHandler:
+        trigger: "@PreAuthorize 等のメソッドセキュリティまたはフィルタ層での AccessDeniedException"
+        response: "HTTP 403、Content-Type: application/json、ボディ: {messageId: E0002, path, traceId, timestamp}"
+
+  # ----------------------------------------------------------------
+  # 2. SecurityConfig（WebFlux/Gateway 用）
+  #    モジュール: api-gateway
+  # ----------------------------------------------------------------
+  - fqcn: com.example.ddmsaa.gateway.config.SecurityConfig
+    module: api-gateway
+    package: com.example.ddmsaa.gateway.config
+    kind: class
+    annotations:
+      - "@Configuration"
+      - "@EnableWebFluxSecurity"
+    purpose: >
+      api-gateway（WebFlux / Spring Cloud Gateway）専用の Spring Security 設定クラス。
+      リアクティブ SecurityWebFilterChain を構成し、CSRF 無効化のうえ
+      authorizeExchange で anyExchange().permitAll()（全パスを Spring Security 層では許可）とする。
+      JWT 検証・認可は GlobalFilter（JwtAuthGlobalFilter、spec-06-gateway.yaml）が担うため、
+      本クラスは Spring Security 層でパス別制御を行わず、フィルタチェーン構成のみ責務とする。
+      （個別パス permitAll の列挙は行わない。permit-all 判定は JwtAuthGlobalFilter の
+      PERMIT_ALL_PREFIXES = {/api/v1/auth/, /actuator/health} が担う。）
+    constructors:
+      - "SecurityConfig()"
+    methods:
+      - "SecurityWebFilterChain filterChain(ServerHttpSecurity http)"

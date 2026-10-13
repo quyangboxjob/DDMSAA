@@ -1,0 +1,210 @@
+﻿# ============================================================
+# spec-01-auth.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §9.5（モード②）§4.1（認証方式）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           stack.jwt_* / framework_mappings.security_config_mvc / exception_bindings.auth_failure
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: auth-service
+package: com.example.ddmsaa.auth
+
+types:
+
+  # ----------------------------------------------------------
+  # 1. AuthController
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.auth.controller.AuthController
+    kind: class
+    annotations:
+      - "@RestController"
+      - "@RequestMapping(\"/api/v1/auth\")"
+    purpose: Magic Link 認証の REST コントローラ。3 エンドポイントを公開し AuthService に委譲する。
+    constructors:
+      - "AuthController(AuthService authService)"
+    methods:
+      - "Result<Void> loginInit(@Valid @RequestBody LoginInitRequest request)"
+      - "Result<TokenResponse> verifyMagicLink(@Valid @RequestBody VerifyMagicLinkRequest request)"
+      - "Result<Void> resendMagicLink(@Valid @RequestBody ResendMagicLinkRequest request)"
+
+  # ----------------------------------------------------------
+  # 2. AuthService (interface)
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.auth.service.AuthService
+    kind: interface
+    purpose: Magic Link 認証フローを定義するサービスインタフェース。
+    methods:
+      - "void loginInit(String userId)"
+      - "TokenResponse verifyMagicLink(String token)"
+      - "void resendMagicLink(String userId)"
+
+  # ----------------------------------------------------------
+  # 3. AuthServiceImpl
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.auth.service.impl.AuthServiceImpl
+    kind: class
+    annotations:
+      - "@Service"
+    implements:
+      - com.example.ddmsaa.auth.service.AuthService
+    purpose: AuthService の実装。Magic Link 生成・メール送信・token 検証・JWT 発行・ロール判定を行う。
+    constructors:
+      - "AuthServiceImpl(UserAuthMapper userAuthMapper, AuthStateStore authStateStore, JwtUtil jwtUtil, ObjectProvider<JavaMailSender> mailSenderProvider)"
+    methods:
+      - "void loginInit(String userId)"
+      - "TokenResponse verifyMagicLink(String token)"
+      - "void resendMagicLink(String userId)"
+
+  # ----------------------------------------------------------
+  # 4. UserAuthMapper
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.auth.mapper.UserAuthMapper
+    kind: interface
+    annotations:
+      - "@Mapper"
+    purpose: users / user_contacts / system_locks の LEFT JOIN 結果を READ ONLY で取得する MyBatis マッパー。
+    methods:
+      - "UserAuthView findAuthView(String userId)"
+    sql_contracts:
+      findAuthView:
+        base_table: users e
+        joins:
+          - "LEFT JOIN user_contacts ec ON e.user_id = ec.user_id AND ec.deleted_at IS NULL"
+          - "LEFT JOIN system_locks sl ON e.user_id = sl.user_id AND sl.deleted_at IS NULL"
+        where: "e.user_id = #{userId} AND e.deleted_at IS NULL"
+        note: "全 JOIN に deleted_at IS NULL 条件を含めること。ソフトデリート済みの連絡先・ロックレコードが結果に混入するとメール送信失敗・誤ロック判定が発生する。"
+
+  # ----------------------------------------------------------
+  # 5. UserAuthView
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.auth.mapper.UserAuthView
+    kind: record
+    purpose: 認証判定に用いるユーザービュー（3 テーブル LEFT JOIN クエリ結果）。
+    components:
+      - name: userId
+        type: String
+      - name: role
+        type: Integer
+      - name: disabled
+        type: boolean
+      - name: lockStartedAt
+        type: java.time.OffsetDateTime
+      - name: email
+        type: String
+
+  # ----------------------------------------------------------
+  # 6. TokenResponse
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.auth.dto.TokenResponse
+    kind: record
+    purpose: JWT 発行後にクライアントへ返すアクセストークン応答（refresh token なし）。
+    components:
+      - name: accessToken
+        type: String
+      - name: tokenType
+        type: String
+
+  # ----------------------------------------------------------
+  # リクエスト DTO
+  # ----------------------------------------------------------
+  - fqcn: com.example.ddmsaa.auth.dto.LoginInitRequest
+    kind: record
+    purpose: POST /api/v1/auth/login-init のリクエストボディ。
+    components:
+      - name: userId
+        type: String
+
+  - fqcn: com.example.ddmsaa.auth.dto.VerifyMagicLinkRequest
+    kind: record
+    purpose: POST /api/v1/auth/magic-link/verify のリクエストボディ。
+    components:
+      - name: token
+        type: String
+
+  - fqcn: com.example.ddmsaa.auth.dto.ResendMagicLinkRequest
+    kind: record
+    purpose: POST /api/v1/auth/magic-link/resend のリクエストボディ。
+    components:
+      - name: userId
+        type: String
+
+# ----------------------------------------------------------
+# 例外 → HTTP ステータス対応表
+# 正本: §6.5 例外・メッセージマッピング表
+# ----------------------------------------------------------
+exception_http_mapping:
+  - scenario: loginInit 正常（存在・停止・ロック問わず）
+    http_status: 200
+    message_id: I0001
+  - scenario: resendMagicLink 正常
+    http_status: 200
+    message_id: I0001
+  - scenario: Magic Link 無効 / 期限切れ / 可否 NG
+    exception: com.example.ddmsaa.common.exception.AuthException
+    http_status: 401
+    message_id: E0004
+  - scenario: 入力検証エラー（@Valid 違反等）
+    exception: org.springframework.web.bind.MethodArgumentNotValidException
+    http_status: 400
+    message_id: E0008
+# 注: Magic Link（パスワードレス）は「失敗回数ロック（429/E0005）」を使用しないため本表に 429 行は持たない。
+#     429（レート制限）は基盤の汎用予約カテゴリ（テンプレ §4.3.1 / 04_共通コンポーネント §3.1 / binding exception_bindings.rate_limit）。
+#     E0005 は「リソース未存在（404）」専用。
+
+# ============================================================
+# 行動契約（境界条件）
+# 正本: spec-02-auth-service-ui.md §6.1 / §6.2 / §6.3
+# 生成時は式・定数まで本契約に厳密準拠すること。
+# ============================================================
+behavior_contracts:
+
+  AuthServiceImpl:
+    loginable:
+      note: "loginInit / verifyMagicLink 共通の可否判定（UserAuthView を引数に取る private メソッド）。"
+      contracts:
+        - condition: "view が null（不存在 / 論理削除）"
+          action: "false（不可）"
+        - condition: "停用状態：disabled == true"
+          action: "false（不可）"
+        - condition: "ロック境界：lockStartedAt != null かつ lockStartedAt <= now"
+          action: >-
+            false（不可）。system_locks.lock_started_at を必ず判定に使用する。
+            実装式は !lockStartedAt.isAfter(OffsetDateTime.now())。取得のみで未使用にしないこと。
+        - condition: 上記いずれにも該当しない
+          action: "true（可）"
+    loginInit:
+      contracts:
+        - condition: loginable が false
+          action: "静かに return（token 生成・メール送信を行わない）。存在・停止・ロックを問わず応答は常に I0001（列挙攻撃対策）。"
+        - condition: loginable が true
+          action: "token を生成 → AuthStateStore.saveMagicLinkToken → メール送信。"
+        - condition: 例外方針
+          action: >-
+            全例外を握り潰してはならない。メール送信のみ best-effort
+            （JavaMailSender 未構成時は warn ログでスキップ）。Redis 等の障害は伝播させる。
+    verifyMagicLink:
+      contracts:
+        - condition: "consumeMagicLinkToken が null（無効 / 期限切れ / 二重使用）"
+          action: "AuthException(E0004)"
+        - condition: "再取得した view が loginable=false"
+          action: "AuthException(E0004)"
+        - condition: 正常
+          action: "JwtUtil.issue(userId, role) → TokenResponse(accessToken, \"Bearer\")"
+        - condition: 失敗ロック
+          action: >-
+            Magic Link（パスワードレス）では失敗回数カウント/ロック
+            （incrementLoginFailure / isLocked / clearLoginFailure）を使用しない。
+            これらは AuthStateStore の汎用 infra API として残置するが、本フローからは呼び出さない。
+    token_generation:
+      rule: >-
+        SecureRandom で 32 byte 生成 → Base64.getUrlEncoder().withoutPadding() でエンコード（§6.2）。
+        UUID 等の低エントロピー生成は禁止。token は API 応答・ログに出力しない。
+    role_mapping:
+      rule: "users.role INT → ENUM 文字列（ロールはプロジェクトで定義する）。例：1→ADMIN / 2→MANAGER / 3→USER / null・不正→USER。"
+
+  AuthStateStore:
+    redis_key:
+      rule: >-
+        Magic Link トークンの Redis キー接頭辞は 'auth:magic-link:'（auth: を省略しないこと。§6.3）。
+        失敗カウントの接頭辞は 'auth:login:fail:'。

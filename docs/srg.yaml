@@ -1,0 +1,1139 @@
+schemaVersion: 1
+nodes:
+  - id: doc-standard
+    path: 基本設計/共通/spec-00-doc-standard-ui.md
+    title: 文書規約・共通ヘッダ
+    defines:
+      - id: doc.header-block
+        summary: 各設計書の冒頭に文書ヘッダ（文書情報と改訂履歴）を貼り付ける
+      - id: doc.id-prefix-scheme
+        summary: 機能 F-/画面 SCR-/テーブル TBL-/バッチ BAT-/外部IF IF- のID接頭辞体系を全文書で用いる
+      - id: doc.id-role-prefix
+        summary: ロールIDは R- + ロール列挙値とする
+  - id: naming-rule
+    path: 開発規約/spec-naming-rule.md
+    title: 命名規約
+    defines:
+      - id: naming.db-identifier-snake-case
+        summary: DB の識別子（テーブル・列・制約・インデックス名）は snake_case
+      - id: naming.db-table-plural
+        summary: DB テーブル名は英語名詞の複数形
+      - id: naming.backend-class-pascal-case
+        summary: Backend のクラス・インタフェース名は PascalCase
+      - id: naming.backend-entity-singular
+        summary: Backend の Entity 名は単数形
+      - id: naming.backend-member-camel-case
+        summary: Backend のメソッド・変数・フィールド名は camelCase
+      - id: naming.api-json-camel-case
+        summary: API JSON のフィールド・パス/クエリパラメータ名は camelCase
+      - id: naming.api-path-kebab-plural
+        summary: API リソースパスは kebab-case の複数形
+      - id: naming.api-enum-upper-snake
+        summary: API の Enum 値は UPPER_SNAKE_CASE
+      - id: naming.frontend-file-kebab-case
+        summary: Frontend のファイル名は kebab-case
+      - id: naming.frontend-union-type-no-enum
+        summary: Frontend の列挙は Union Type とし TypeScript enum を禁止する
+      - id: naming.english-only
+        summary: 識別子は英語のみとし、中国語・ピンインを使用しない
+      - id: naming.abbreviation-whitelist
+        summary: 略語は §4 のホワイトリストに載るもののみ使用する
+  - id: file-naming-rule
+    path: 開発規約/spec-file-naming-rule.md
+    title: ファイル命名規範
+    defines:
+      - id: fname.doc-file-naming
+        summary: 文書・仕様ファイルは小文字 kebab-case の spec-[序号-][feature-]slug-分類接尾辞.ext とし、md と yaml の対は同一 slug を用いる
+      - id: fname.test-doc-names
+        summary: テスト文書のファイル名は spec-<対象>-unittest-sd.md / spec-it-<operationId>.md / spec-it-fe-<SCR-id>.md / *-testreport-<date>.md に従う
+  - id: generation-rule
+    path: 開発規約/spec-generation-rule.md
+    title: 生成共通規約
+    defines:
+      - id: gen.conflict-priority-order
+        summary: 規約の競合時は naming/database > 各層 coding-rule > 詳細設計 > yaml の順で上位を正とする
+      - id: gen.line-ending-lf-no-bom
+        summary: 生成ファイルは LF 改行・UTF-8 BOM なしとし、.gitattributes/.editorconfig で固定する
+  - id: readme-basic-design
+    path: 基本設計/README.md
+    title: 基本設計テンプレート README
+  - id: system-architecture
+    path: 基本設計/共通/spec-01-system-architecture-ui.md
+    title: システム構成・方式設計
+    defines:
+      - id: tech.jdk-version
+        summary: JDK は 21（LTS）
+      - id: tech.spring-boot-version
+        summary: Spring Boot は 3.5.13（親 BOM）
+      - id: tech.spring-cloud-version
+        summary: Spring Cloud BOM は 2025.0.2
+      - id: tech.postgresql-version
+        summary: PostgreSQL は 16
+      - id: tech.flyway-version
+        summary: Flyway は 11.7.2（Spring Boot BOM 管理）
+      - id: tech.mybatis-version
+        summary: MyBatis（mybatis-spring-boot-starter）は 3.0.4
+      - id: tech.mapstruct-version
+        summary: MapStruct は 1.6.3
+      - id: tech.pagehelper-version
+        summary: PageHelper（pagehelper-spring-boot-starter）は 2.1.1
+      - id: tech.jjwt-version
+        summary: jjwt は 0.13.0
+      - id: tech.aws-sdk-version
+        summary: AWS SDK for Java v2 は 2.x
+      - id: tech.poi-version
+        summary: Apache POI は 5.4.1
+      - id: tech.frontend-library-versions
+        summary: Frontend ライブラリ版（React 19.1.x / TypeScript 5.9.x strict / Vite 7.x / Ant Design 5.x / React Router 7.x / axios 1.x / pnpm 10.x 等）
+      - id: tech.frontend-architecture-spa
+        summary: Frontend は React + TypeScript + Vite による SPA とし、REST API を介して Backend と分離する
+      - id: tech.persistence-mybatis-only
+        summary: 永続化層は MyBatis とし JPA を使用しない
+      - id: time.system-timezone-asia-tokyo
+        summary: システム（OS・アプリケーション・DB セッション）のタイムゾーンは Asia/Tokyo
+      - id: mig.no-manual-prod-change
+        summary: テーブル構造の変更は Flyway マイグレーションで行い、本番 DB の手動変更を禁止する
+    uses:
+      - doc.header-block
+    dependsOn:
+      - doc-standard
+  - id: database-rule
+    path: 開発規約/spec-database-rule.md
+    title: DB 命名規約
+    defines:
+      - id: db.pk-default-varchar10
+        summary: 主キーは既定で id VARCHAR(10) NOT NULL とし、VARCHAR 主キーに IDENTITY を使用しない
+      - id: db.pk-numbering-function
+        summary: 文字列主キーは public.next_business_id(prefix) で採番し、prefix ごとに seq_id_{prefix} シーケンスを用いる
+      - id: db.pk-users-user-id
+        summary: users は汎用 id ではなく業務キー user_id（VARCHAR(10)）を主キーとする
+      - id: db.pk-shared-child
+        summary: 1:1 / 1:0..1 の子テーブルは親の主キーを共有し、自身の id・採番を持たない
+      - id: db.pk-natural-master
+        summary: 条件を満たす設定・参照系 master テーブルは自然キーを主キーとし採番しない
+      - id: db.fk-column-naming
+        summary: 外部キー列は {被参照テーブル単数形}_id（VARCHAR）とする
+      - id: db.common-columns
+        summary: 全データテーブルに created_at/created_by/updated_at/updated_by/deleted_at を持たせる
+      - id: db.soft-delete-column
+        summary: 論理削除は deleted_at（TIMESTAMPTZ、NULL=有効）で表し、履歴・一時・中間・コードテーブルのみ省略宣言のうえ省略可
+      - id: db.updated-at-trigger
+        summary: updated_at は trg_set_updated_at_{table} トリガー（public.set_updated_at）で自動更新する
+      - id: db.constraint-index-naming
+        summary: 制約・インデックス名は pk_/fk_/uq_/idx_/chk_ + テーブル名（+列名）の形式とする
+      - id: db.enum-code-table
+        summary: 列挙・ステータスは INT コードで保存し、列挙型ごとのコードテーブルへの外部キーで値域を制約する（CHECK 制約・ENUM 型を使わない）
+      - id: time.db-timestamptz
+        summary: 日時列は TIMESTAMPTZ とし、DB セッションのタイムゾーンはシステムタイムゾーン（Asia/Tokyo）に一致させる
+      - id: db.type-mapping
+        summary: データ型は §5 のマッピング表に厳格に従い、金額は NUMERIC(15,2)・真偽値は BOOLEAN とする（FLOAT/DOUBLE を使わない）
+    uses:
+      - naming.db-identifier-snake-case
+      - naming.db-table-plural
+      - time.system-timezone-asia-tokyo
+      - naming.english-only
+      - naming.abbreviation-whitelist
+    dependsOn:
+      - naming-rule
+      - system-architecture
+  - id: data-dictionary-rule
+    path: 開発規約/spec-data-dictionary-rule.md
+    title: データ辞書規範
+    defines:
+      - id: enum.value-source-t07
+        summary: 列挙値の唯一の定義元はプロジェクトデータ辞書の T07 とする
+      - id: enum.category-code-rule
+        summary: T07 の category_code は一意で、追加時は最大値+1、廃止番号は再利用しない
+      - id: enum.code-table-rows
+        summary: コードテーブルの行（コード・英語名）は T07 の定義と一致させる
+      - id: enum.change-order
+        summary: 列挙値変更の順序は 拡大=辞書→コードテーブル→Enum、縮小=辞書→Enum→履歴整理→コードテーブル
+      - id: dict.encrypted-type-varchar512
+        summary: 暗号化列はアプリ層で暗号化した暗号文を VARCHAR(512) で保存する
+    uses:
+      - db.pk-default-varchar10
+      - db.common-columns
+      - db.updated-at-trigger
+      - db.enum-code-table
+      - time.db-timestamptz
+      - db.pk-numbering-function
+      - db.pk-users-user-id
+      - db.pk-shared-child
+      - db.pk-natural-master
+      - db.type-mapping
+      - time.api-iso8601-offset
+    dependsOn:
+      - database-rule
+      - api-list-ui
+  - id: data-dictionary-project-temp
+    path: 開発規約/spec-data-dictionary-project-temp.md
+    title: プロジェクトデータ辞書テンプレート
+    defines:
+      - id: enum.t07-values
+        summary: 各列挙型のコード値・属性名・英語名・category_code は T07（第2部）に登録する
+    uses:
+      - enum.value-source-t07
+      - enum.category-code-rule
+      - enum.code-table-rows
+      - enum.change-order
+    dependsOn:
+      - data-dictionary-rule
+  - id: postgresql-column-types-rule
+    path: 開発規約/spec-postgresql-column-types-rule.md
+    title: PostgreSQL カラム型一覧
+    uses:
+      - tech.postgresql-version
+      - db.type-mapping
+    dependsOn:
+      - system-architecture
+      - database-rule
+  - id: sql-lint-rule
+    path: 開発規約/spec-sql-lint-rule.md
+    title: SQL Lint 規約
+    defines:
+      - id: lint.rule-set
+        summary: SQLFluff（postgres/raw）のルールセットは キーワード大文字・識別子/関数小文字・行長200 等を採用する
+      - id: lint.pre-execution-gate
+        summary: V*/R__/setup/*.sql は実行前に sqlfluff lint を通過させる
+    uses:
+      - naming.db-identifier-snake-case
+      - tech.postgresql-version
+      - gen.line-ending-lf-no-bom
+    dependsOn:
+      - naming-rule
+      - system-architecture
+      - generation-rule
+  - id: sqlfluff-rules-catalog
+    path: 開発規約/spec-sqlfluff-rules-catalog.md
+    title: SQLFluff ルール全集一覧
+    uses:
+      - lint.rule-set
+    dependsOn:
+      - sql-lint-rule
+  - id: flyway-migration-rule
+    path: 開発規約/spec-flyway-migration-rule.md
+    title: Flyway マイグレーション規約
+    defines:
+      - id: mig.version-file-naming
+        summary: マイグレーションは V<version>__<snake_case説明>.sql（反復は R__<説明>.sql）とし、V1=初期移行データ・構造変更は V2 以降
+      - id: mig.applied-script-immutable
+        summary: 適用済み V* は変更せず、修正は上位バージョンの新規 V* で行う
+        external: true
+    uses:
+      - mig.two-mechanism-split
+      - mig.baseline-zero-v1-initial-data
+      - mig.script-location
+      - db.table-definitions
+      - db.pk-default-varchar10
+      - db.enum-code-table
+      - db.common-columns
+      - db.updated-at-trigger
+      - dict.encrypted-type-varchar512
+      - tech.flyway-version
+      - tech.postgresql-version
+      - gen.line-ending-lf-no-bom
+      - lint.pre-execution-gate
+      - naming.db-identifier-snake-case
+      - db.type-mapping
+    dependsOn:
+      - naming-rule
+      - system-architecture
+      - database-rule
+      - data-dictionary-rule
+      - sql-lint-rule
+      - db-physical-yaml
+      - db-migration
+      - generation-rule
+  - id: auth-design
+    path: 基本設計/共通/spec-03-auth-ui.md
+    title: 権限設計
+    defines:
+      - id: auth.three-layer-permission
+        summary: 権限は 操作権限 ∩ データ範囲（行）∩ 項目参照（列）の三層で判定する
+      - id: auth.field-visibility-matrix
+        summary: 他者情報の項目別参照可否は項目単位の参照権限マトリクスに従う
+    uses:
+      - doc.header-block
+      - doc.id-role-prefix
+    dependsOn:
+      - doc-standard
+  - id: db-physical-ui
+    path: 基本設計/共通/spec-06-db-physical-ui.md
+    title: DB 物理設計
+    defines:
+      - id: db.soft-delete-partial-unique
+        summary: deleted_at を持つテーブルの業務一意列は、未削除行のみ対象の部分ユニークインデックス（WHERE deleted_at IS NULL）で保証する
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+      - naming.db-table-plural
+      - naming.db-identifier-snake-case
+      - db.pk-default-varchar10
+      - db.pk-numbering-function
+      - db.pk-users-user-id
+      - db.pk-shared-child
+      - db.pk-natural-master
+      - db.common-columns
+      - db.soft-delete-column
+      - mig.no-manual-prod-change
+      - tech.postgresql-version
+      - db.enum-code-table
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - system-architecture
+      - database-rule
+  - id: db-physical-yaml
+    path: 基本設計/共通/spec-06-db-physical.yaml
+    title: DB 物理設計（機械可読）
+    defines:
+      - id: db.table-definitions
+        summary: テーブル・列・型・インデックス・制約の唯一の定義源（DDL・Entity 生成の根拠）
+    uses:
+      - db.soft-delete-partial-unique
+      - db.pk-default-varchar10
+      - db.pk-numbering-function
+      - db.pk-users-user-id
+      - db.pk-shared-child
+      - db.pk-natural-master
+      - db.fk-column-naming
+      - db.common-columns
+      - db.soft-delete-column
+      - db.enum-code-table
+      - db.constraint-index-naming
+      - dict.encrypted-type-varchar512
+      - naming.db-table-plural
+      - naming.db-identifier-snake-case
+      - enum.t07-values
+      - tech.postgresql-version
+      - time.system-timezone-asia-tokyo
+    dependsOn:
+      - naming-rule
+      - system-architecture
+      - database-rule
+      - data-dictionary-rule
+      - data-dictionary-project-temp
+      - db-physical-ui
+  - id: api-list-ui
+    path: 基本設計/共通/spec-07-api-list-ui.md
+    title: API 一覧・定義
+    defines:
+      - id: api.base-path-v1
+        summary: API のベースパスは /api/v1
+      - id: api.auth-jwt-bearer
+        summary: 公開エンドポイントを除き JWT Bearer（Authorization ヘッダ）で認証する
+      - id: api.operation-id-identifier
+        summary: API の正式識別子は operationId とし API-0NN 形式の採番を使用しない
+      - id: api.operation-id-camel-verb
+        summary: operationId は camelCase の動詞とする
+      - id: api.paging-params
+        summary: 一覧 API のページングは pageNum/pageSize（既定 1/20、pageSize 上限 100、超過は 400）で統一し PageResult<T> で返す
+      - id: api.http-status-set
+        summary: API が返す HTTP ステータスは 200/400/401/403/404/409/413/429/500/502/504 の固定集合とする
+      - id: api.status-independent-of-message-id
+        summary: HTTP ステータスは例外種別で決まり messageId とは独立とする
+      - id: api.returns-message-id-only
+        summary: API は表示文言を返さず messageId（+messageArgs）のみ返す
+      - id: api.file-response-unwrapped
+        summary: ファイル系レスポンスは Result で包まず、バイナリと Content-Disposition を直接返す
+      - id: time.api-iso8601-offset
+        summary: API の日時は +09:00 オフセット付き ISO 8601 文字列とし、Z / UTC 表記を用いない
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+      - naming.api-path-kebab-plural
+      - naming.api-json-camel-case
+      - naming.api-enum-upper-snake
+      - auth.three-layer-permission
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - auth-design
+  - id: api-list-yaml
+    path: 基本設計/共通/spec-07-api-list.yaml
+    title: API 一覧（機械可読 OpenAPI）
+    defines:
+      - id: api.envelope-schemas
+        summary: Result/PageResult/ErrorResponse/FieldError の項目構造
+      - id: api.endpoint-definitions
+        summary: エンドポイント・operationId・リクエスト/レスポンス schema・列挙値の機械可読な唯一の定義源
+    uses:
+      - api.base-path-v1
+      - api.auth-jwt-bearer
+      - api.operation-id-identifier
+      - api.operation-id-camel-verb
+      - api.paging-params
+      - api.http-status-set
+      - api.returns-message-id-only
+      - naming.api-path-kebab-plural
+      - naming.api-json-camel-case
+      - naming.api-enum-upper-snake
+      - enum.t07-values
+      - time.api-iso8601-offset
+    dependsOn:
+      - naming-rule
+      - data-dictionary-project-temp
+      - api-list-ui
+  - id: external-interface
+    path: 基本設計/共通/spec-08-external-interface-ui.md
+    title: 外部インタフェース設計
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+      - api.file-response-unwrapped
+    dependsOn:
+      - doc-standard
+      - api-list-ui
+  - id: message-list-ui
+    path: 基本設計/共通/spec-09-message-list-ui.md
+    title: 共通メッセージ一覧
+    defines:
+      - id: msg.id-format
+        summary: messageId は [IWE]NNNN（区分1文字+4桁連番、ハイフンなし）
+      - id: msg.category-iwe-no-c
+        summary: メッセージ区分は I/W/E の3種とし C 区分は設けず、確認ダイアログは W に含める
+      - id: msg.number-bands
+        summary: 共通メッセージの番号帯（E0001〜E0013 認証等 / E0020 ログイン不可 / E0030〜E0034 クライアント検証 / E0040〜E0043 Gateway / I・W の共通番号）
+      - id: msg.no-hardcoded-text
+        summary: 画面・API は messageId で参照し、文言をハードコードしない
+      - id: msg.id-must-exist-in-catalog
+        summary: 使用する messageId はカタログ（ja 正本 yaml）に存在しなければならない
+    uses:
+      - doc.header-block
+      - api.status-independent-of-message-id
+    dependsOn:
+      - doc-standard
+      - api-list-ui
+  - id: message-list-ja
+    path: 基本設計/共通/spec-09-message-list.yaml
+    title: 共通メッセージ一覧（日本語正本）
+    defines:
+      - id: msg.catalog-entries
+        summary: 個々の messageId と日本語文言・区分の唯一の定義源（zh/en は翻訳）
+    uses:
+      - msg.id-format
+      - msg.category-iwe-no-c
+      - msg.number-bands
+    dependsOn:
+      - message-list-ui
+  - id: message-list-zh
+    path: 基本設計/共通/spec-09-message-list.zh.yaml
+    title: 共通メッセージ一覧（中国語）
+    uses:
+      - msg.catalog-entries
+      - msg.number-bands
+    dependsOn:
+      - message-list-ui
+      - message-list-ja
+  - id: message-list-en
+    path: 基本設計/共通/spec-09-message-list.en.yaml
+    title: 共通メッセージ一覧（英語）
+    uses:
+      - msg.catalog-entries
+      - msg.number-bands
+    dependsOn:
+      - message-list-ui
+      - message-list-ja
+  - id: non-functional
+    path: 基本設計/共通/spec-11-non-functional-ui.md
+    title: 非機能要件
+    uses:
+      - doc.header-block
+      - tech.postgresql-version
+      - time.system-timezone-asia-tokyo
+      - auth.three-layer-permission
+    dependsOn:
+      - doc-standard
+      - system-architecture
+      - auth-design
+  - id: screen-common
+    path: 基本設計/共通/spec-12-screen-common-ui.md
+    title: 画面共通設計（共通UI方針）
+    defines:
+      - id: time.display-common-util
+        summary: Frontend は表示層の共通ユーティリティで日時を書式化し、コンポーネント内での個別タイムゾーン変換を禁止する
+    uses:
+      - doc.header-block
+      - msg.category-iwe-no-c
+      - msg.no-hardcoded-text
+      - api.returns-message-id-only
+      - auth.field-visibility-matrix
+      - naming.api-enum-upper-snake
+      - time.system-timezone-asia-tokyo
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - auth-design
+      - api-list-ui
+      - message-list-ui
+      - system-architecture
+  - id: data-dictionary-ui
+    path: 基本設計/共通/spec-13-data-dictionary-ui.md
+    title: データ辞書（総覧）
+    uses:
+      - doc.header-block
+      - enum.value-source-t07
+      - enum.change-order
+      - db.enum-code-table
+      - db.common-columns
+      - naming.api-enum-upper-snake
+      - naming.db-identifier-snake-case
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - database-rule
+      - data-dictionary-rule
+  - id: db-migration
+    path: 基本設計/データベース/spec-db-migration-ui.md
+    title: DB マイグレーション基本設計
+    defines:
+      - id: mig.two-mechanism-split
+        summary: 初期 schema は機構A（docker setup）、構築後の変更と初期移行データは機構B（Flyway）が担う
+      - id: mig.baseline-zero-v1-initial-data
+        summary: Flyway は baseline-on-migrate=true / baseline-version=0 とし、V1（初期移行データ）以降を適用する
+      - id: mig.script-location
+        summary: マイグレーション SQL は infrastructure モジュールの db/migration に一元配置し、各サービスで共有する
+    uses:
+      - tech.flyway-version
+      - tech.postgresql-version
+    dependsOn:
+      - system-architecture
+  - id: db-connection
+    path: 基本設計/データベース/spec-db-connection-ui.md
+    title: DB 接続設計
+    uses:
+      - tech.persistence-mybatis-only
+      - tech.postgresql-version
+      - be.soft-delete-query
+      - be.paging-pagehelper-pageresult
+      - db.pk-default-varchar10
+      - time.system-timezone-asia-tokyo
+    dependsOn:
+      - system-architecture
+      - database-rule
+      - backend-coding-rule
+  - id: db-connection-temp
+    path: 基本設計/データベース/spec-db-connection-temp.md
+    title: DB 接続共通テンプレート
+    uses:
+      - tech.persistence-mybatis-only
+      - tech.postgresql-version
+      - be.soft-delete-query
+      - db.pk-default-varchar10
+      - time.system-timezone-asia-tokyo
+      - be.paging-pagehelper-pageresult
+    dependsOn:
+      - system-architecture
+      - database-rule
+      - backend-coding-rule
+  - id: db-foundation-temp
+    path: 基本設計/データベース/spec-db-foundation-temp.md
+    title: DB 構築共通テンプレート
+    uses:
+      - tech.postgresql-version
+      - tech.mybatis-version
+      - tech.pagehelper-version
+      - tech.persistence-mybatis-only
+      - db.common-columns
+      - db.soft-delete-column
+      - mig.version-file-naming
+      - time.system-timezone-asia-tokyo
+    dependsOn:
+      - system-architecture
+      - database-rule
+      - flyway-migration-rule
+  - id: data-dictionary-mapping
+    path: 基本設計/データベース/spec-data-dictionary-mapping-ui.md
+    title: データ辞書：命名マッピングと型規約
+    uses:
+      - doc.header-block
+      - naming.db-identifier-snake-case
+      - naming.api-json-camel-case
+      - naming.api-enum-upper-snake
+      - time.api-iso8601-offset
+      - enum.value-source-t07
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - data-dictionary-rule
+      - api-list-ui
+  - id: schema-definition
+    path: 基本設計/データベース/schema/schema-definition.yaml
+    title: データベーススキーマ定義
+    uses:
+      - db.table-definitions
+      - naming.db-table-plural
+      - db.pk-default-varchar10
+      - db.pk-users-user-id
+      - db.enum-code-table
+      - dict.encrypted-type-varchar512
+      - db.common-columns
+      - db.soft-delete-column
+      - db.soft-delete-partial-unique
+      - db.constraint-index-naming
+      - tech.postgresql-version
+      - time.system-timezone-asia-tokyo
+    dependsOn:
+      - naming-rule
+      - system-architecture
+      - database-rule
+      - data-dictionary-rule
+      - db-physical-ui
+      - db-physical-yaml
+  - id: backend-coding-rule
+    path: 開発規約/spec-backend-coding-rule.md
+    title: Backend 開発規約
+    defines:
+      - id: be.layering-responsibilities
+        summary: Controller/Service/ServiceImpl/Mapper/Entity/DTO/Converter の責務と禁止事項に従う（Controller は Entity を返さず DTO を Result<T> で包む）
+      - id: be.converter-mapstruct
+        summary: Entity↔DTO の変換は Converter（MapStruct の @Mapper）で行い、手書きの Converter・マッピングを使わない
+      - id: be.mybatis-mapper-xml
+        summary: 1 Entity = 1 Mapper IF + 同名 XML とし、resultMap と <where>/<if> を用い文字列連結 SQL を禁止する
+      - id: be.paging-pagehelper-pageresult
+        summary: ページングは PageHelper を用い PageResult<T> に統一する
+      - id: be.transaction-serviceimpl-only
+        summary: '@Transactional は ServiceImpl のメソッドにのみ付与する'
+      - id: be.soft-delete-query
+        summary: Mapper の全クエリは WHERE deleted_at IS NULL を明示し、削除は UPDATE deleted_at とする（物理 DELETE 禁止）
+      - id: be.method-security-preauthorize
+        summary: 機能レベル権限は Controller メソッドの @PreAuthorize(hasRole(...)) で強制する
+      - id: err.exception-to-http-mapping
+        summary: 例外型→HTTP は 400/401/403/404/409/413/429/500/502/504 の固定マッピングとし、messageId の既定値を例外ごとに定める
+      - id: err.business-exception-only
+        summary: 業務失敗は BusinessException(messageId, args...) のみで表し、戻りコード・マジック文字列を使わない
+    uses:
+      - naming.backend-class-pascal-case
+      - naming.backend-entity-singular
+      - naming.backend-member-camel-case
+      - naming.api-path-kebab-plural
+      - naming.db-table-plural
+      - db.pk-default-varchar10
+      - db.pk-numbering-function
+      - db.pk-users-user-id
+      - db.pk-shared-child
+      - db.pk-natural-master
+      - db.fk-column-naming
+      - db.common-columns
+      - db.soft-delete-column
+      - tech.jdk-version
+      - tech.spring-boot-version
+      - tech.persistence-mybatis-only
+      - tech.mybatis-version
+      - tech.mapstruct-version
+      - tech.pagehelper-version
+      - tech.flyway-version
+      - mig.no-manual-prod-change
+      - api.envelope-schemas
+      - api.returns-message-id-only
+      - api.file-response-unwrapped
+      - api.http-status-set
+      - api.endpoint-definitions
+      - db.table-definitions
+      - msg.id-must-exist-in-catalog
+      - msg.catalog-entries
+      - auth.three-layer-permission
+      - auth.field-visibility-matrix
+    dependsOn:
+      - naming-rule
+      - system-architecture
+      - database-rule
+      - auth-design
+      - db-physical-yaml
+      - api-list-ui
+      - api-list-yaml
+      - message-list-ui
+      - message-list-ja
+  - id: frontend-coding-rule
+    path: 開発規約/spec-frontend-coding-rule.md
+    title: Frontend 開発規約
+    defines:
+      - id: fe.component-role-suffix
+        summary: コンポーネント名は 単数形の業務名 + ロール接尾辞（Page/Table/Form/Modal/Card/Panel）とする
+    uses:
+      - time.display-common-util
+      - naming.frontend-file-kebab-case
+      - naming.frontend-union-type-no-enum
+      - tech.frontend-library-versions
+      - api.endpoint-definitions
+      - api.envelope-schemas
+      - api.operation-id-identifier
+      - api.base-path-v1
+      - api.auth-jwt-bearer
+      - msg.no-hardcoded-text
+      - msg.id-must-exist-in-catalog
+      - auth.field-visibility-matrix
+      - doc.id-prefix-scheme
+      - gen.line-ending-lf-no-bom
+      - gen.conflict-priority-order
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - system-architecture
+      - auth-design
+      - api-list-ui
+      - api-list-yaml
+      - message-list-ui
+      - generation-rule
+      - screen-common
+  - id: backend-scaffold-rule
+    path: 開発規約/spec-backend-scaffold-rule.md
+    title: Backend スキャフォールド規約
+    uses:
+      - gen.line-ending-lf-no-bom
+    dependsOn:
+      - generation-rule
+  - id: codegen-map-rule
+    path: 開発規約/spec-codegen-map-rule.md
+    title: コード生成 規約マップ
+    uses:
+      - gen.conflict-priority-order
+      - gen.line-ending-lf-no-bom
+      - be.layering-responsibilities
+      - be.soft-delete-query
+      - be.converter-mapstruct
+      - fe.component-role-suffix
+      - naming.frontend-union-type-no-enum
+      - api.operation-id-identifier
+      - api.base-path-v1
+      - api.endpoint-definitions
+      - db.table-definitions
+      - msg.catalog-entries
+      - auth.field-visibility-matrix
+      - db.pk-default-varchar10
+      - mig.version-file-naming
+    dependsOn:
+      - naming-rule
+      - database-rule
+      - flyway-migration-rule
+      - auth-design
+      - db-physical-yaml
+      - api-list-ui
+      - api-list-yaml
+      - message-list-ja
+      - backend-coding-rule
+      - frontend-coding-rule
+      - generation-rule
+  - id: test-rule
+    path: 開発規約/spec-test-rule.md
+    title: テスト規約
+    defines:
+      - id: test.layers-l1-l2-l3
+        summary: バックエンドのテストは L1（単体/Mockito）・L2（Web スライス）・L3（Testcontainers 結合）の3層とし、接尾辞 Test/IT で区別する
+      - id: test.ut-id-format
+        summary: UT-ID は UT-<FEATURE>-NNN（機能内3桁連番）とする
+      - id: test.it-id-format
+        summary: IT-ID は API 結合 IT-<operationId>-NNN、画面結合 IT-<SCR-id>-NNN とする
+        external: true
+      - id: test.displayname-id-first
+        summary: 機能紐付きテストの @DisplayName / it() 名は先頭に UT/IT-ID を置き、1ケース=1ID=1テストメソッドとする
+        external: true
+      - id: test.ut-cases-single-source
+        summary: UT 用例の集合は詳細設計 §5.1 のみを源泉とし、テスト工程で用例を追加しない
+      - id: test.expected-from-ssot
+        summary: テストの期待値は SSOT（messageId・HTTP 固定マッピング・schema・マスク規則）から導き、実装の挙動を正解にしない
+    uses:
+      - fname.doc-file-naming
+      - fname.test-doc-names
+      - api.operation-id-identifier
+      - doc.id-prefix-scheme
+      - err.exception-to-http-mapping
+      - msg.catalog-entries
+      - api.endpoint-definitions
+      - db.table-definitions
+      - auth.field-visibility-matrix
+      - gen.conflict-priority-order
+      - gen.line-ending-lf-no-bom
+      - naming.backend-class-pascal-case
+      - naming.backend-member-camel-case
+      - be.layering-responsibilities
+      - fe.component-role-suffix
+      - naming.frontend-union-type-no-enum
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - file-naming-rule
+      - auth-design
+      - db-physical-yaml
+      - api-list-ui
+      - api-list-yaml
+      - message-list-ja
+      - backend-coding-rule
+      - frontend-coding-rule
+      - generation-rule
+  - id: readme-detail-design
+    path: 詳細設計/README.md
+    title: 詳細設計テンプレート README
+    uses:
+      - doc.id-prefix-scheme
+      - api.operation-id-identifier
+      - test.ut-id-format
+      - fname.doc-file-naming
+    dependsOn:
+      - doc-standard
+      - file-naming-rule
+      - api-list-ui
+      - test-rule
+  - id: detail-design-temp
+    path: 詳細設計/spec-detail-temp.md
+    title: 詳細設計メインテンプレート
+    uses:
+      - test.ut-id-format
+      - test.layers-l1-l2-l3
+      - test.ut-cases-single-source
+      - test.expected-from-ssot
+      - api.operation-id-identifier
+      - api.endpoint-definitions
+      - msg.id-must-exist-in-catalog
+      - msg.catalog-entries
+      - err.exception-to-http-mapping
+      - be.transaction-serviceimpl-only
+      - be.soft-delete-query
+      - auth.three-layer-permission
+      - auth.field-visibility-matrix
+      - gen.line-ending-lf-no-bom
+      - db.pk-default-varchar10
+      - db.table-definitions
+      - fe.component-role-suffix
+      - naming.frontend-union-type-no-enum
+      - naming.backend-class-pascal-case
+      - naming.backend-entity-singular
+      - naming.api-path-kebab-plural
+      - doc.id-prefix-scheme
+      - fname.doc-file-naming
+    dependsOn:
+      - doc-standard
+      - naming-rule
+      - file-naming-rule
+      - database-rule
+      - auth-design
+      - db-physical-yaml
+      - api-list-ui
+      - api-list-yaml
+      - message-list-ui
+      - message-list-ja
+      - backend-coding-rule
+      - frontend-coding-rule
+      - test-rule
+      - generation-rule
+  - id: foundation-architecture
+    path: 基本設計/基盤/spec-00-architecture-ui.md
+    title: 基盤基本設計 アーキテクチャ（ハブ）
+    uses:
+      - tech.frontend-architecture-spa
+      - tech.jdk-version
+      - tech.spring-boot-version
+      - tech.spring-cloud-version
+      - tech.mybatis-version
+      - tech.mapstruct-version
+      - tech.jjwt-version
+      - tech.poi-version
+      - tech.aws-sdk-version
+      - tech.postgresql-version
+      - tech.persistence-mybatis-only
+      - tech.frontend-library-versions
+      - naming.api-path-kebab-plural
+      - naming.api-json-camel-case
+      - api.operation-id-identifier
+      - api.envelope-schemas
+      - api.file-response-unwrapped
+      - err.exception-to-http-mapping
+      - time.api-iso8601-offset
+      - db.pk-default-varchar10
+      - be.soft-delete-query
+      - api.returns-message-id-only
+      - api.paging-params
+      - time.system-timezone-asia-tokyo
+      - err.gateway-http-mapping
+      - api.base-path-v1
+      - gen.line-ending-lf-no-bom
+    dependsOn:
+      - naming-rule
+      - system-architecture
+      - database-rule
+      - api-list-ui
+      - api-list-yaml
+      - backend-coding-rule
+      - foundation-gateway
+      - generation-rule
+  - id: foundation-gateway
+    path: 基本設計/基盤/spec-01-api-gateway-ui.md
+    title: 基盤基本設計 api-gateway
+    defines:
+      - id: err.gateway-http-mapping
+        summary: Gateway 発生エラーは 401→E0040/E0041/E0001・404→E0042・502→E0013・504→E0043・500→E0012 にマッピングする
+    uses:
+      - auth.public-endpoints
+      - auth.jwt-access-token-claims
+      - tech.jjwt-version
+      - err.exception-to-http-mapping
+      - api.base-path-v1
+      - msg.catalog-entries
+      - time.api-iso8601-offset
+    dependsOn:
+      - system-architecture
+      - api-list-ui
+      - message-list-ja
+      - backend-coding-rule
+      - foundation-auth-service
+  - id: foundation-auth-service
+    path: 基本設計/基盤/spec-02-auth-service-ui.md
+    title: 基盤基本設計 auth-service
+    defines:
+      - id: auth.passwordless-magic-link-only
+        summary: 認証はメール Magic Link のみとし、パスワード・BCrypt・SMS・refresh token を使用しない
+      - id: auth.jwt-access-token-claims
+        summary: JWT は HS256 の access token のみで、sub=ユーザーID・role=ENUM文字列・iss・exp(3600秒) を持つ
+      - id: auth.public-endpoints
+        summary: 認証不要（permit-all）は /api/v1/auth/** と /actuator/health のみ
+      - id: auth.loginable-boundary
+        summary: ログイン可否は 存在・論理削除・停用状態・ロック開始時刻で判定する
+    uses:
+      - db.table-definitions
+      - api.endpoint-definitions
+      - api.base-path-v1
+      - msg.catalog-entries
+      - err.exception-to-http-mapping
+      - tech.jjwt-version
+      - tech.mybatis-version
+      - time.db-timestamptz
+      - db.soft-delete-column
+    dependsOn:
+      - system-architecture
+      - database-rule
+      - db-physical-yaml
+      - api-list-ui
+      - api-list-yaml
+      - message-list-ja
+      - backend-coding-rule
+  - id: foundation-business-service
+    path: 基本設計/基盤/spec-03-business-service-ui.md
+    title: 基盤基本設計 business-service
+    uses:
+      - be.layering-responsibilities
+      - be.converter-mapstruct
+      - be.mybatis-mapper-xml
+      - be.paging-pagehelper-pageresult
+      - be.transaction-serviceimpl-only
+      - be.soft-delete-query
+      - be.method-security-preauthorize
+      - err.exception-to-http-mapping
+      - err.business-exception-only
+      - resp.value-object-form
+      - api.envelope-schemas
+      - api.returns-message-id-only
+      - api.file-response-unwrapped
+      - auth.three-layer-permission
+      - auth.field-visibility-matrix
+      - db.pk-default-varchar10
+      - db.pk-users-user-id
+      - db.pk-shared-child
+      - db.pk-natural-master
+      - db.table-definitions
+      - tech.mybatis-version
+      - tech.mapstruct-version
+      - tech.pagehelper-version
+      - tech.persistence-mybatis-only
+      - mig.two-mechanism-split
+      - db.soft-delete-column
+      - db.pk-numbering-function
+      - msg.no-hardcoded-text
+      - resp.explicit-wrap
+      - be.audit-columns-population
+    dependsOn:
+      - system-architecture
+      - database-rule
+      - auth-design
+      - db-physical-yaml
+      - api-list-ui
+      - api-list-yaml
+      - backend-coding-rule
+      - foundation-common-component
+      - db-migration
+      - message-list-ui
+  - id: foundation-common-component
+    path: 基本設計/基盤/spec-04-common-component-ui.md
+    title: 基盤基本設計 共通コンポーネント
+    defines:
+      - id: resp.value-object-form
+        summary: Result/PageResult/FieldError は record、ErrorResponse は可変 class とし混用しない
+      - id: be.audit-columns-population
+        summary: 監査列の設定主体は created_at=DB デフォルト / updated_at=DB トリガー / created_by・updated_by=MetaObjectHandler（UserContext から補充）とする
+      - id: resp.explicit-wrap
+        summary: Controller が Result.ok() / PageResult で明示的にラップし、ResponseBodyAdvice による自動ラップは採用しない
+    uses:
+      - err.exception-to-http-mapping
+      - err.business-exception-only
+      - err.gateway-http-mapping
+      - api.envelope-schemas
+      - api.file-response-unwrapped
+      - msg.id-must-exist-in-catalog
+      - msg.catalog-entries
+      - auth.jwt-access-token-claims
+      - auth.public-endpoints
+      - mig.two-mechanism-split
+      - mig.baseline-zero-v1-initial-data
+      - mig.script-location
+      - mig.version-file-naming
+      - db.pk-default-varchar10
+      - be.soft-delete-query
+      - be.mybatis-mapper-xml
+      - be.paging-pagehelper-pageresult
+      - be.transaction-serviceimpl-only
+      - auth.three-layer-permission
+      - tech.flyway-version
+      - tech.jjwt-version
+      - tech.pagehelper-version
+      - tech.mybatis-version
+      - tech.aws-sdk-version
+      - tech.jdk-version
+      - tech.spring-boot-version
+      - api.paging-params
+      - db.soft-delete-column
+      - db.pk-numbering-function
+      - gen.line-ending-lf-no-bom
+      - msg.id-format
+      - msg.number-bands
+    dependsOn:
+      - system-architecture
+      - database-rule
+      - flyway-migration-rule
+      - auth-design
+      - api-list-ui
+      - api-list-yaml
+      - message-list-ui
+      - message-list-ja
+      - db-migration
+      - backend-coding-rule
+      - foundation-gateway
+      - foundation-auth-service
+      - generation-rule
+  - id: eclipse-formatter
+    path: 基本設計/基盤/インタフェース仕様/eclipse-formatter.xml
+    title: Eclipse Java フォーマッタ プロファイル
+  - id: if-auth
+    path: 基本設計/基盤/インタフェース仕様/spec-01-auth.yaml
+    title: IF仕様 auth-service
+    uses:
+      - auth.passwordless-magic-link-only
+      - auth.jwt-access-token-claims
+      - auth.loginable-boundary
+      - err.exception-to-http-mapping
+      - api.operation-id-identifier
+    dependsOn:
+      - api-list-ui
+      - backend-coding-rule
+      - foundation-auth-service
+  - id: if-authorization
+    path: 基本設計/基盤/インタフェース仕様/spec-02-authorization.yaml
+    title: IF仕様 認可・セキュリティ設定
+    uses:
+      - auth.public-endpoints
+      - auth.jwt-access-token-claims
+      - be.method-security-preauthorize
+    dependsOn:
+      - backend-coding-rule
+      - foundation-auth-service
+  - id: if-exception-handler
+    path: 基本設計/基盤/インタフェース仕様/spec-03-exception-handler.yaml
+    title: IF仕様 例外ハンドラ
+    uses:
+      - err.exception-to-http-mapping
+      - err.business-exception-only
+    dependsOn:
+      - backend-coding-rule
+  - id: if-unified-response
+    path: 基本設計/基盤/インタフェース仕様/spec-04-unified-response.yaml
+    title: IF仕様 統一レスポンス
+    uses:
+      - resp.value-object-form
+      - api.envelope-schemas
+    dependsOn:
+      - api-list-yaml
+      - foundation-common-component
+  - id: if-trace-message
+    path: 基本設計/基盤/インタフェース仕様/spec-05-trace-message.yaml
+    title: IF仕様 トレース・メッセージ
+    uses:
+      - msg.id-must-exist-in-catalog
+      - msg.catalog-entries
+    dependsOn:
+      - message-list-ui
+      - message-list-ja
+  - id: if-gateway
+    path: 基本設計/基盤/インタフェース仕様/spec-06-gateway.yaml
+    title: IF仕様 api-gateway
+    uses:
+      - err.gateway-http-mapping
+      - auth.public-endpoints
+      - auth.jwt-access-token-claims
+      - err.exception-to-http-mapping
+    dependsOn:
+      - foundation-gateway
+      - foundation-auth-service
+      - backend-coding-rule
+  - id: if-infrastructure
+    path: 基本設計/基盤/インタフェース仕様/spec-07-infrastructure.yaml
+    title: IF仕様 infrastructure
+    uses:
+      - tech.mybatis-version
+      - tech.aws-sdk-version
+      - tech.persistence-mybatis-only
+    dependsOn:
+      - system-architecture
+  - id: if-security-util
+    path: 基本設計/基盤/インタフェース仕様/spec-08-security-util.yaml
+    title: IF仕様 セキュリティユーティリティ
+    uses:
+      - auth.jwt-access-token-claims
+    dependsOn:
+      - foundation-auth-service
+  - id: if-resource-file
+    path: 基本設計/基盤/インタフェース仕様/spec-09-resource-file.yaml
+    title: IF仕様 リソースファイル
+    uses:
+      - mig.script-location
+      - mig.baseline-zero-v1-initial-data
+      - msg.catalog-entries
+      - mig.two-mechanism-split
+      - gen.line-ending-lf-no-bom
+      - msg.id-format
+    dependsOn:
+      - message-list-ja
+      - db-migration
+      - generation-rule
+      - message-list-ui
+  - id: if-business-core
+    path: 基本設計/基盤/インタフェース仕様/spec-10-business-core.yaml
+    title: IF仕様 business-service-core
+    uses:
+      - be.layering-responsibilities
+      - be.converter-mapstruct
+      - be.transaction-serviceimpl-only
+      - be.soft-delete-query
+      - resp.value-object-form
+      - naming.backend-class-pascal-case
+      - naming.backend-member-camel-case
+    dependsOn:
+      - naming-rule
+      - backend-coding-rule
+      - foundation-common-component
+  - id: if-log-config
+    path: 基本設計/基盤/インタフェース仕様/spec-11-log-config.yaml
+    title: IF仕様 ログ設定
+  - id: project-structure
+    path: 基本設計/基盤/インタフェース仕様/spec-project-structure.yaml
+    title: プロジェクト全体構造（Maven/設定台帳）
+    uses:
+      - tech.jdk-version
+      - tech.spring-boot-version
+      - tech.spring-cloud-version
+      - tech.mybatis-version
+      - tech.pagehelper-version
+      - tech.mapstruct-version
+      - tech.aws-sdk-version
+      - tech.poi-version
+      - tech.jjwt-version
+      - tech.flyway-version
+    dependsOn:
+      - system-architecture

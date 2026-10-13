@@ -1,0 +1,58 @@
+# =============================================================================
+# メッセージ一覧（前後台共用 Message カタログ）- DDMSAA
+# -----------------------------------------------------------------------------
+# 仕組み:
+#   - 本ファイルがメッセージカタログの唯一正本（機械可読 SSOT）。
+#   - バックエンドは表示メッセージを直接返さず、messageId を返却する。
+#   - フロントは本カタログから messageId で実テキストを引いて画面表示する（i18n=react-i18next）。
+#   - 多言語対応（日/中/英）: 本ファイル spec-09-message-list.yaml = ja 正本 /
+#     spec-09-message-list.zh.yaml / spec-09-message-list.en.yaml。
+#     messageId・category は全言語共通、message 文言のみ言語別。既定=日本語。
+#
+# 採番ルール・番号帯・HTTP ステータスとの関係:
+#   - 基本設計/共通/spec-09-message-list-ui.md、基本設計/共通/spec-00-doc-standard-ui.md §3 に従う。
+#   - 動的値は {0},{1}... のプレースホルダ。バックエンドが messageArgs を併せて返す。
+# =============================================================================
+
+# rule: msg.catalog-entries
+messages:
+
+  # =========================================================== INFO（正常・案内）
+  I0001: { category: INFO, message: "認証用メールを送信しました。メール内のリンクから認証してください" }
+  I0003: { category: INFO, message: "ログインしました" }
+  I0010: { category: INFO, message: "登録しました（ID: {0}）" }
+  I0011: { category: INFO, message: "更新しました" }
+  I0012: { category: INFO, message: "削除しました" }
+
+  # =========================================================== WARNING（注意・確認）
+  W0010: { category: WARNING, message: "削除します。よろしいですか？" }
+  W0011: { category: WARNING, message: "入力内容を破棄します。よろしいですか？" }
+
+  # =========================================================== ERROR（エラー）
+  # --- 認証・認可（401/403/429） ---
+  E0001: { category: ERROR, message: "セッションの有効期限が切れました。再度ログインしてください" }
+  E0002: { category: ERROR, message: "この操作を行う権限がありません" }
+  E0003: { category: ERROR, message: "操作回数が上限に達しました。しばらく待ってから再試行してください" }
+  E0004: { category: ERROR, message: "認証に失敗しました" }
+  E0020: { category: ERROR, message: "ログインできません" }
+  # --- 未存在（404）/ 業務異常（409）/ 入力検証（400）/ ファイル（413） ---
+  E0005: { category: ERROR, message: "対象が見つかりません" }
+  E0006: { category: ERROR, message: "現在の状態ではこの操作を実行できません" }
+  E0007: { category: ERROR, message: "すでに存在します" }
+  E0008: { category: ERROR, message: "入力内容に誤りがあります" }
+  E0009: { category: ERROR, message: "許可されていないファイル形式です" }
+  E0010: { category: ERROR, message: "ファイルサイズが上限を超えています" }
+  # --- システム（500/502） ---
+  E0012: { category: ERROR, message: "システムエラーが発生しました。管理者にお問い合わせください" }
+  E0013: { category: ERROR, message: "サービスに接続できません。しばらく後に再試行してください" }
+  # --- クライアント側入力チェック ---
+  E0030: { category: ERROR, message: "{0}は必須項目です" }
+  E0031: { category: ERROR, message: "{0}の形式が正しくありません" }
+  E0032: { category: ERROR, message: "{0}は{1}文字以内で入力してください" }
+  E0033: { category: ERROR, message: "{0}は{1}以上で入力してください" }
+  E0034: { category: ERROR, message: "{0}は{1}以下で入力してください" }
+  # --- API Gateway（401/404/504） ---
+  E0040: { category: ERROR, message: "認証トークンが指定されていません" }
+  E0041: { category: ERROR, message: "認証トークンが不正です" }
+  E0042: { category: ERROR, message: "要求されたルートが存在しません" }
+  E0043: { category: ERROR, message: "サービスの応答がタイムアウトしました" }
