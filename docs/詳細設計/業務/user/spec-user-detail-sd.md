@@ -1,113 +1,50 @@
-# M-USR 利用者・権限管理 詳細設計書
+# 詳細設計 — ユーザー・認証
 
-## 1. 対象と前提
+## 1. データ
 
-| 項目 | 内容 |
-| --- | --- |
-| 対象モジュール | M-USR 利用者・権限管理 |
-| 根拠 | `基本設計/業務設計/user/spec-user-business-ui.md`、`要件定義/requirements.md` |
-| 対象画面 | SCR-USR-01〜05 |
-| 実装方式 | React + TypeScript、Spring Boot、MyBatis、PostgreSQL |
-| 版数・作成日 | 0.1（初稿）・2026-10-14 |
-| ステータス | レビュー待ち |
+| テーブル | 主な列 | 制約 |
+|---|---|---|
+| `users` | user_id, login_id, display_name, email, password_hash, role_code, customer_id, status, failed_login_count, locked_until | login_id/email は一意、CUSTOMER は customer_id 必須 |
+| `user_sessions` | session_id, user_id, token_hash, expires_at, revoked_at | token_hash は一意 |
+| `audit_logs` | actor_user_id, action, target_type, target_id, occurred_at | パスワード・セッション生値は保存禁止 |
 
-役割は `ADMIN`、`EMPLOYEE`、`CUSTOMER` の 3 種とする。認可は画面の表示制御だけで完結させず、すべての API で役割・本人・所属顧客・担当範囲を判定する。
+## 2. API
 
-## 2. バックエンド詳細設計
+| operationId | API | 権限 | 処理 |
+|---|---|---|---|
+| login | POST /api/auth/login | 匿名 | loginId/password を照合し Cookie を発行 |
+| logout | POST /api/auth/logout | 全ログイン者 | セッションを失効 |
+| getMe | GET /api/auth/me | 全ログイン者 | 自分の ID、表示名、ロール、customerId を返す |
+| listUsers | GET /api/users | ADMIN | 検索・ページング |
+| createUser | POST /api/users | ADMIN | パスワードを BCrypt 化して作成 |
+| updateUser | PATCH /api/users/{userId} | ADMIN | 表示名、メール、ロール、顧客、状態を更新 |
+| listAuditLogs | GET /api/audit-logs?userId={userId} | ADMIN | ユーザーの監査を返す |
 
-### 2.1 API と処理責務
+## 3. ログイン処理
 
-| operationId | API | 権限 | 処理概要 |
-| --- | --- | --- | --- |
-| login | `POST /api/auth/login` | 未認証 | `loginId`（ログイン ID またはメール）とパスワードを照合し、認証済みセッションを発行する。 |
-| logout | `POST /api/auth/logout` | 認証済み | 現在のセッションを無効化する。 |
-| getMe | `GET /api/me` | 認証済み | 画面表示に必要な本人、役割、所属顧客、担当顧客を返す。 |
-| listUsers | `GET /api/users` | ADMIN | 氏名、ログイン ID、メール、役割、有効状態で利用者を検索する。 |
-| createUser | `POST /api/users` | ADMIN | 利用者を登録する。`CUSTOMER` は `customerId` 必須とする。 |
-| updateUser | `PATCH /api/users/{userId}` | ADMIN | 氏名、メール、役割、所属顧客、担当顧客、有効状態を更新する。 |
-| listAuditLogs | `GET /api/audit-logs` | ADMIN | 操作者、期間、操作種別、対象種別で監査ログをページング検索する。 |
+1. `login_id` で利用者を取得する。存在しない場合も同じダミー BCrypt 照合を行う。
+2. status=ACTIVE、locked_until が現在以前、BCrypt 照合成功をすべて満たした場合に成功とする。
+3. 128 bit 以上の乱数セッションを作り、ハッシュを `user_sessions` に保存する。生値は `DDMSAA_SESSION` Cookie にだけ設定する。
+4. 成功時は失敗回数を 0、失敗時は +1 する。5 回で `locked_until=now+30min`。
+5. 認証結果を `audit_logs` に記録する。失敗応答は常に 401 の同一メッセージ、ロック中は 423 とする。
 
-### 2.2 認可・永続化ルール
+## 4. バリデーション
 
-- `ADMIN` は全利用者を管理できる。自分自身を無効にする更新は拒否する。
-- `CUSTOMER` を登録・更新する場合、`customerId` を必須とする。所属顧客を変更した場合は、以後の注文・添付取得範囲に即時反映する。
-- `EMPLOYEE` の担当顧客は `employee_customer_assignments` で管理し、管理者だけが設定する。
-- パスワードはハッシュだけを保存する。レスポンス、監査ログ、例外ログにパスワードを含めない。
-- ログイン成功・失敗、利用者の登録・更新・無効化、権限変更を `audit_logs` に追加専用で記録する。
+- loginId: 3～100 文字、空白のみ禁止。
+- パスワード: 作成/変更時は 12～128 文字、英字・数字・記号を各 1 文字以上。
+- CUSTOMER ロールには customerId 必須。ADMIN/EMPLOYEE には customerId を設定しない。
+- 無効化又はパスワード変更時は当該ユーザーの有効セッションを revoke する。
 
-### 2.3 主要な検証とエラー
+## 5. テスト
 
-| 対象 | 検証 | 失敗時 |
-| --- | --- | --- |
-| ログイン | `loginId` とパスワードは必須。無効利用者は認証不可。 | `401 AUTHENTICATION_FAILED` |
-| 利用者登録 | ログイン ID、メール、役割は必須かつ一意。 | `400 VALIDATION_ERROR` / `409 DUPLICATE_USER` |
-| 顧客役割 | `role=CUSTOMER` の場合は `customerId` 必須。 | `400 CUSTOMER_REQUIRED` |
-| 利用者更新 | ADMIN 以外、または自分自身の無効化は不可。 | `403 FORBIDDEN` / `409 SELF_DISABLE_FORBIDDEN` |
+| ID | 条件 | 期待結果 |
+|---|---|---|
+| UT-USR-01 | 正しい ID/パスワード | 200、HttpOnly Cookie、監査記録 |
+| UT-USR-02 | 不正 ID 又はパスワード | 同一の 401 応答、存在漏えいなし |
+| UT-USR-03 | 5 回連続失敗 | 30 分ロック、423 |
+| UT-USR-04 | CUSTOMER に customerId なし | 422 |
+| UT-USR-05 | EMPLOYEE が users API | 403 |
 
-## 3. 画面詳細設計
-
-### SCR-USR-01 ログイン
-
-| 項目 | 設計 |
-| --- | --- |
-| 入力 | ログイン ID またはメール（必須、255 文字以内）、パスワード（必須）。 |
-| 操作 | 「ログイン」で `login` を実行する。Enter キーも同じ操作とする。 |
-| 成功時 | `getMe` の役割に応じた初期画面へ遷移する。 |
-| 失敗時 | 利用者の存在・有効状態を区別せず、共通の認証失敗メッセージを表示する。パスワード欄を空に戻す。 |
-
-### SCR-USR-02 利用者一覧
-
-| 区分 | 設計 |
-| --- | --- |
-| 表示列 | 氏名、ログイン ID、メール、役割、所属顧客、有効状態、更新日時。 |
-| 検索条件 | キーワード、役割、有効状態。初期ページサイズは 20 件、最大 100 件。 |
-| 操作 | 「新規登録」は SCR-USR-03 へ、「編集」は対象利用者を指定して SCR-USR-03 へ遷移する。 |
-| 権限制御 | ADMIN 以外は画面・API とも利用不可。 |
-
-### SCR-USR-03 利用者登録・編集
-
-| 入力項目 | 必須 | ルール |
-| --- | :---: | --- |
-| 氏名 | ○ | 1〜100 文字。 |
-| ログイン ID | ○ | 1〜100 文字、英数字・記号は実装時にログイン規約へ従う。一意。 |
-| メール | ○ | メール形式、255 文字以内、一意。 |
-| 役割 | ○ | `ADMIN` / `EMPLOYEE` / `CUSTOMER`。 |
-| 所属顧客 | 条件付 | 役割が `CUSTOMER` の場合に必須。 |
-| 担当顧客 | 任意 | 役割が `EMPLOYEE` の場合だけ表示。複数選択可。 |
-| 有効状態 | ○ | 新規は有効。無効化は確認ダイアログを経て保存する。 |
-
-保存時は新規なら `createUser`、編集なら `updateUser` を呼び出す。確認ダイアログには氏名と変更対象だけを表示し、パスワード値は表示しない。
-
-### SCR-USR-04 自分のプロフィール
-
-氏名、メール、役割、所属顧客を参照専用で表示する。パスワード変更機能は利用者本人だけが開始でき、具体的なパスワードポリシーは認証運用設計で確定する。
-
-### SCR-USR-05 監査ログ一覧
-
-| 区分 | 設計 |
-| --- | --- |
-| 検索条件 | 操作者、期間（開始・終了）、操作種別、対象種別、対象 ID。 |
-| 表示列 | 発生日時、操作者、操作種別、対象種別、対象 ID、要約、結果。 |
-| 操作 | 検索、ページ移動。編集・削除・CSV 出力は初版対象外。 |
-| 権限制御 | ADMIN 専用。監査ログ本文にパスワードや添付実体を表示しない。 |
-
-## 4. フロントエンド構成
-
-`features/user` 配下に `LoginPage`、`UserListPage`、`UserFormPage`、`MyProfilePage`、`AuditLogPage` を置く。入力フォームは API エラーの `field` を各項目に対応付け、未送信のまま画面遷移する場合だけ離脱確認を表示する。
-
-## 5. 単体テスト用例
-
-| UT-ID | 対象 | 前提・入力 | 期待結果 |
-| --- | --- | --- | --- |
-| UT-USR-001 | login | 有効な ID と正しいパスワード | 認証済みセッションを返す。 |
-| UT-USR-002 | login | 無効利用者または誤パスワード | 401。利用者の存在を判別できない。 |
-| UT-USR-003 | createUser | CUSTOMER、customerId 未指定 | 400。登録されない。 |
-| UT-USR-004 | updateUser | ADMIN が自分自身を無効化 | 409。状態は変わらない。 |
-| UT-USR-005 | listAuditLogs | EMPLOYEE が要求 | 403。ログを返さない。 |
-
-
-## 6. 業務ルール
-
-- **BR-USR-001 ユーザー管理権限**: ユーザー、ロール、利用状態の登録・変更は ADMIN だけが実行できる。
-- **BR-AUTH-001 有効ユーザー認証**: 停止またはロック中のユーザーはログインできず、認証失敗の詳細理由は外部へ返さない。
-- **BR-AUD-001 監査ログ保全**: 重要操作を監査ログへ記録し、通常利用者は監査ログを更新・削除できない。
+- **BR-USR-001 管理者限定**: ユーザー作成、更新、無効化、ロール変更は ADMIN だけが実行する。
+- **BR-USR-002 パスワード非保存**: 平文パスワードと生のセッショントークンを DB・監査・ログへ保存しない。
+- **BR-USR-003 顧客アカウント紐付け**: CUSTOMER は必ず customer_id を持ち、その顧客のデータだけを参照する。

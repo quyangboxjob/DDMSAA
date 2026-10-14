@@ -1,74 +1,35 @@
-# M-PRD 商品管理 詳細設計書
+# 詳細設計 — 商品
 
-## 1. 対象と前提
+## 1. データ
 
-| 項目 | 内容 |
-| --- | --- |
-| 対象モジュール | M-PRD 商品管理 |
-| 根拠 | `基本設計/業務設計/product/spec-product-business-ui.md` |
-| 対象画面 | SCR-PRD-01〜03 |
-| 関連データ | `products`、`product_price_histories` |
-| 版数・作成日 | 0.1（初稿）・2026-10-14 |
-| ステータス | レビュー待ち |
+`products` は product_id、product_code、product_name、category、standard_unit_price、tax_category_code、status、created_at、updated_at、deleted_at を持つ。`tax_categories` の初期値は STANDARD=10%、REDUCED=8%、EXEMPT=0% である。
 
-商品は全認証利用者が参照できる。登録、編集、有効状態変更は ADMIN のみが行う。既存注文の明細は作成時点のスナップショットを保持し、商品変更で更新しない。
+## 2. API
 
-## 2. バックエンド詳細設計
+| operationId | API | 権限 |
+|---|---|---|
+| listProducts | GET /api/products | ADMIN/EMPLOYEE（有効商品のみ） |
+| createProduct | POST /api/products | ADMIN |
+| getProduct | GET /api/products/{productId} | ADMIN/EMPLOYEE |
+| updateProduct | PATCH /api/products/{productId} | ADMIN |
+| updateProductStatus | PATCH /api/products/{productId}/status | ADMIN |
 
-| operationId | API | 権限 | 処理概要 |
-| --- | --- | --- | --- |
-| listProducts | `GET /api/products` | 認証済み | 商品コード、名称、分類、有効状態で検索する。 |
-| createProduct | `POST /api/products` | ADMIN | 商品を登録する。 |
-| getProduct | `GET /api/products/{productId}` | 認証済み | 商品詳細を返す。 |
-| updateProduct | `PATCH /api/products/{productId}` | ADMIN | 名称、分類、標準単価、税区分を更新する。 |
-| updateProductStatus | `PATCH /api/products/{productId}/status` | ADMIN | 有効・無効を変更する。 |
+## 3. 処理・検証
 
-### 処理・検証
+- productCode は 1～50 文字で一意、productName は 1～200 文字。
+- standardUnitPrice は 0 以上、taxCategoryCode は有効な税区分。
+- 無効商品は新規注文の明細に追加できない。
+- 注文作成時に商品コード、名称、単価、税区分、税率を `order_items` へコピーする。後の変更で過去の注文を更新しない。
 
-- 商品コードは 1〜30 文字で一意、登録後変更不可とする。
-- 標準単価は 0 以上の整数円とする。税区分の値域と税率は未確定のため、初版は管理済みコード値を受け付ける。
-- 単価または税区分を変更した場合、変更前単価・変更後単価・変更者・変更日時を `product_price_histories` に保存する。
-- 無効商品は `createOrder` と `updateOrder` の明細指定を拒否する。
+## 4. テスト
 
-## 3. 画面詳細設計
+| ID | 条件 | 期待結果 |
+|---|---|---|
+| UT-PRD-01 | コード重複 | 409 |
+| UT-PRD-02 | 負の単価 | 422 |
+| UT-PRD-03 | EMPLOYEE の商品更新 | 403 |
+| UT-PRD-04 | 無効商品で注文作成 | 422 |
+| UT-PRD-05 | 商品改定後の既存注文 | 明細スナップショット不変 |
 
-### SCR-PRD-01 商品一覧
-
-検索条件は商品コード、商品名称、分類、有効状態とする。表示列は商品コード、商品名称、分類、標準単価、税区分、有効状態、更新日時とする。ADMIN のみ新規登録・編集導線を表示する。
-
-### SCR-PRD-02 商品詳細
-
-商品属性、現在の標準単価、税区分、有効状態、更新日時を表示する。初版では価格履歴を参照専用の補助情報として表示し、履歴の直接編集は行わない。
-
-### SCR-PRD-03 商品登録・編集
-
-| 入力項目 | 必須 | ルール |
-| --- | :---: | --- |
-| 商品コード | ○（新規のみ） | 1〜30 文字、一意。 |
-| 商品名称 | ○ | 1〜200 文字。 |
-| 分類 | 任意 | 1〜100 文字。 |
-| 標準単価 | ○ | 0 以上の整数。 |
-| 税区分 | ○ | 管理済みコード値。具体的な税率は後続設計で確定。 |
-| 有効状態 | ○ | 無効商品は新規注文で選択不可。 |
-
-保存時、単価または税区分が変わる場合は変更内容を確認してから `updateProduct` を実行する。
-
-## 4. フロントエンド構成と例外表示
-
-`ProductListPage`、`ProductDetailPage`、`ProductFormPage` を配置する。金額は画面内で 3 桁区切り表示するが、API には整数を送る。重複コードはコード欄に、無効化で注文への影響がある場合は確認ダイアログに表示する。
-
-## 5. 単体テスト用例
-
-| UT-ID | 対象 | 前提・入力 | 期待結果 |
-| --- | --- | --- |
-| UT-PRD-001 | createProduct | 重複した商品コード | 409。登録されない。 |
-| UT-PRD-002 | updateProduct | 標準単価を負数で指定 | 400。履歴を作成しない。 |
-| UT-PRD-003 | updateProduct | 単価を変更 | 価格履歴を追加し、商品を更新する。 |
-| UT-PRD-004 | updateProductStatus | 商品を無効化 | 後続の新規注文明細で選択不可。 |
-| UT-PRD-005 | createProduct | EMPLOYEE が実行 | 403。登録されない。 |
-
-
-## 6. 業務ルール
-
-- **BR-PRD-001 商品コード一意性**: 商品コードは重複登録・重複更新を許可しない。
-- **BR-PRD-002 利用停止商品**: 利用停止商品は新規注文の明細に追加できないが、既存注文と履歴には表示する。
+- **BR-PRD-001 商品管理者限定**: 商品の作成、更新、有効状態変更は ADMIN だけが実行する。
+- **BR-PRD-002 注文明細スナップショット**: 商品の変更後も既存注文のコード、名称、単価、税区分、税率を変えない。

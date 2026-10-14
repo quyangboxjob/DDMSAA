@@ -1,72 +1,46 @@
-# M-FIL ファイル管理 詳細設計書
+# 詳細設計 — 注文添付
 
-## 1. 対象と前提
+## 1. データ
 
-| 項目 | 内容 |
-| --- | --- |
-| 対象モジュール | M-FIL ファイル管理 |
-| 根拠 | `基本設計/業務設計/attachment/spec-attachment-business-ui.md` |
-| 対象画面 | SCR-FIL-01〜03 |
-| 関連データ | `order_attachments`、`attachment_access_logs` |
-| 版数・作成日 | 0.1（初稿）・2026-10-14 |
-| ステータス | レビュー待ち |
+`order_attachments` は attachment_id、order_id、original_file_name、storage_key、content_type、size_bytes、visibility、scan_status、uploaded_by、uploaded_at、deleted_at を持つ。ファイル本体は DB に保存しない。
 
-添付は必ず 1 件の注文に紐付ける。CUSTOMER は自社注文に紐付く `CUSTOMER` 公開の添付だけをダウンロードでき、登録・置換・削除はできない。
+## 2. API
 
-## 2. バックエンド詳細設計
+| operationId | API | 権限 |
+|---|---|---|
+| listOrderAttachments | GET /api/orders/{orderId}/attachments | 注文の参照権限 |
+| uploadOrderAttachment | POST /api/orders/{orderId}/attachments | ADMIN/担当 EMPLOYEE |
+| downloadAttachment | GET /api/attachments/{attachmentId}/download | 毎回再認可 |
+| deleteAttachment | DELETE /api/attachments/{attachmentId} | ADMIN/担当 EMPLOYEE |
 
-| operationId | API | 権限・対象範囲 | 処理概要 |
-| --- | --- | --- | --- |
-| listOrderAttachments | `GET /api/orders/{orderId}/attachments` | 注文閲覧権限保有者 | 可視性と注文の行単位権限で一覧を返す。 |
-| uploadOrderAttachment | `POST /api/orders/{orderId}/attachments` | ADMIN、注文作成 EMPLOYEE | ファイルと公開区分を検証し、注文へ添付する。 |
-| downloadAttachment | `GET /api/attachments/{attachmentId}/download` | 添付閲覧権限保有者 | 認可後にストリームまたは短時間の署名 URL を返す。 |
-| deleteAttachment | `DELETE /api/attachments/{attachmentId}` | ADMIN、登録者 | 論理削除する。 |
+## 3. アップロード処理
 
-### 2.1 処理・セキュリティ
+1. 注文の操作権限と、注文が削除されていないことを確認する。
+2. ファイル名の拡張子と検出 MIME が PDF/DOCX/XLSX/CSV/PNG/JPG/JPEG の許可組合せか検証する。
+3. サイズが 0 より大きく 10 MiB 以下、既存添付と合わせて注文ごと 50 MiB 以下か検証する。
+4. ランダムな storage_key を発行し、暗号化対応ストレージへ保存する。
+5. `scan_status=PENDING`、visibility、操作者を DB に保存し、マルウェアスキャンジョブと監査を同一トランザクションで登録する。
+6. スキャン完了の内部処理だけが `SAFE` 又は `REJECTED` に遷移できる。
 
-- ストレージの実キー `storage_key` はサーバーだけが生成し、画面・API に直接返さない。
-- `visibility` は `INTERNAL` または `CUSTOMER`。登録者は ADMIN/EMPLOYEE のみが指定できる。
-- ダウンロードは毎回、注文の行単位権限と可視性を検証する。実ファイルの URL を画面へ恒久的に保存しない。
-- 許可拡張子、最大サイズ、1 注文あたりの容量、ウイルススキャン方式は運用パラメータとして確定するまで、アップロード API を有効化しない。未確定値をハードコードしない。
-- 登録、削除、ダウンロードの成功・拒否を `attachment_access_logs` と監査ログに記録する。
+## 4. ダウンロード・削除
 
-## 3. 画面詳細設計
+- ダウンロードは attachment、order、利用者の範囲を再検証する。
+- ADMIN は全件、EMPLOYEE は担当注文、CUSTOMER は自顧客かつ `visibility=CUSTOMER` かつ `scan_status=SAFE` のみ取得できる。
+- PENDING/REJECTED/削除済みは 404 とする。ストレージへの恒久 URL を返さない。
+- 削除は論理削除し、物理ファイル削除は非同期清掃ジョブが行う。削除済みは取得不可。
+- 保持期限 365 日を過ぎた添付も同様に論理削除する。
 
-### SCR-FIL-01 添付ファイル一覧
+## 5. テスト
 
-注文詳細内の領域として表示する。列はファイル名、種別、サイズ、公開区分、登録者、登録日時、操作とする。CUSTOMER には `CUSTOMER` の行だけを表示し、公開区分・登録者は表示しない。
+| ID | 条件 | 期待結果 |
+|---|---|---|
+| UT-FIL-01 | exe 又は MIME 不一致 | 422、保存なし |
+| UT-FIL-02 | 10 MiB 超 | 422、保存なし |
+| UT-FIL-03 | PENDING をダウンロード | 404 |
+| UT-FIL-04 | CUSTOMER 公開でない SAFE 添付 | CUSTOMER は 404 |
+| UT-FIL-05 | 担当外 EMPLOYEE が削除 | 404 |
+| UT-FIL-06 | スキャン REJECTED | 配信なし、監査あり |
 
-### SCR-FIL-02 添付アップロード
-
-| 入力項目 | 必須 | ルール |
-| --- | :---: | --- |
-| ファイル | ○ | 運用で許可された拡張子・サイズ・スキャン結果を満たす。 |
-| 公開区分 | ○ | `INTERNAL` / `CUSTOMER`。CUSTOMER を選ぶ場合は顧客に見えることを確認する。 |
-| 説明 | 任意 | 500 文字以内。 |
-
-アップロード中は進捗を表示し、完了するまで重複送信を禁止する。スキャン失敗・容量超過・拡張子不許可はファイル欄にエラーを表示する。
-
-### SCR-FIL-03 添付ダウンロード
-
-一覧の「ダウンロード」操作から起動する。対象ファイル名とサイズを確認し、`downloadAttachment` 成功後に取得を開始する。403/404 の場合は、存在・権限を詳細に区別しないメッセージを表示する。
-
-## 4. フロントエンド構成と例外表示
-
-`AttachmentList`、`AttachmentUploadDialog`、`AttachmentDownloadButton` を注文画面で利用する。ファイル実体は状態管理・ログ出力に保持せず、ファイル名、サイズ、状態だけを扱う。
-
-## 5. 単体テスト用例
-
-| UT-ID | 対象 | 前提・入力 | 期待結果 |
-| --- | --- | --- | --- |
-| UT-FIL-001 | uploadOrderAttachment | CUSTOMER が実行 | 403。保存しない。 |
-| UT-FIL-002 | uploadOrderAttachment | 許可されない拡張子 | 400。ストレージへ保存しない。 |
-| UT-FIL-003 | downloadAttachment | CUSTOMER が INTERNAL 添付を指定 | 403 または 404。ファイルを返さない。 |
-| UT-FIL-004 | deleteAttachment | 登録者以外の EMPLOYEE | 403。削除状態を変更しない。 |
-| UT-FIL-005 | deleteAttachment | 正当な登録者 | 論理削除され、一覧・ダウンロード対象から除外される。 |
-
-
-## 6. 業務ルール
-
-- **BR-FIL-001 添付操作権限**: 添付の登録・削除は ADMIN または EMPLOYEE だけが実行でき、CUSTOMER は実行できない。
-- **BR-FIL-002 顧客公開範囲**: CUSTOMER は自社注文に紐付き、かつ顧客公開が許可された添付だけをダウンロードできる。
-- **BR-FIL-003 添付検証**: 許可されない拡張子、サイズ超過、スキャン不合格のファイルは保存しない。
+- **BR-FIL-001 許可形式と容量**: PDF、DOCX、XLSX、CSV、PNG、JPG/JPEG のみ、1 ファイル 10 MiB、注文合計 50 MiB を許可する。
+- **BR-FIL-002 スキャン完了必須**: PENDING 又は REJECTED の添付をダウンロードさせない。
+- **BR-FIL-003 顧客公開判定**: CUSTOMER は自顧客の CUSTOMER 公開かつ SAFE の添付だけを取得できる。

@@ -1,96 +1,56 @@
-# M-APR 承認管理 詳細設計書
+# 詳細設計 — 承認
 
-## 1. 対象と前提
+## 1. データ
 
-| 項目 | 内容 |
-| --- | --- |
-| 対象モジュール | M-APR 承認管理 |
-| 根拠 | `基本設計/業務設計/approval/spec-approval-business-ui.md` |
-| 対象画面 | SCR-APR-01〜05 |
-| 関連データ | `approval_rules`、`approval_requests`、`approval_actions`、`notification_logs` |
-| 版数・作成日 | 0.1（初稿）・2026-10-14 |
-| ステータス | レビュー待ち |
+| テーブル | 主な列 | 用途 |
+|---|---|---|
+| `approval_rules` | amount_from, amount_to, sequence, approver_role_code, approver_user_id, active, effective_from/to | 将来拡張可能な経路定義 |
+| `approval_requests` | order_id, sequence, approver_user_id, rule_snapshot, status, requested_by, requested_at, acted_at | 申請時点の経路スナップショット |
+| `approval_actions` | approval_request_id, action, comment, acted_by, acted_at | 承認/差戻しの不変履歴 |
 
-承認金額閾値、段階数、代理承認は業務決定待ちである。本設計は、管理者が有効な承認ルールを設定し、注文提出時にルールのスナップショットを依頼へ保存する方式とする。
+初期データは `amount_from=0 / sequence=1 / approver_role_code=ADMIN` の 1 段経路とする。
 
-## 2. バックエンド詳細設計
+## 2. API
 
-| operationId | API | 権限 | 処理概要 |
-| --- | --- | --- |
-| listPendingApprovals | `GET /api/approvals/pending` | 指定承認者、ADMIN | 自分が判断可能な承認待ちを取得する。 |
-| approveOrder | `POST /api/orders/{orderId}/approve` | 指定承認者、ADMIN | 現在段階を承認し、次段階または承認完了へ遷移する。 |
-| returnOrder | `POST /api/orders/{orderId}/return` | 指定承認者、ADMIN | 必須コメント付きで注文を差戻しする。 |
-| getApprovalHistory | `GET /api/orders/{orderId}/approval-history` | 注文の閲覧権限保有者 | 依頼・判断履歴を時系列で取得する。 |
-| listApprovalRules | `GET /api/approval-rules` | ADMIN | 承認ルールを検索する。 |
-| createApprovalRule | `POST /api/approval-rules` | ADMIN | 金額帯・順序・承認者を登録する。 |
-| updateApprovalRule | `PATCH /api/approval-rules/{ruleId}` | ADMIN | 将来の依頼向けルールを更新する。 |
-| listNotifications | `GET /api/notifications` | ADMIN | 通知の送信結果を検索する。 |
-| retryNotification | `POST /api/notifications/{notificationId}/retry` | ADMIN | `FAILED` 通知を手動再送キューへ登録する。 |
+| operationId | API | 権限 |
+|---|---|---|
+| listPendingApprovals | GET /api/approvals/pending | ADMIN |
+| approveOrder | POST /api/approval-requests/{approvalRequestId}/approve | 割当済み ADMIN |
+| returnOrder | POST /api/approval-requests/{approvalRequestId}/return | 割当済み ADMIN |
+| getApprovalHistory | GET /api/orders/{orderId}/approvals | 注文の参照権限 |
+| listApprovalRules | GET /api/approval-rules | ADMIN |
+| createApprovalRule | POST /api/approval-rules | ADMIN |
+| updateApprovalRule | PATCH /api/approval-rules/{ruleId} | ADMIN |
+| listNotifications | GET /api/notifications | ADMIN |
+| retryNotification | POST /api/notifications/{notificationId}/retry | ADMIN |
 
-### 2.1 承認・通知処理
+## 3. 申請処理
 
-1. `submitOrder` は有効な承認ルールを決定し、ルールの順序・承認者を `approval_requests.rule_snapshot` に保存する。
-2. 最初の承認者に対応する `PENDING` 依頼を作成し、通知キューを登録する。
-3. `approveOrder` は現行承認者本人か ADMIN だけが実行できる。中間段階なら次段階の承認者を有効化し、最終段階なら注文を `APPROVED` にする。
-4. `returnOrder` は理由を必須とし、注文を `RETURNED` にする。以後の承認段階は完了扱いにせず、履歴として残す。
-5. 通知は失敗しても注文・承認状態を戻さない。バックグラウンド処理が最大 3 回再送し、上限後は `FAILED` とする。
+1. 注文が DRAFT 又は RETURNED、かつ version 一致を確認する。
+2. 申請日時点で有効なルールを金額・有効期間・sequence 順で選び、承認者を解決する。
+3. 初版では ADMIN ロールの有効ユーザー 1 名を承認者にする。解決できない場合は 422 とし、注文状態を変えない。
+4. 選んだルールを JSON で rule_snapshot に保存し、approval_requests を作る。
+5. 注文を PENDING_APPROVAL にし、状態履歴、監査、通知ジョブを同一トランザクションで保存する。
 
-### 2.2 主要な検証
+## 4. 操作処理
 
-| 対象 | 検証 | 失敗時 |
-| --- | --- | --- |
-| 承認 | 依頼が PENDING、実行者が現行承認者、注文が PENDING_APPROVAL。 | 403 / 409 |
-| 差戻し | 承認条件に加え、コメント 1〜500 文字。 | 400 / 403 / 409 |
-| ルール | 金額帯の開始・終了、順序、承認者は必須。重複する有効期間・金額帯は拒否。 | 400 / 409 |
-| 手動再送 | 通知状態が FAILED。宛先は変更不可。 | 409 |
+- 承認要求が PENDING、操作者が approver_user_id、対象注文が PENDING_APPROVAL であることをロックして検証する。
+- approve は action=APPROVED を履歴保存し、最終段階なら注文を APPROVED にする。
+- return は 1～500 文字のコメント必須、action=RETURNED を履歴保存し、注文を RETURNED にする。
+- 二重操作、別 ADMIN、古い状態での操作は 409 又は 403/404 とし、通知を重複発行しない。
+- 代理承認は初版で扱わない。
 
-## 3. 画面詳細設計
+## 5. テスト
 
-### SCR-APR-01 承認待ち一覧
+| ID | 条件 | 期待結果 |
+|---|---|---|
+| UT-APR-01 | DRAFT を申請 | ADMIN 1 段の依頼、PENDING_APPROVAL |
+| UT-APR-02 | 別 ADMIN が承認 | 403 |
+| UT-APR-03 | 差戻しコメント空 | 422 |
+| UT-APR-04 | 同じ依頼を二重承認 | 409、履歴 1 件 |
+| UT-APR-05 | 経路設定変更後の申請済み注文 | rule_snapshot は不変 |
 
-注文番号、顧客、申請者、申請日時、金額、現在段階を表示する。現在の利用者が判断できる依頼だけを表示し、対象の SCR-APR-02 へ遷移する。
-
-### SCR-APR-02 承認判断
-
-注文明細と承認履歴を参照し、「承認」「差戻し」を表示する。差戻し時の理由は必須、承認コメントは任意とする。操作完了後は一覧を再取得して二重判断を防ぐ。
-
-### SCR-APR-03 承認ルール設定
-
-| 入力項目 | 必須 | ルール |
-| --- | :---: | --- |
-| 金額開始・終了 | ○ | 0 以上、開始値は終了値以下。 |
-| 承認順 | ○ | 1 以上の整数。ルール内で重複不可。 |
-| 承認者 | ○ | 有効利用者。 |
-| 適用開始・終了 | ○ / 任意 | 開始日は必須、終了日は開始日以降。 |
-
-既に依頼済み注文には変更後のルールを適用しないことを画面に明示する。
-
-### SCR-APR-04 承認履歴
-
-依頼日時、段階、承認者、結果、コメント、判断日時を時系列表示する。編集・削除は行わない。CUSTOMER が注文閲覧を許可される場合も、承認者の連絡先など内部情報は表示しない。
-
-### SCR-APR-05 通知履歴・再送
-
-検索条件は期間、状態、イベント種別、宛先とする。表示列はイベント、宛先、状態、再送回数、最終送信日時、失敗理由とする。FAILED の行だけ「再送」を表示し、確認後に `retryNotification` を実行する。宛先の編集、成功済み通知の再送、履歴削除は不可とする。
-
-## 4. フロントエンド構成と監査
-
-`ApprovalPendingPage`、`ApprovalDecisionPage`、`ApprovalRulePage`、`ApprovalHistoryPanel`、`NotificationLogPage` を配置する。承認、差戻し、ルール変更、手動再送を監査ログへ記録する。
-
-## 5. 単体テスト用例
-
-| UT-ID | 対象 | 前提・入力 | 期待結果 |
-| --- | --- | --- |
-| UT-APR-001 | approveOrder | 承認者以外の EMPLOYEE | 403。履歴を追加しない。 |
-| UT-APR-002 | returnOrder | コメント未入力 | 400。注文状態を変更しない。 |
-| UT-APR-003 | approveOrder | 最終段階の承認 | 注文が APPROVED、作成者通知を登録する。 |
-| UT-APR-004 | updateApprovalRule | 承認済み依頼の基準を変更 | 既存依頼の rule_snapshot は変わらない。 |
-| UT-APR-005 | retryNotification | SENT 通知を再送 | 409。再送キューへ登録しない。 |
-
-
-## 6. 業務ルール
-
-- **BR-APR-001 承認依頼可能状態**: `DRAFT` または `RETURNED` の注文だけが承認依頼できる。
-- **BR-APR-002 承認権限**: 承認者は自分に割り当てられた未処理の承認だけを承認または差戻しできる。
-- **BR-APR-003 最終承認完了**: 注文は全承認段階が完了したときだけ `APPROVED` となり、途中承認では次段階の依頼を作成する。
-- **BR-NTF-001 通知再送**: 承認依頼、承認完了、差戻し、注文取消の通知は失敗しても業務トランザクションを戻さず、最大3回再送後に `FAILED` とする。
+- **BR-APR-001 初版承認経路**: 金額を問わず ADMIN 1 段承認を適用する。
+- **BR-APR-002 経路スナップショット**: 申請時の経路を approval_requests.rule_snapshot に保存し、設定変更を遡及させない。
+- **BR-APR-003 承認者本人性**: 割り当てられた ADMIN だけが承認又は差戻しを実行できる。
+- **BR-APR-004 差戻し理由**: 差戻しは 1～500 文字の理由必須で、注文を RETURNED にする。
