@@ -67,3 +67,9 @@ ADMIN は全注文を検索・集計・CSV 出力できる。EMPLOYEE は自分�
 | UT-RPT-003 | exportOrdersCsv | EMPLOYEE が検索条件を指定 | CSV は自分の注文だけ。監査ログを追加する。 |
 | UT-RPT-004 | exportOrdersCsv | CUSTOMER が実行 | 403。ファイルを返さない。 |
 | UT-RPT-005 | downloadOrderDocument | DRAFT 注文を指定 | 409。帳票を出力しない。 |
+
+
+## 6. 業務ルール
+
+- **BR-RPT-001 帳票データ範囲**: 検索、集計、CSV、帳票出力は利用者に許可された顧客・注文の範囲を超えてはならない。
+- **BR-RPT-002 CSV出力整合性**: CSV は画面で指定した検索条件と同じ結果を出力し、出力条件と実行者を監査ログへ記録する。

@@ -90,3 +90,12 @@ DRAFT / RETURNED --cancelOrder--> CANCELLED
 | UT-ORD-003 | submitOrder | 明細なし、または無効商品 | 400。状態は DRAFT のまま。 |
 | UT-ORD-004 | updateOrder | 古い version で更新 | 409。最新注文を変更しない。 |
 | UT-ORD-005 | cancelOrder | APPROVED 注文を指定 | 409。取消履歴を作成しない。 |
+
+
+## 6. 業務ルール
+
+- **BR-ORD-001 注文作成権限**: 注文の作成、更新、提出、取消は ADMIN または作成 EMPLOYEE だけが実行でき、CUSTOMER は参照専用とする。
+- **BR-ORD-002 担当注文制限**: EMPLOYEE は自分が `sales_user_id` である注文だけを処理できる。
+- **BR-ORD-003 金額再計算**: 注文金額はサーバーが明細から再計算し、クライアント送信の税額・合計額を正値として保存しない。
+- **BR-ORD-004 状態遷移制限**: `DRAFT` と `RETURNED` だけを更新、提出、取消でき、`APPROVED` と `CANCELLED` は直接更新できない。
+- **BR-ORD-005 取消通知**: 注文取消時は取消理由を必須とし、取消履歴・監査ログを残して、DEC-NTF-001 で確定した通知先へ通知をキュー登録する。

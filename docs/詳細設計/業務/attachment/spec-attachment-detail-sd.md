@@ -63,3 +63,10 @@
 | UT-FIL-003 | downloadAttachment | CUSTOMER が INTERNAL 添付を指定 | 403 または 404。ファイルを返さない。 |
 | UT-FIL-004 | deleteAttachment | 登録者以外の EMPLOYEE | 403。削除状態を変更しない。 |
 | UT-FIL-005 | deleteAttachment | 正当な登録者 | 論理削除され、一覧・ダウンロード対象から除外される。 |
+
+
+## 6. 業務ルール
+
+- **BR-FIL-001 添付操作権限**: 添付の登録・削除は ADMIN または EMPLOYEE だけが実行でき、CUSTOMER は実行できない。
+- **BR-FIL-002 顧客公開範囲**: CUSTOMER は自社注文に紐付き、かつ顧客公開が許可された添付だけをダウンロードできる。
+- **BR-FIL-003 添付検証**: 許可されない拡張子、サイズ超過、スキャン不合格のファイルは保存しない。
