@@ -22,6 +22,7 @@
 | SCR-APR-02 | 承認判断 | 管理者、承認者 | 注文内容を確認し、承認または理由付き差戻しを行う。 |
 | SCR-APR-03 | 承認ルール設定 | 管理者 | 金額帯、承認順、承認者候補を管理する。 |
 | SCR-APR-04 | 承認履歴 | 権限保有者 | 依頼、承認、差戻しの履歴を時系列で確認する。 |
+| SCR-APR-05 | 通知履歴・再送 | 管理者 | メールの送信結果・失敗理由・再送回数を確認し、失敗通知を再送する。 |
 
 ## 4. 処理フロー
 
@@ -39,6 +40,7 @@
 - 承認待ちの注文は内容を更新できない。修正は差戻し後に行う。
 - 承認ルールを後から変更しても、すでに承認依頼済みの注文には依頼時点のルールを保持する。
 - 通知失敗は注文・承認状態をロールバックせず、再送可能な通知履歴として残す。
+- 送信失敗時はバックグラウンド処理で最大 3 回まで自動再送する。3 回失敗後は `failed` とし、管理者だけが通知履歴画面から手動再送できる。自動・手動の再送結果はすべて通知履歴と監査ログに記録する。
 
 ## 6. 主なデータ
 
@@ -47,7 +49,7 @@
 | approval_rules | approval_rule_id, amount_from, amount_to, sequence, approver_type, active_from, active_to | 金額帯・順番の重複を禁止する。 |
 | approval_requests | approval_request_id, order_id, rule_snapshot, current_sequence, status, requested_by, requested_at | 注文ごとの承認依頼を管理する。 |
 | approval_actions | action_id, approval_request_id, sequence, approver_user_id, action, comment, acted_at | 承認・差戻しを追加専用で保存する。 |
-| notification_logs | notification_id, event_type, recipient, status, retry_count, sent_at | メール送信結果を管理する。 |
+| notification_logs | notification_id, event_type, recipient, status, retry_count, next_retry_at, last_error, sent_at | メール送信結果、再送予定、失敗理由を管理する。 |
 
 ## 7. API 概要
 
@@ -58,6 +60,8 @@
 | POST | `/api/orders/{orderId}/return` | 指定承認者、管理者 | 理由付きで差戻しする。 |
 | GET | `/api/orders/{orderId}/approval-history` | 権限保有者 | 承認履歴を取得する。 |
 | GET/POST/PATCH | `/api/approval-rules` | 管理者 | 承認ルールを参照・登録・変更する。 |
+| GET | `/api/notifications` | 管理者 | 送信状態、期間、宛先で通知履歴を検索する。 |
+| POST | `/api/notifications/{notificationId}/retry` | 管理者 | `failed` の通知を手動再送する。 |
 
 ## 8. 未確定事項
 
