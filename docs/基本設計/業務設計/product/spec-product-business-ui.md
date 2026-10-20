@@ -14,4 +14,4 @@
 
 ## 画面
 
-SCR-09・10 の画面設計は `spec-product-screen-ui.md`（画面一覧は `../../共通/spec-screen-list-ui.md`）。
+SCR-09・10 の画面設計は `spec-product-screen-ui.md`（画面一覧は `../../共通/spec-05-screen-list-ui.md`）。

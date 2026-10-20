@@ -120,6 +120,7 @@ Result.ok(PageResult.of(list, total, pageNum, pageSize));
 | `EntityNotFoundException`（messageId 保持。リソース不存在） | 404 | 例外の messageId（既定 `E0005`） |
 | `BusinessException`（messageId 保持。状態不正/業務競合） | 409 | 例外の messageId（例：`E0006` / `E0007`） |
 | `MaxUploadSizeExceededException`（ファイルサイズ超過） | 413 | `E0010` |
+| `PayloadTooLargeException`（messageId 保持。Service 層で判定するサイズ超過。`BusinessException` を継承しない） | 413 | 例外の messageId（1 ファイル `E0010`、注文合計 `E0052`） |
 | ロック・レート制限（予約。Magic Link 認証では失敗ロックを使わないため現状未使用） | 429 | `E0003`（`E0005` は流用不可） |
 | `DataAccessException` / `Exception`（未捕捉のシステム例外。スタックトレースを error ログ出力） | 500 | `E0012` |
 | 下流到達不可 / タイムアウト（Gateway 層で変換。個別の対応は Gateway 設計が定める） | 502 / 504 | `E0013` / `E0043` |
@@ -148,7 +149,7 @@ Result.ok(PageResult.of(list, total, pageNum, pageSize));
 - カラム↔フィールドは `resultMap` で明示的にマッピングする（または `mapUnderscoreToCamelCase` を有効化してもよいが、`resultMap` を優先し可読性を確保する）。
 <!-- rule: be.soft-delete-query -->
 - **論理削除**：すべてのクエリはデフォルトで `WHERE deleted_at IS NULL` を付与する（自動付与機構は持たず、XML 内に明示する）。削除は `UPDATE … SET deleted_at = now()` とし、物理 `DELETE` は禁止（spec-database-rule §4.3 の例外テーブルを除く）。
-- **楽観ロック**（必要な場合）：`UPDATE … WHERE id = #{id} AND updated_at = #{updatedAt}`。更新行数 = 0 の場合は `BusinessException`(`E0006`) をスローする。
+- **楽観ロック**（必要な場合）：`UPDATE … WHERE id = #{id} AND updated_at = #{updatedAt}`。更新行数 = 0 の場合は `BusinessException`(`E0051`) をスローする（`E0006` は「現在の状態では実行できない」専用）。`updatedAt` は秒未満を切り捨てずマイクロ秒 6 桁で入出力する（Jackson の書式 `yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX`）。楽観ロック競合は利用者操作の通常結果のため、監査ログには記録せず、アプリケーションログに INFO（traceId・対象 ID 付き）で出力する。
 <!-- rule: be.paging-pagehelper-pageresult -->
 - ページングは一律 `PageHelper`/ラッパー経由とし、`PageResult<T>` を返す。
 - 動的条件には `<where>`/`<if>` を用い、文字列連結による SQL 組み立ては禁止（インジェクションリスク）。

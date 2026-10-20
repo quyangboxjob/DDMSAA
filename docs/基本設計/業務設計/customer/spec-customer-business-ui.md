@@ -14,4 +14,4 @@
 
 ## 画面
 
-SCR-06〜08 の画面設計は `spec-customer-screen-ui.md`（画面一覧は `../../共通/spec-screen-list-ui.md`）。
+SCR-06〜08 の画面設計は `spec-customer-screen-ui.md`（画面一覧は `../../共通/spec-05-screen-list-ui.md`）。

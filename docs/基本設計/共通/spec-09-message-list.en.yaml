@@ -48,3 +48,37 @@ messages:
   E0041: { category: ERROR, message: "The authentication token is invalid." }
   E0042: { category: ERROR, message: "The requested route does not exist." }
   E0043: { category: ERROR, message: "The service response timed out." }
+
+  # =========================================================== 業務メッセージ（画面・API 設計で採番）
+  I0020: { category: INFO, message: "Approval has been requested." }
+  I0021: { category: INFO, message: "The order has been cancelled." }
+  I0022: { category: INFO, message: "Approved." }
+  I0023: { category: INFO, message: "Returned." }
+  I0024: { category: INFO, message: "Uploaded. The file cannot be downloaded until the virus scan completes." }
+  I0025: { category: INFO, message: "The user has been locked." }
+  I0026: { category: INFO, message: "Resend request accepted." }
+  I0027: { category: INFO, message: "CSV creation has been accepted. You can download it when it completes." }
+  I0028: { category: INFO, message: "CSV creation has completed." }
+  I0029: { category: INFO, message: "The user has been unlocked." }
+  I0030: { category: INFO, message: "Changing or disabling this item does not affect existing orders or their tax amounts." }
+  I0031: { category: INFO, message: "Changes apply to new approval requests only. Submitted orders are not affected." }
+  I0032: { category: INFO, message: "The user has been disabled." }
+  I0033: { category: INFO, message: "The user has been re-enabled." }
+  I0034: { category: INFO, message: "It has been activated." }
+  I0035: { category: INFO, message: "It has been deactivated." }
+  W0020: { category: WARNING, message: "This will request approval. You cannot edit the order after submitting. Continue?" }
+  W0021: { category: WARNING, message: "This will approve the order. Continue?" }
+  W0022: { category: WARNING, message: "This will cancel the order and cannot be undone. Continue?" }
+  W0023: { category: WARNING, message: "Disabling this user prevents them from signing in again (a signed-in user loses access within 60 minutes). Continue?" }
+  W0024: { category: WARNING, message: "This will resend the notification. Continue?" }
+  W0025: { category: WARNING, message: "Disabling this customer prevents new orders from being created for them. Continue?" }
+  W0026: { category: WARNING, message: "Disabling this product removes it from selection in new orders. Continue?" }
+  W0027: { category: WARNING, message: "This will lock the user. A locked user cannot sign in again (a signed-in user loses access within 60 minutes). Continue?" }
+  W0028: { category: WARNING, message: "The request will be returned. Are you sure?" }
+  E0050: { category: ERROR, message: "CSV creation failed. Check the conditions and try again." }
+  E0051: { category: ERROR, message: "Another user has updated this data. Display the latest content and try again." }
+  E0052: { category: ERROR, message: "The total size of the order attachments exceeds the limit (50 MiB)." }
+  E0053: { category: ERROR, message: "Empty files cannot be uploaded." }
+  E0054: { category: ERROR, message: "This cannot be performed because it includes an inactive customer or product, or a customer you are not assigned to." }
+  E0055: { category: ERROR, message: "This cannot be performed because there is only one active administrator." }
+  E0056: { category: ERROR, message: "You cannot approve or return an order that you submitted." }

@@ -97,3 +97,20 @@
 > 〇〇（性能要件・特殊な操作・他システム連携など）。なければ「なし」。
 
 <!-- devtool:endblock -->
+<!-- devtool:block id="basic.common.16-screen-design-ui.s03" -->
+## 3. DDMSAA の画面設計の配置
+
+画面数が 15 を超える（20 画面。廃止の SCR-03 を除く）ため、画面設計は業務モジュール単位に分割して `業務設計/<module>/` に置く。画面 ID と一覧は `spec-05-screen-list-ui.md` を正とし、遷移は `spec-10-screen-transition-ui.md` を正とする。各ファイルは §2 の構成（概要・レイアウト・項目定義・操作・状態別表示）に準じ、レイアウトは Mermaid で表す。
+
+| ファイル | 対象画面 |
+|------|------|
+| `業務設計/user/spec-user-screen-ui.md` | SCR-01、SCR-02、SCR-04、SCR-05、SCR-17〜21（SCR-03 は廃止） |
+| `業務設計/customer/spec-customer-screen-ui.md` | SCR-06〜08 |
+| `業務設計/product/spec-product-screen-ui.md` | SCR-09、SCR-10 |
+| `業務設計/order/spec-order-screen-ui.md` | SCR-11〜13（添付パネル・承認操作を含む） |
+| `業務設計/approval/spec-approval-screen-ui.md` | SCR-14、SCR-15 |
+| `業務設計/report/spec-report-screen-ui.md` | SCR-16 |
+
+> 本テンプレートの分割案（`基本設計/画面設計/spec-<scr-id>-screen-design-ui.md`）とはパス・粒度が異なる（TBD-SD-01：業務モジュール単位のまま運用するか、画面単位へ再分割するか）。
+
+<!-- devtool:endblock -->

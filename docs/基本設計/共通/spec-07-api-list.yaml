@@ -8,7 +8,7 @@
 #   - リソースパスは複数形・kebab（/users、/system-locks）、項目は camelCase、列挙値は UPPER_SNAKE。
 #   - 統一レスポンス Result<T> / PageResult<T> / ErrorResponse。**messageId(+messageArgs) のみを返し、表示文言は返さない**。
 #   - HTTP ステータスの固定集合は 基本設計/共通/spec-07-api-list-ui.md に従う。
-# 注意：YAML のインデントはスペースのみ（タブ不可）。以下の例は「ユーザ系」を借用しており、正式利用時に置換する。
+# 注意：YAML のインデントはスペースのみ（タブ不可）。x-roles / x-function-id は本プロジェクトの拡張（ロール・機能 ID のトレース用）。
 # =====================================================================
 
 openapi: 3.0.3
@@ -16,7 +16,7 @@ openapi: 3.0.3
 info:
   title: "DDMSAA API"
   description: "DDMSAA の REST API 定義（共通基盤準拠）"
-  version: 0.1.0
+  version: 1.0.0
 
 servers:
   - url: /api/v1
@@ -30,14 +30,27 @@ security:
 # ---------------------------------------------------------------------
 tags:
   - name: auth
-    description: 認証（F-AUTH-*）
+    description: 認証（F-AUTH）— auth-service
   - name: users
-    description: ユーザ管理（F-USR-*）
-  # 実際の大分類に合わせて補足
+    description: ユーザ管理（F-USR）
+  - name: customers
+    description: 顧客管理（F-CUS）
+  - name: products
+    description: 商品管理（F-PRD）
+  - name: orders
+    description: 注文管理（F-ORD）
+  - name: approvals
+    description: 承認（F-APR）
+  - name: attachments
+    description: 添付（F-ATT）
+  - name: reports
+    description: 帳票・集計・CSV（F-RPT）
+  - name: operations
+    description: 通知履歴・監査（F-NTF / F-AUD）
 
 # ---------------------------------------------------------------------
 # paths：各 URL の下に HTTP メソッドごとにエンドポイントを定義（operationId=camelCase の動詞）
-#   以下は例であり、正式利用時に置換する
+#   /auth/** は auth-service、それ以外は business-service-core（Gateway がルーティング）
 # ---------------------------------------------------------------------
 # rule: api.endpoint-definitions
 paths:
@@ -45,10 +58,12 @@ paths:
   /auth/login-init:
     post:
       tags: [auth]
-      operationId: loginInit          # camelCase の動詞（正式識別子）
-      summary: ログイン開始（ユーザID。停止/ロックを判定後 Magic Link を送信）
-      description: ユーザIDを入力し、停止・システムロックを確認した後、個人メールへ Magic Link を送信する。停止/ロック時も同一の応答を返す（理由は区別しない）。
-      security: []                     # 公開
+      operationId: loginInit
+      summary: ログイン開始（ユーザID → Magic Link 送信）
+      description: 可否・存在に関わらず常に 200 / I0001（基盤 spec-02 §6.1）
+      x-function-id: F-AUTH-01
+      x-roles: []                     # 公開
+      security: []
       requestBody:
         required: true
         content:
@@ -56,18 +71,102 @@ paths:
             schema: { $ref: '#/components/schemas/LoginInitRequest' }
       responses:
         '200':
-          description: 受付（送信した場合は案内。非対象でも同一応答）
+          description: 成功
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ResultObject' }
+              schema: { $ref: '#/components/schemas/ResultVoid' }
         '400': { $ref: '#/components/responses/BadRequest' }
 
+  /auth/magic-link/verify:
+    post:
+      tags: [auth]
+      operationId: verifyMagicLink
+      summary: Magic Link 検証・JWT 発行
+      description: 無効・期限切れ・可否 NG は 401 / E0004
+      x-function-id: F-AUTH-01
+      x-roles: []                     # 公開
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MagicLinkVerifyRequest' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/TokenResponse' } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/magic-link/resend:
+    post:
+      tags: [auth]
+      operationId: resendMagicLink
+      summary: Magic Link 再送
+      description: 常に 200 / I0001
+      x-function-id: F-AUTH-01
+      x-roles: []                     # 公開
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginInitRequest' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: ログイン利用者情報
+      x-function-id: F-AUTH-02
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/MeVO' } } } ] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /users:
+    get:
+      tags: [users]
+      operationId: pageUsers
+      summary: ユーザ一覧
+      description: 並び順は固定（ユーザーID 昇順）
+      x-function-id: F-USR-01
+      x-roles: [ADMIN]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: keyword, in: query, required: false, schema: { type: string }, description: "ユーザID・表示名・メールの部分一致" }
+        - { name: role, in: query, required: false, schema: { $ref: '#/components/schemas/Role' } }
+        - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/UserStatus' } }
+        - { name: isLocked, in: query, required: false, schema: { type: boolean } }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/UserVO' } } } } ] } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [users]
       operationId: createUser
-      summary: ユーザ新規登録・採番
-      description: ユーザを登録し、ユーザIDを採番する。管理者のみ呼び出し可能。
+      summary: ユーザ登録・採番（ロールに応じ A/E/C）
+      description: 成功 I0010（{0}=ユーザID）
+      x-function-id: F-USR-02
+      x-roles: [ADMIN]
       requestBody:
         required: true
         content:
@@ -75,60 +174,1012 @@ paths:
             schema: { $ref: '#/components/schemas/UserCreateDTO' }
       responses:
         '200':
-          description: 登録成功（採番後のユーザIDを返す）
+          description: 成功
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ResultString' }
-              example: { code: "0", message: "success", messageId: "I00NN", messageArgs: ["U0001"], data: "U0001", traceId: "abc123", timestamp: "2026-06-10T10:00:00+09:00" }
         '400': { $ref: '#/components/responses/BadRequest' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/{userId}:
     get:
       tags: [users]
-      operationId: pageUsers
-      summary: ユーザ一覧（フィルタ・検索・ページング・公開項目のみ）
+      operationId: getUser
+      summary: ユーザ詳細
+      x-function-id: F-USR-03
+      x-roles: [ADMIN]
       parameters:
-        - { name: pageNum, in: query, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
-        - { name: pageSize, in: query, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
-        - { name: keyword, in: query, required: false, schema: { type: string }, description: ユーザID/氏名の部分一致 }
-        - { name: role, in: query, required: false, schema: { $ref: '#/components/schemas/Role' } }
-        - { name: departmentId, in: query, required: false, schema: { type: string }, example: "DP0001" }
+        - { name: userId, in: path, required: true, schema: { type: string }, example: "E0001" }
       responses:
         '200':
-          description: 取得成功
+          description: 成功
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ResultObject' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /users/{userId}/disable:
-    parameters:
-      - { name: userId, in: path, required: true, schema: { type: string }, example: "U0001" }
-    post:                              # フロー操作は POST を用いる（PUT ではない）
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/UserVO' } } } ] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
       tags: [users]
-      operationId: disableUser
-      summary: 停止処理（停止日を設定し論理削除）
+      operationId: updateUser
+      summary: ユーザ更新
+      description: 成功 I0011。updatedAt で楽観ロック（不一致 409 E0051）。ロール変更は ADMIN ⇔ EMPLOYEE のみで、CUSTOMER との相互変更は 400 E0008。ユーザIDは不変（BR-USR-004）。自分自身のロール変更は 409 E0006、最後の有効 ADMIN の降格は 409 E0055（BR-USR-005）。担当が残る EMPLOYEE の変更は 409 E0006
+      x-function-id: F-USR-03
+      x-roles: [ADMIN]
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string }, example: "E0001" }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/DisableDTO' }
+            schema: { $ref: '#/components/schemas/UserUpdateDTO' }
       responses:
         '200':
-          description: 停止処理成功
+          description: 成功
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
-  # ↓↓↓ エンドポイントごとに以下の雛形を複製して置換する ↓↓↓
-  # /xxx:
-  #   get|post|put|delete:
-  #     tags: [〇〇]
-  #     operationId: 〇〇            # camelCase の動詞
-  #     summary: 〇〇
-  #     requestBody/parameters: ...
-  #     responses: { '200': {...}, '4xx': { $ref: '#/components/responses/...' } }
+  /users/{userId}/disable:
+    post:
+      tags: [users]
+      operationId: disableUser
+      summary: 停用
+      description: 成功 I0032。自分自身は 409 E0006、最後の有効 ADMIN は 409 E0055（BR-USR-005）
+      x-function-id: F-USR-04
+      x-roles: [ADMIN]
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string }, example: "E0001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/{userId}/enable:
+    post:
+      tags: [users]
+      operationId: enableUser
+      summary: 停用解除
+      description: 成功 I0033
+      x-function-id: F-USR-04
+      x-roles: [ADMIN]
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string }, example: "E0001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/{userId}/lock:
+    post:
+      tags: [users]
+      operationId: lockUser
+      summary: ロック（system_locks）
+      description: 成功 I0025。自分自身は 409 E0006、最後の有効 ADMIN は 409 E0055（BR-USR-005）
+      x-function-id: F-USR-05
+      x-roles: [ADMIN]
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string }, example: "E0001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserLockDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/{userId}/unlock:
+    post:
+      tags: [users]
+      operationId: unlockUser
+      summary: ロック解除
+      description: 成功 I0029
+      x-function-id: F-USR-05
+      x-roles: [ADMIN]
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string }, example: "E0001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /customers:
+    get:
+      tags: [customers]
+      operationId: pageCustomers
+      summary: 顧客一覧（EMPLOYEE は担当顧客のみ）
+      description: 並び順は固定（顧客コード昇順）。範囲外の顧客は除外（BR-AUTH-006）
+      x-function-id: F-CUS-01
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: keyword, in: query, required: false, schema: { type: string }, description: "顧客コード・顧客名の部分一致" }
+        - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/CustomerStatus' } }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/CustomerSummaryVO' } } } } ] } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [customers]
+      operationId: createCustomer
+      summary: 顧客登録（連絡先・担当社員を含む）
+      description: 成功 I0010
+      x-function-id: F-CUS-03
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerSaveDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultString' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /customers/{customerId}:
+    get:
+      tags: [customers]
+      operationId: getCustomer
+      summary: 顧客詳細（CUSTOMER は自社のみ。担当社員は返さない）
+      x-function-id: F-CUS-02
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: string }, example: "CS00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/CustomerVO' } } } ] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [customers]
+      operationId: updateCustomer
+      summary: 顧客更新（連絡先・担当社員を全件置換）
+      description: 成功 I0011。updatedAt 不一致は 409 E0051。担当社員の解除は is_active=false、同じ社員の再割当は同じ行を有効に戻す（割当日を当日に更新）
+      x-function-id: F-CUS-04
+      x-roles: [ADMIN]
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: string }, example: "CS00000001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerSaveDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /customers/{customerId}/activate:
+    post:
+      tags: [customers]
+      operationId: activateCustomer
+      summary: 顧客を有効化
+      description: 成功 I0034
+      x-function-id: F-CUS-05
+      x-roles: [ADMIN]
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: string }, example: "CS00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /customers/{customerId}/deactivate:
+    post:
+      tags: [customers]
+      operationId: deactivateCustomer
+      summary: 顧客を無効化（新規注文の対象外）
+      description: 成功 I0035。以後、新規注文・申請の対象外（BR-CUS-002）
+      x-function-id: F-CUS-05
+      x-roles: [ADMIN]
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: string }, example: "CS00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /products:
+    get:
+      tags: [products]
+      operationId: pageProducts
+      summary: 商品一覧
+      description: 並び順は固定（商品コード昇順）。EMPLOYEE は status 指定に関わらず ACTIVE のみ（BR-PRD-003）
+      x-function-id: F-PRD-01
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: keyword, in: query, required: false, schema: { type: string }, description: "商品コード・商品名の部分一致" }
+        - { name: productCategory, in: query, required: false, schema: { type: string } }
+        - { name: taxCategory, in: query, required: false, schema: { $ref: '#/components/schemas/TaxCategory' } }
+        - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/ProductStatus' } }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/ProductVO' } } } } ] } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [products]
+      operationId: createProduct
+      summary: 商品登録
+      description: 成功 I0010
+      x-function-id: F-PRD-03
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductSaveDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultString' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /products/{productId}:
+    get:
+      tags: [products]
+      operationId: getProduct
+      summary: 商品詳細
+      x-function-id: F-PRD-02
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: productId, in: path, required: true, schema: { type: string }, example: "PR00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/ProductVO' } } } ] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [products]
+      operationId: updateProduct
+      summary: 商品更新
+      description: 成功 I0011。updatedAt 不一致は 409 E0051。DRAFT / RETURNED 注文は次回保存時に新しい値で再複写される（BR-PRD-002）
+      x-function-id: F-PRD-04
+      x-roles: [ADMIN]
+      parameters:
+        - { name: productId, in: path, required: true, schema: { type: string }, example: "PR00000001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductSaveDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /products/{productId}/activate:
+    post:
+      tags: [products]
+      operationId: activateProduct
+      summary: 商品を有効化
+      description: 成功 I0034
+      x-function-id: F-PRD-05
+      x-roles: [ADMIN]
+      parameters:
+        - { name: productId, in: path, required: true, schema: { type: string }, example: "PR00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /products/{productId}/deactivate:
+    post:
+      tags: [products]
+      operationId: deactivateProduct
+      summary: 商品を無効化（新規注文で選択不可）
+      description: 成功 I0035。以後、明細への追加・申請の対象外（BR-PRD-003）
+      x-function-id: F-PRD-05
+      x-roles: [ADMIN]
+      parameters:
+        - { name: productId, in: path, required: true, schema: { type: string }, example: "PR00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /tax-rates:
+    get:
+      tags: [products]
+      operationId: listTaxRates
+      summary: 税率一覧
+      x-function-id: F-PRD-01
+      x-roles: [ADMIN, EMPLOYEE]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/TaxRateVO' } } } } ] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /orders:
+    get:
+      tags: [orders]
+      operationId: pageOrders
+      summary: 注文検索（データ範囲で絞り込み）
+      x-function-id: F-ORD-01
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: orderId, in: query, required: false, schema: { type: string }, description: "注文番号の前方一致" }
+        - { name: customerId, in: query, required: false, schema: { type: string } }
+        - { name: statuses, in: query, required: false, schema: { type: array, items: { $ref: '#/components/schemas/OrderStatus' } }, description: "複数指定可" }
+        - { name: orderDateFrom, in: query, required: false, schema: { type: string, format: date } }
+        - { name: orderDateTo, in: query, required: false, schema: { type: string, format: date } }
+        - { name: sort, in: query, required: false, schema: { type: string }, description: "`{field}:{asc|desc}`。field は id / orderDate / totalAmount / status / updatedAt のみ（それ以外は 400 E0008）。既定 updatedAt:desc" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/OrderSummaryVO' } } } } ] } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    post:
+      tags: [orders]
+      operationId: createOrder
+      summary: 下書き注文登録（単価は商品マスタから複写し、金額はサーバー再計算）
+      description: 成功 I0010（{0}=注文番号）。保存後の注文（採番した注文番号・再計算後の金額・updatedAt）を返す。無効顧客は 409 E0054（BR-CUS-002）。担当者・訂正元は BR-ORD-008 / BR-ORD-009
+      x-function-id: F-ORD-02
+      x-roles: [ADMIN, EMPLOYEE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrderSaveDTO' }
+      responses:
+        '200':
+          description: 成功（保存後の注文）
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/OrderVO' } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders/{orderId}:
+    get:
+      tags: [orders]
+      operationId: getOrder
+      summary: 注文詳細（明細・状態履歴・現在の承認依頼IDを含む）
+      x-function-id: F-ORD-01
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/OrderVO' } } } ] }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [orders]
+      operationId: updateOrder
+      summary: 注文更新（DRAFT / RETURNED のみ）
+      description: 成功 I0011。updatedAt で楽観ロック（不一致 409 E0051）。保存のたびに商品コード・名称・単価・税率を再複写して再計算する（BR-PRD-002）。保存後の注文（再計算後の金額・新しい updatedAt）を返す
+      x-function-id: F-ORD-03
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrderSaveDTO' }
+      responses:
+        '200':
+          description: 成功（保存後の注文）
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/OrderVO' } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders/{orderId}/submit:
+    post:
+      tags: [orders]
+      operationId: submitOrder
+      summary: 承認依頼（申請・再申請）
+      description: 成功 I0020。商品・税率を再複写・再計算して確定し、承認ルールをスナップショットして通知を投入する（BR-PRD-002 / BR-APR-001 / BR-NTF-003）。無効顧客・無効商品・担当外は 409 E0054（BR-ORD-010）。updatedAt 不一致は 409 E0051
+      x-function-id: F-ORD-04
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrderStateDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders/{orderId}/cancel:
+    post:
+      tags: [orders]
+      operationId: cancelOrder
+      summary: 注文取消し
+      description: 成功 I0021。DRAFT / RETURNED は ADMIN・担当 EMPLOYEE、APPROVED は ADMIN のみ（EMPLOYEE は 403 E0002）。PENDING_APPROVAL・CANCELLED は 409 E0006（BR-ORD-007）。updatedAt 不一致は 409 E0051
+      x-function-id: F-ORD-05
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrderCancelDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders/{orderId}/approval-histories:
+    get:
+      tags: [orders]
+      operationId: listApprovalHistories
+      summary: 承認履歴
+      description: CUSTOMER には操作者（actedBy / actedByName）と理由（reason）を null で返す（BR-APR-006）
+      x-function-id: F-ORD-01
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/ApprovalHistoryVO' } } } } ] }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /approval-requests:
+    get:
+      tags: [approvals]
+      operationId: pageApprovalRequests
+      summary: 承認待ち一覧（PENDING の承認依頼。有効な ADMIN 全員が参照でき、自分の申請は canApprove=false）
+      description: 並び順は固定（申請日時の古い順）
+      x-function-id: F-APR-01
+      x-roles: [ADMIN]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: orderId, in: query, required: false, schema: { type: string } }
+        - { name: customerId, in: query, required: false, schema: { type: string } }
+        - { name: requestedDateFrom, in: query, required: false, schema: { type: string, format: date } }
+        - { name: requestedDateTo, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/ApprovalRequestVO' } } } } ] } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /approval-requests/{approvalRequestId}/approve:
+    post:
+      tags: [approvals]
+      operationId: approveApprovalRequest
+      summary: 承認
+      description: 成功 I0022。有効な ADMIN のうち申請者以外が実行でき、実行者を approver_user_id に記録する。申請者本人は 409 E0056（BR-APR-002）。処理済みは 409 E0006（BR-APR-005）
+      x-function-id: F-APR-02
+      x-roles: [ADMIN]
+      parameters:
+        - { name: approvalRequestId, in: path, required: true, schema: { type: string }, example: "AQ00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /approval-requests/{approvalRequestId}/return:
+    post:
+      tags: [approvals]
+      operationId: returnApprovalRequest
+      summary: 差戻し（理由必須）
+      description: 成功 I0023。有効な ADMIN のうち申請者以外が実行できる。申請者本人は 409 E0056（BR-APR-002）。処理済みは 409 E0006（BR-APR-005）
+      x-function-id: F-APR-02
+      x-roles: [ADMIN]
+      parameters:
+        - { name: approvalRequestId, in: path, required: true, schema: { type: string }, example: "AQ00000001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalReturnDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /approval-rules:
+    get:
+      tags: [approvals]
+      operationId: listApprovalRules
+      summary: 承認ルール一覧
+      description: 並び順は固定（適用開始日の新しい順）
+      x-function-id: F-APR-03
+      x-roles: [ADMIN]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/ApprovalRuleVO' } } } } ] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [approvals]
+      operationId: createApprovalRule
+      summary: 承認ルール登録
+      description: 成功 I0010。初版は approverRole=ADMIN・approvalStep=1 のみ受け付ける（それ以外は 400 E0008。BR-APR-001）
+      x-function-id: F-APR-03
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalRuleSaveDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultString' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /approval-rules/{approvalRuleId}:
+    put:
+      tags: [approvals]
+      operationId: updateApprovalRule
+      summary: 承認ルール更新（申請済み注文には遡及しない）
+      description: 成功 I0011。制約は createApprovalRule と同じ。updatedAt 不一致は 409 E0051
+      x-function-id: F-APR-03
+      x-roles: [ADMIN]
+      parameters:
+        - { name: approvalRuleId, in: path, required: true, schema: { type: string }, example: "AR00000001" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalRuleSaveDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders/{orderId}/attachments:
+    get:
+      tags: [attachments]
+      operationId: listOrderAttachments
+      summary: 添付一覧（CUSTOMER は公開かつ SAFE のみ）
+      x-function-id: F-ATT-01
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/AttachmentVO' } } } } ] }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [attachments]
+      operationId: uploadOrderAttachment
+      summary: 添付アップロード（PENDING で登録）
+      description: 成功 I0024。CANCELLED の注文は 409 E0006（BR-FIL-001）。許可外形式 409 E0009、空ファイル 400 E0053、1 ファイル 10 MiB 超 413 E0010、注文合計 50 MiB 超 413 E0052（BR-FIL-002 / BR-FIL-005）
+      x-function-id: F-ATT-02
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, visibility]
+              properties:
+                file: { type: string, format: binary, description: "PDF/DOCX/XLSX/CSV/PNG/JPG/JPEG、1 バイト以上 10 MiB 以下。ファイル名は 255 文字以内（超過は 400 E0008）" }
+                visibility: { $ref: '#/components/schemas/AttachmentVisibility' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultString' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+
+  /attachments/{attachmentId}/download:
+    get:
+      tags: [attachments]
+      operationId: downloadAttachment
+      summary: 添付ダウンロード（SAFE のみ・再認可）
+      x-function-id: F-ATT-03
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      parameters:
+        - { name: attachmentId, in: path, required: true, schema: { type: string }, example: "AT00000001" }
+      responses:
+        '200':
+          description: ファイル（Result で包まない。Content-Disposition 付き）
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /attachments/{attachmentId}:
+    delete:
+      tags: [attachments]
+      operationId: deleteAttachment
+      summary: 添付削除（論理削除）
+      description: 成功 I0012。CANCELLED の注文は 409 E0006（BR-FIL-001）
+      x-function-id: F-ATT-04
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: attachmentId, in: path, required: true, schema: { type: string }, example: "AT00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders/{orderId}/pdf:
+    get:
+      tags: [reports]
+      operationId: downloadOrderPdf
+      summary: 注文書 PDF（APPROVED のみ）
+      description: APPROVED 以外は 409 E0006（BR-RPT-001）
+      x-function-id: F-RPT-01
+      x-roles: [ADMIN, EMPLOYEE, CUSTOMER]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string }, example: "OD00000001" }
+      responses:
+        '200':
+          description: ファイル（Result で包まない。Content-Disposition 付き）
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /reports/order-summary:
+    get:
+      tags: [reports]
+      operationId: getOrderSummary
+      summary: 注文集計（月別）
+      x-function-id: F-RPT-02
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: orderDateFrom, in: query, required: true, schema: { type: string, format: date } }
+        - { name: orderDateTo, in: query, required: true, schema: { type: string, format: date } }
+        - { name: customerId, in: query, required: false, schema: { type: string } }
+        - { name: statuses, in: query, required: false, schema: { type: array, items: { $ref: '#/components/schemas/OrderStatus' } }, description: "集計に含める状態。既定 APPROVED" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/OrderSummaryReportVO' } } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reports/customer-summary:
+    get:
+      tags: [reports]
+      operationId: getCustomerSummary
+      summary: 顧客別集計
+      x-function-id: F-RPT-02
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: orderDateFrom, in: query, required: true, schema: { type: string, format: date } }
+        - { name: orderDateTo, in: query, required: true, schema: { type: string, format: date } }
+        - { name: customerId, in: query, required: false, schema: { type: string } }
+        - { name: statuses, in: query, required: false, schema: { type: array, items: { $ref: '#/components/schemas/OrderStatus' } }, description: "集計に含める状態。既定 APPROVED" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/CustomerSummaryReportVO' } } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reports/product-summary:
+    get:
+      tags: [reports]
+      operationId: getProductSummary
+      summary: 商品別集計
+      x-function-id: F-RPT-02
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: orderDateFrom, in: query, required: true, schema: { type: string, format: date } }
+        - { name: orderDateTo, in: query, required: true, schema: { type: string, format: date } }
+        - { name: customerId, in: query, required: false, schema: { type: string } }
+        - { name: statuses, in: query, required: false, schema: { type: array, items: { $ref: '#/components/schemas/OrderStatus' } }, description: "集計に含める状態。既定 APPROVED" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/ProductSummaryReportVO' } } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /export-jobs:
+    post:
+      tags: [reports]
+      operationId: createExportJob
+      summary: CSV 出力依頼（すべて export_jobs に記録。10,000 件以下は同期生成で READY、10,001 件以上は QUEUED）
+      description: READY なら I0028、QUEUED なら I0027（BR-RPT-002）
+      x-function-id: F-RPT-03
+      x-roles: [ADMIN, EMPLOYEE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportJobCreateDTO' }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/ExportJobVO' } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      tags: [reports]
+      operationId: pageExportJobs
+      summary: 出力ジョブ一覧（ADMIN は全員分、EMPLOYEE は自分の依頼分。BR-RPT-003）
+      description: 並び順は固定（依頼日時の新しい順）
+      x-function-id: F-RPT-03
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: requestedBy, in: query, required: false, schema: { type: string, maxLength: 10 }, description: "依頼者のユーザー ID（完全一致。ADMIN のみ有効。EMPLOYEE は指定しても自分に固定）" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/ExportJobVO' } } } } ] } } } ] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /export-jobs/{exportJobId}:
+    get:
+      tags: [reports]
+      operationId: getExportJob
+      summary: 出力ジョブ状態
+      x-function-id: F-RPT-03
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: exportJobId, in: path, required: true, schema: { type: string }, example: "EJ00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { $ref: '#/components/schemas/ExportJobVO' } } } ] }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /export-jobs/{exportJobId}/download:
+    get:
+      tags: [reports]
+      operationId: downloadExportJob
+      summary: CSV ダウンロード（UTF-8 BOM・READY のみ）
+      x-function-id: F-RPT-03
+      x-roles: [ADMIN, EMPLOYEE]
+      parameters:
+        - { name: exportJobId, in: path, required: true, schema: { type: string }, example: "EJ00000001" }
+      responses:
+        '200':
+          description: ファイル（Result で包まない。Content-Disposition 付き）
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /notification-logs:
+    get:
+      tags: [operations]
+      operationId: pageNotificationLogs
+      summary: 通知履歴
+      description: 並び順は固定（作成日時の新しい順）
+      x-function-id: F-NTF-01
+      x-roles: [ADMIN]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/NotificationStatus' } }
+        - { name: notificationEvent, in: query, required: false, schema: { $ref: '#/components/schemas/NotificationEvent' } }
+        - { name: createdDateFrom, in: query, required: false, schema: { type: string, format: date } }
+        - { name: createdDateTo, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/NotificationLogVO' } } } } ] } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /notification-logs/{notificationLogId}/retry:
+    post:
+      tags: [operations]
+      operationId: retryNotification
+      summary: 失敗通知の再送
+      description: FAILED のみ（他の状態は 409 E0006）。attempt_count を 0、next_attempt_at を現在時刻に戻して QUEUED にする（BR-NTF-002）。成功 I0026
+      x-function-id: F-NTF-01
+      x-roles: [ADMIN]
+      parameters:
+        - { name: notificationLogId, in: path, required: true, schema: { type: string }, example: "NL00000001" }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultVoid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /audit-logs:
+    get:
+      tags: [operations]
+      operationId: pageAuditLogs
+      summary: 監査ログ
+      description: 並び順は固定（発生日時の新しい順）
+      x-function-id: F-AUD-01
+      x-roles: [ADMIN]
+      parameters:
+        - { name: pageNum, in: query, required: false, schema: { type: integer, format: int32, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, format: int32, default: 20, minimum: 1, maximum: 100 } }
+        - { name: actorUserId, in: query, required: false, schema: { type: string, maxLength: 10 }, description: 操作者のユーザー ID（完全一致） }
+        - { name: auditAction, in: query, required: false, schema: { type: string } }
+        - { name: targetType, in: query, required: false, schema: { type: string } }
+        - { name: targetId, in: query, required: false, schema: { type: string } }
+        - { name: occurredDateFrom, in: query, required: false, schema: { type: string, format: date } }
+        - { name: occurredDateTo, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { allOf: [ { $ref: '#/components/schemas/Result' }, { type: object, properties: { data: { allOf: [ { $ref: '#/components/schemas/PageResult' }, { type: object, properties: { records: { type: array, items: { $ref: '#/components/schemas/AuditLogVO' } } } } ] } } } ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
 # ---------------------------------------------------------------------
 # components：統一レスポンスエンベロープ（Result/PageResult/ErrorResponse）、スキーマ、セキュリティスキーム
@@ -164,7 +1215,12 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
     Conflict:
-      description: 状態の競合（409）
+      description: 状態の競合（409。状態不可 E0006、楽観ロック不一致 E0051 ほか）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    PayloadTooLarge:
+      description: ファイルサイズ超過（413。1 ファイル E0010、注文合計 E0052）
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -192,7 +1248,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Result'
         - type: object
-          properties: { data: { type: string, example: "U0001" } }
+          properties: { data: { type: string, example: "E0001" } }
     ResultVoid:
       allOf:
         - $ref: '#/components/schemas/Result'
@@ -229,27 +1285,407 @@ components:
     # ---- 列挙（UPPER_SNAKE。値域はデータ辞書 T07 を正とする）----
     Role:
       type: string
-      description: ロール（例。ロールはプロジェクトで定義する）
-      enum: [ADMIN, MANAGER, USER]
-      example: USER
+      description: ロール（T07-1）
+      enum: [ADMIN, EMPLOYEE, CUSTOMER]
+    UserStatus:
+      type: string
+      description: 利用者状態（T07-2）
+      enum: [ACTIVE, DISABLED]
+    CustomerStatus:
+      type: string
+      description: 顧客状態（T07-3）
+      enum: [ACTIVE, INACTIVE]
+    ProductStatus:
+      type: string
+      description: 商品状態（T07-4）
+      enum: [ACTIVE, INACTIVE]
+    TaxCategory:
+      type: string
+      description: 税区分（T07-5）
+      enum: [STANDARD, REDUCED, EXEMPT]
+    OrderStatus:
+      type: string
+      description: 注文状態（T07-6）
+      enum: [DRAFT, PENDING_APPROVAL, RETURNED, APPROVED, CANCELLED]
+    ApprovalRequestStatus:
+      type: string
+      description: 承認依頼状態（T07-7）
+      enum: [PENDING, APPROVED, RETURNED]
+    ApprovalAction:
+      type: string
+      description: 承認操作（T07-8）
+      enum: [APPROVE, RETURN]
+    AttachmentVisibility:
+      type: string
+      description: 添付公開範囲（T07-9）
+      enum: [INTERNAL, CUSTOMER]
+    ScanStatus:
+      type: string
+      description: スキャン状態（T07-10）
+      enum: [PENDING, SAFE, REJECTED]
+    NotificationEvent:
+      type: string
+      description: 通知イベント（T07-11）
+      enum: [ORDER_SUBMITTED, ORDER_APPROVED, ORDER_RETURNED, ORDER_CANCELLED, EXPORT_COMPLETED]
+    NotificationStatus:
+      type: string
+      description: 通知状態（T07-12）
+      enum: [QUEUED, SENDING, SENT, FAILED]
+    ExportStatus:
+      type: string
+      description: 出力状態（T07-13）
+      enum: [QUEUED, RUNNING, READY, FAILED, EXPIRED]
 
-    # ---- 業務データ構造の例（項目は camelCase）----
+    # ---- 業務データ構造（項目は camelCase。VO=応答、DTO=要求）----
     LoginInitRequest:
       type: object
       required: [userId]
       properties:
-        userId: { type: string, example: "U0001", description: ユーザID }
+        userId: { type: string, maxLength: 10, example: "E0001", description: ユーザID }
+    MagicLinkVerifyRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, description: メールの Magic Link に含まれるワンタイムトークン }
+    TokenResponse:
+      type: object
+      required: [accessToken, tokenType]
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, example: "Bearer" }
+    MeVO:
+      type: object
+      properties:
+        userId: { type: string, example: "E0001" }
+        userName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        customerId: { type: string, nullable: true, description: CUSTOMER のみ }
+        customerName: { type: string, nullable: true }
+    UserVO:
+      type: object
+      properties:
+        userId: { type: string }
+        userName: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        customerId: { type: string, nullable: true }
+        customerName: { type: string, nullable: true }
+        isLocked: { type: boolean }
+        lockStartedAt: { type: string, format: date-time, nullable: true }
+        lockReason: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
     UserCreateDTO:
       type: object
-      required: [userName, email, role, departmentId]
+      required: [userName, email, role]
       properties:
-        userName: { type: string, maxLength: 100, example: "山田 太郎" }
-        email: { type: string, maxLength: 255, description: メールアドレス（認証用・必須）, example: "taro@example.com" }
-        phoneNumber: { type: string, description: 電話番号（任意）, example: "090-1234-5678" }
+        userName: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 255, format: email, description: Magic Link 送信先 }
         role: { $ref: '#/components/schemas/Role' }
-        departmentId: { type: string, example: "DP0001" }
-    DisableDTO:
+        customerId: { type: string, maxLength: 10, description: role=CUSTOMER のとき必須。ADMIN / EMPLOYEE は指定不可（BR-USR-003） }
+    UserUpdateDTO:
       type: object
-      required: [disableDate]
+      required: [userName, email, role, updatedAt]
       properties:
-        disableDate: { type: string, format: date, description: 停止日, example: "2026-09-30" }
+        userName: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 255, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        customerId: { type: string, maxLength: 10, description: role=CUSTOMER のとき必須。ADMIN / EMPLOYEE は指定不可（BR-USR-003） }
+        updatedAt: { type: string, format: date-time, description: 楽観ロック用（取得時の値） }
+    UserLockDTO:
+      type: object
+      properties:
+        lockReason: { type: string, maxLength: 500 }
+    CustomerSummaryVO:
+      type: object
+      properties:
+        id: { type: string, example: "CS00000001" }
+        customerCode: { type: string }
+        customerName: { type: string }
+        email: { type: string, nullable: true }
+        phoneNumber: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/CustomerStatus' }
+    CustomerVO:
+      type: object
+      properties:
+        id: { type: string }
+        customerCode: { type: string }
+        customerName: { type: string }
+        email: { type: string, nullable: true }
+        phoneNumber: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/CustomerStatus' }
+        contacts: { type: array, items: { $ref: '#/components/schemas/CustomerContactDTO' } }
+        assignedEmployees: { type: array, items: { $ref: '#/components/schemas/AssignedEmployeeVO' }, description: CUSTOMER には返さない }
+        updatedAt: { type: string, format: date-time }
+    CustomerContactDTO:
+      type: object
+      required: [contactName, email]
+      properties:
+        id: { type: string, description: 既存行の更新時のみ }
+        contactName: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 255, format: email }
+        isNotificationRecipient: { type: boolean, default: false }
+        isActive: { type: boolean, default: true }
+    AssignedEmployeeVO:
+      type: object
+      properties:
+        userId: { type: string }
+        userName: { type: string }
+        assignedDate: { type: string, format: date, description: 割当日（再割当時は当日） }
+    CustomerSaveDTO:
+      type: object
+      required: [customerCode, customerName]
+      properties:
+        customerCode: { type: string, maxLength: 30, pattern: '^[A-Za-z0-9-]+$', description: 英数字とハイフン。更新時は変更不可 }
+        customerName: { type: string, maxLength: 200 }
+        email: { type: string, maxLength: 255, format: email }
+        phoneNumber: { type: string, maxLength: 50 }
+        contacts: { type: array, items: { $ref: '#/components/schemas/CustomerContactDTO' } }
+        assignedEmployeeUserIds: { type: array, items: { type: string, pattern: '^[AEC][0-9]{4}$' }, description: 担当 EMPLOYEE のユーザID（有効な EMPLOYEE） }
+        updatedAt: { type: string, format: date-time, description: 更新時は必須（楽観ロック） }
+    ProductVO:
+      type: object
+      properties:
+        id: { type: string, example: "PR00000001" }
+        productCode: { type: string }
+        productName: { type: string }
+        productCategory: { type: string, nullable: true }
+        standardUnitPrice: { type: number, multipleOf: 0.01 }
+        taxCategory: { $ref: '#/components/schemas/TaxCategory' }
+        taxRate: { type: number }
+        status: { $ref: '#/components/schemas/ProductStatus' }
+        updatedAt: { type: string, format: date-time }
+    ProductSaveDTO:
+      type: object
+      required: [productCode, productName, standardUnitPrice, taxCategory]
+      properties:
+        productCode: { type: string, maxLength: 50, description: 更新時は変更不可 }
+        productName: { type: string, maxLength: 200 }
+        productCategory: { type: string, maxLength: 100 }
+        standardUnitPrice: { type: number, multipleOf: 0.01, minimum: 0 }
+        taxCategory: { $ref: '#/components/schemas/TaxCategory' }
+        updatedAt: { type: string, format: date-time, description: 更新時は必須（楽観ロック） }
+    TaxRateVO:
+      type: object
+      properties:
+        taxCategory: { $ref: '#/components/schemas/TaxCategory' }
+        taxRate: { type: number, example: 10.00 }
+    OrderSummaryVO:
+      type: object
+      properties:
+        id: { type: string, description: 注文番号, example: "OD00000001" }
+        customerId: { type: string }
+        customerName: { type: string }
+        orderDate: { type: string, format: date }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        totalAmount: { type: number, multipleOf: 0.01 }
+        salesUserId: { type: string }
+        salesUserName: { type: string }
+        updatedAt: { type: string, format: date-time }
+    OrderVO:
+      type: object
+      properties:
+        id: { type: string, description: 注文番号 }
+        customerId: { type: string }
+        customerName: { type: string }
+        salesUserId: { type: string }
+        salesUserName: { type: string }
+        orderDate: { type: string, format: date }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        subtotalAmount: { type: number, multipleOf: 0.01 }
+        taxAmount: { type: number, multipleOf: 0.01 }
+        totalAmount: { type: number, multipleOf: 0.01 }
+        revisedFromOrderId: { type: string, nullable: true }
+        cancelReason: { type: string, nullable: true, description: CUSTOMER には null（BR-APR-006） }
+        items: { type: array, items: { $ref: '#/components/schemas/OrderItemVO' } }
+        statusHistories: { type: array, items: { $ref: '#/components/schemas/OrderStatusHistoryVO' } }
+        currentApprovalRequestId: { type: string, nullable: true, description: PENDING_APPROVAL のときの承認依頼ID }
+        canApprove: { type: boolean, description: "ログイン者がこの注文を承認・差戻しできるか（ADMIN かつ PENDING_APPROVAL かつ申請者本人でない。BR-APR-002）" }
+        updatedAt: { type: string, format: date-time, description: 楽観ロック用（マイクロ秒 6 桁。そのまま返送する） }
+    OrderItemVO:
+      type: object
+      properties:
+        id: { type: string }
+        lineNumber: { type: integer }
+        productId: { type: string }
+        productCode: { type: string }
+        productName: { type: string }
+        quantity: { type: number, multipleOf: 0.001 }
+        unitPrice: { type: number, multipleOf: 0.01 }
+        taxCategory: { $ref: '#/components/schemas/TaxCategory' }
+        taxRate: { type: number }
+        lineAmount: { type: number, multipleOf: 0.01 }
+        taxAmount: { type: number, multipleOf: 0.01 }
+    OrderStatusHistoryVO:
+      type: object
+      properties:
+        fromStatus: { allOf: [ { $ref: '#/components/schemas/OrderStatus' } ], nullable: true }
+        toStatus: { $ref: '#/components/schemas/OrderStatus' }
+        reason: { type: string, nullable: true, description: CUSTOMER には null（BR-APR-006） }
+        changedBy: { type: string, nullable: true, description: CUSTOMER には null（BR-APR-006） }
+        changedByName: { type: string, nullable: true, description: CUSTOMER には null（BR-APR-006） }
+        changedAt: { type: string, format: date-time }
+    OrderSaveDTO:
+      type: object
+      required: [customerId, orderDate, items]
+      properties:
+        customerId: { type: string, maxLength: 10, description: 有効かつ（EMPLOYEE は）担当顧客。更新時は変更不可 }
+        salesUserId: { type: string, pattern: '^[AEC][0-9]{4}$', description: "担当者（BR-ORD-008）。ADMIN は必須（顧客の有効な担当 EMPLOYEE）。EMPLOYEE は指定不要（本人を設定）。更新時の変更は ADMIN のみ" }
+        orderDate: { type: string, format: date }
+        revisedFromOrderId: { type: string, maxLength: 10, description: "訂正元（BR-ORD-009）。新規作成時のみ指定でき、CANCELLED・同一顧客・未訂正の注文に限る。更新時は無視する" }
+        items: { type: array, items: { $ref: '#/components/schemas/OrderItemSaveDTO' }, minItems: 1, maxItems: 999, description: "明細金額・小計・合計が numeric(15,2)（整数 13 桁）を超える場合は 400 E0008" }
+        updatedAt: { type: string, format: date-time, description: 更新時は必須（楽観ロック） }
+    OrderItemSaveDTO:
+      type: object
+      required: [productId, quantity]
+      description: 単価は受け付けない。商品の標準単価をサーバーで複写する（BR-PRD-002）
+      properties:
+        productId: { type: string, maxLength: 10, description: 追加・変更する明細は有効商品。既存の無効商品の明細は保存可（申請時に 409 E0054） }
+        quantity: { type: number, multipleOf: 0.001, exclusiveMinimum: true, minimum: 0, maximum: 999999999999.999, description: numeric(15,3) }
+    OrderStateDTO:
+      type: object
+      required: [updatedAt]
+      properties:
+        updatedAt: { type: string, format: date-time, description: 楽観ロック用 }
+    OrderCancelDTO:
+      type: object
+      required: [cancelReason, updatedAt]
+      properties:
+        cancelReason: { type: string, minLength: 1, maxLength: 500 }
+        updatedAt: { type: string, format: date-time }
+    ApprovalRequestVO:
+      type: object
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        customerName: { type: string }
+        totalAmount: { type: number, multipleOf: 0.01 }
+        approvalStep: { type: integer }
+        status: { $ref: '#/components/schemas/ApprovalRequestStatus' }
+        requestedBy: { type: string, description: 申請者（approval_requests.created_by） }
+        requestedByName: { type: string }
+        requestedAt: { type: string, format: date-time }
+        canApprove: { type: boolean, description: ログイン者が申請者本人でなければ true（BR-APR-002） }
+    ApprovalReturnDTO:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    ApprovalHistoryVO:
+      type: object
+      properties:
+        approvalRequestId: { type: string }
+        approvalAction: { $ref: '#/components/schemas/ApprovalAction' }
+        reason: { type: string, nullable: true, description: CUSTOMER には null（BR-APR-006） }
+        actedBy: { type: string, nullable: true, description: CUSTOMER には null（BR-APR-006） }
+        actedByName: { type: string, nullable: true, description: CUSTOMER には null（BR-APR-006） }
+        actedAt: { type: string, format: date-time }
+    ApprovalRuleVO:
+      type: object
+      properties:
+        id: { type: string }
+        minAmount: { type: number, multipleOf: 0.01 }
+        maxAmount: { type: number, multipleOf: 0.01, nullable: true }
+        approvalStep: { type: integer }
+        approverRole: { $ref: '#/components/schemas/Role' }
+        isActive: { type: boolean }
+        effectiveFromDate: { type: string, format: date }
+        effectiveToDate: { type: string, format: date, nullable: true }
+        updatedAt: { type: string, format: date-time }
+    ApprovalRuleSaveDTO:
+      type: object
+      required: [minAmount, approvalStep, approverRole, isActive, effectiveFromDate]
+      properties:
+        minAmount: { type: number, multipleOf: 0.01, minimum: 0 }
+        maxAmount: { type: number, multipleOf: 0.01, description: 空は上限なし。minAmount 以上（違反は 400 E0008） }
+        approvalStep: { type: integer, minimum: 1, maximum: 1, description: 初版は 1 のみ（BR-APR-001） }
+        approverRole: { allOf: [ { $ref: '#/components/schemas/Role' } ], description: 初版は ADMIN のみ（BR-APR-001） }
+        isActive: { type: boolean }
+        effectiveFromDate: { type: string, format: date }
+        effectiveToDate: { type: string, format: date, description: effectiveFromDate 以降（違反は 400 E0008） }
+        updatedAt: { type: string, format: date-time, description: 更新時は必須（楽観ロック） }
+    AttachmentVO:
+      type: object
+      properties:
+        id: { type: string }
+        originalFileName: { type: string }
+        contentType: { type: string }
+        fileSize: { type: integer, format: int64, description: バイト }
+        visibility: { $ref: '#/components/schemas/AttachmentVisibility' }
+        scanStatus: { $ref: '#/components/schemas/ScanStatus' }
+        uploadedBy: { type: string }
+        uploadedByName: { type: string }
+        uploadedAt: { type: string, format: date-time }
+    OrderSummaryReportVO:
+      type: object
+      properties:
+        yearMonth: { type: string, example: "2026-10" }
+        orderCount: { type: integer }
+        subtotalAmount: { type: number, multipleOf: 0.01 }
+        taxAmount: { type: number, multipleOf: 0.01 }
+        totalAmount: { type: number, multipleOf: 0.01 }
+    CustomerSummaryReportVO:
+      type: object
+      properties:
+        customerId: { type: string }
+        customerCode: { type: string }
+        customerName: { type: string }
+        orderCount: { type: integer }
+        totalAmount: { type: number, multipleOf: 0.01 }
+    ProductSummaryReportVO:
+      type: object
+      properties:
+        productId: { type: string }
+        productCode: { type: string }
+        productName: { type: string }
+        quantity: { type: number, multipleOf: 0.001 }
+        lineAmount: { type: number, multipleOf: 0.01 }
+    ExportJobCreateDTO:
+      type: object
+      required: [orderDateFrom, orderDateTo]
+      description: "注文 CSV（1 行＝1 注文。列：注文番号、注文日、顧客コード、顧客名、状態、担当者、小計、税額、合計）。件数は注文数。ファイル名は orders_YYYYMMDD.csv（作成日。日本時間）"
+      properties:
+        orderDateFrom: { type: string, format: date }
+        orderDateTo: { type: string, format: date }
+        customerId: { type: string, maxLength: 10, description: 範囲外の顧客を指定した場合は 0 件（BR-AUTH-006） }
+        statuses: { type: array, items: { $ref: '#/components/schemas/OrderStatus' }, description: 未指定は APPROVED のみ }
+    ExportJobVO:
+      type: object
+      properties:
+        id: { type: string }
+        status: { $ref: '#/components/schemas/ExportStatus' }
+        recordCount: { type: integer }
+        filterCondition: { type: object }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        errorMessage: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+        requestedBy: { type: string, description: 依頼者（created_by） }
+        requestedByName: { type: string }
+    NotificationLogVO:
+      type: object
+      properties:
+        id: { type: string }
+        notificationEvent: { $ref: '#/components/schemas/NotificationEvent' }
+        orderId: { type: string, nullable: true }
+        recipientEmail: { type: string }
+        status: { $ref: '#/components/schemas/NotificationStatus' }
+        exportJobId: { type: string, nullable: true, description: EXPORT_COMPLETED のときの出力ジョブID }
+        attemptCount: { type: integer, description: 送信を試みた回数（初回を含む。最大 4） }
+        nextAttemptAt: { type: string, format: date-time, nullable: true, description: QUEUED のときの次回送信予定日時 }
+        errorMessage: { type: string, nullable: true }
+        sentAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    AuditLogVO:
+      type: object
+      properties:
+        id: { type: string }
+        actorUserId: { type: string, nullable: true }
+        actorUserName: { type: string, nullable: true }
+        auditAction: { type: string }
+        targetType: { type: string }
+        targetId: { type: string, nullable: true }
+        traceId: { type: string, nullable: true }
+        ipAddress: { type: string, nullable: true }
+        auditDetail: { type: object, nullable: true }
+        occurredAt: { type: string, format: date-time }

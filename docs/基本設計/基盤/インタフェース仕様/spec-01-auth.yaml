@@ -201,10 +201,10 @@ behavior_contracts:
         SecureRandom で 32 byte 生成 → Base64.getUrlEncoder().withoutPadding() でエンコード（§6.2）。
         UUID 等の低エントロピー生成は禁止。token は API 応答・ログに出力しない。
     role_mapping:
-      rule: "users.role INT → ENUM 文字列（ロールはプロジェクトで定義する）。例：1→ADMIN / 2→MANAGER / 3→USER / null・不正→USER。"
+      rule: "users.role INT → ENUM 文字列。DDMSAA は 1→ADMIN / 2→EMPLOYEE / 3→CUSTOMER（T07-1）。それ以外の値は既定ロールに置き換えず JWT を発行しない（401 E0004。spec-02-auth-service-ui.md §2）。"
 
   AuthStateStore:
     redis_key:
       rule: >-
         Magic Link トークンの Redis キー接頭辞は 'auth:magic-link:'（auth: を省略しないこと。§6.3）。
-        失敗カウントの接頭辞は 'auth:login:fail:'。
+        失敗カウントの接頭辞 'auth:login:fail:' は汎用 infra の予約で、DDMSAA では使用しない。

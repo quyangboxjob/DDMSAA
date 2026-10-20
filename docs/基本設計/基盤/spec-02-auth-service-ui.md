@@ -36,9 +36,10 @@
 |------|------|
 | ログイン資格情報 | `ユーザーID`（業務キー）+ メール **Magic Link**（1 回使用で失効、TTL=3600s、再送回数上限なし） |
 | 認証データソース（READ ONLY） | `users` / `user_contacts`（`email`）/ `system_locks` の 3 テーブル（業務 DDL 定義、auth-service は消費のみ） |
+| 監査（INSERT ONLY） | ログイン系の監査を `audit_logs` に追記する（`LOGIN_REQUESTED` / `LOGIN_SUCCEEDED` / `LOGIN_FAILED`。`共通/spec-08-business-rule-list.md` BR-AUD-001、§6.4） |
 | セッショントークン | **JWT access token のみ**（refresh token 不採用）；期限切れは再ログイン（`login-init` 再実行） |
-| 一時状態 | Magic Link token（ワンタイム資格情報）/ ログイン失敗カウント / ロック状態を **Redis** に保存（TTL 設定可）；業務テーブルには永続化しない |
-| 失敗/ロック | ログイン失敗 `max-login-failure-count`（既定 5）回でロック（1800s）、管理者解除が必要；業務ロック（`system_locks`）は業務側の定義に従い、ログイン時に検証 |
+| 一時状態 | Magic Link token（ワンタイム資格情報）だけを **Redis** に保存（TTL 設定可）；業務テーブルには永続化しない |
+| 失敗/ロック | **ログイン失敗回数によるロックは行わない**（パスワード試行が存在しないため。§6.5）。ロックは業務ロック（`system_locks`）のみで、ADMIN が設定・解除し、ログイン時に検証する |
 
 **外部 SSOT 参照：**
 
@@ -56,15 +57,15 @@
 <!-- devtool:block id="basic.foundation.springboot.02-auth-service-ui.s03" -->
 ## §2 ロール定義
 
-ロールはプロジェクトで定義する（プロジェクト固有の規約）。基盤が前提とする技術約定は次のとおりで、下表の ADMIN / MANAGER / USER は例である。
+DDMSAA のロールは次の 3 種で固定する（`開発規約/spec-data-dictionary-project-temp.md` T07-1、`共通/spec-03-auth-ui.md`）。
 
-| 区分 | ADMIN（例） | MANAGER（例） | USER（例） |
+| 区分 | ADMIN | EMPLOYEE | CUSTOMER |
 |------|----------|--------------------|----------|
 | DB 値（`users.role` INT） | `1` | `2` | `3` |
-| アプリ / API / JWT claim | `ADMIN` | `MANAGER` | `USER` |
+| アプリ / API / JWT claim | `ADMIN` | `EMPLOYEE` | `CUSTOMER` |
 
 - DB 列 `users.role` は **INT**、アプリ層・API 応答・JWT `role` claim はすべて **ENUM 文字列**を使用する。
-- `role` が `null` または不正値の場合に適用する既定ロールは、プロジェクトで定める（例：`USER`）。
+- `users.role` は NOT NULL かつ FK のため NULL は発生しない。上記以外の値を読み取った場合は既定ロールに置き換えず、ログイン不可（`loginInit` は送信なしで `I0001`、`verifyMagicLink` は 401 `E0004`）とし、error ログを出力する。
 - INT → ENUM 変換は `ServiceImpl` 内で実施する（詳細は §6.2 参照）。
 - `@PreAuthorize` ロールチェックは ENUM 文字列で行う（例：`@PreAuthorize("hasRole('ADMIN')")`）。
 
@@ -131,8 +132,6 @@ SecurityConfig（auth-service / business-service-core 共通 MVC 実装）
 | 設定キー | 既定値 | 単位 | 備考 |
 |----------|--------|------|------|
 | `app.auth.magic-link.ttl-seconds` | `3600` | 秒 | Magic Link TTL |
-| `app.auth.max-login-failure-count` | `5` | 回 | ログイン失敗上限 |
-| `app.auth.login-lockout-seconds` | `1800` | 秒 | ロック継続時間 / Redis TTL |
 | `app.jwt.expiration-seconds` | `3600` | 秒 | JWT access token 有効期限 |
 | `app.jwt.secret` | `${JWT_SECRET}` | — | 必須・環境変数 |
 | `app.jwt.issuer` | `${JWT_ISSUER:ddmsaa}` | — | JWT `iss` claim |
@@ -192,7 +191,7 @@ sequenceDiagram
 <!-- rule: auth.loginable-boundary -->
 | 条件 | 不可となる境界 |
 |------|---------------|
-| 停用 | ユーザーが停用状態である |
+| 停用 | `users.status = 2`（DISABLED） |
 | ロック | `system_locks.lock_started_at IS NOT NULL` かつ `lock_started_at <= now`（開始時刻到来でロック中） |
 | 存在しない / 論理削除 | `UserAuthView` 照会結果が `null`（`deleted_at IS NOT NULL` 等） |
 
@@ -215,7 +214,7 @@ sequenceDiagram
 **JWT 発行（access token only、refresh なし）：**
 
 - `sub`=ユーザーID（`users.user_id`）。
-- claim `role`=ENUM 文字列（`users.role` INT を ServiceImpl 内でマッピング）：例：`1→ADMIN`、`2→MANAGER`、`3→USER`、`null` / 不正→`USER`。
+- claim `role`=ENUM 文字列（`users.role` INT を ServiceImpl 内でマッピング）：`1→ADMIN`、`2→EMPLOYEE`、`3→CUSTOMER`。それ以外の値は JWT を発行せず 401 `E0004`（§2）。
 - `iss` / `exp`（`app.jwt.expiration-seconds=3600`）、アルゴリズム：HS256。
 - 発行は `infrastructure.JwtUtil.issue(userId, role)` 経由。
 
@@ -233,7 +232,6 @@ sequenceDiagram
 | キー | 値 | TTL | 特記 |
 |------|----|-----|------|
 | `auth:magic-link:{token}` | ユーザーID（`user_id`） | `app.auth.magic-link.ttl-seconds`（既定 3600s） | `GETDEL` 原子操作でワンタイム消費；再送時は旧 key を DEL して新規作成 |
-| `auth:login:fail:{ユーザーID}` | 失敗カウント（INT） | `app.auth.login-lockout-seconds`（既定 1800s） | 上限（既定 5）到達でロック；TTL 経過で自動リセット；管理者手動解除は Redis key の DEL |
 
 - 期限切れは Redis TTL が自動クリーンアップ、バッチ処理不要。
 - `AuthStateStore` は `infrastructure` モジュールに配置（`StringRedisTemplate` / Lettuce 使用）。
@@ -243,13 +241,14 @@ sequenceDiagram
 
 ### §6.4 認証データソース（業務 DDL 読み取り専用）
 
-auth-service は以下の 3 テーブルを **READ ONLY** で参照する。テーブル定義の正本は `データベース/schema/schema-definition.yaml`。
+auth-service は以下の 3 テーブルを **READ ONLY** で参照し、`audit_logs` だけに **INSERT** する（UPDATE / DELETE 権限は付与しない）。テーブル定義の正本は `データベース/schema/schema-definition.yaml`。
 
 | テーブル | 主要カラム | 用途 |
 |---------|-----------|------|
-| `users` | `user_id` VARCHAR(10) PK、`role` INT、`deleted_at` TIMESTAMPTZ | ユーザー識別・ロールマッピング・停用判定 |
+| `users` | `user_id` VARCHAR(10) PK、`role` INT、`status` INT（1=ACTIVE / 2=DISABLED）、`deleted_at` TIMESTAMPTZ | ユーザー識別・ロールマッピング・停用判定 |
 | `user_contacts` | `user_id` FK、`email` VARCHAR | Magic Link 送信先メールアドレス |
 | `system_locks` | `user_id` FK、`lock_started_at` TIMESTAMPTZ | システムロック状態判定 |
+| `audit_logs`（INSERT のみ） | `actor_user_id`、`audit_action`、`target_type`、`target_id`、`trace_id`、`ip_address` | ログイン監査。`loginInit` は `LOGIN_REQUESTED`、verify 成功は `LOGIN_SUCCEEDED`（actor=本人）、Magic Link 無効・期限切れ・ログイン不可は `LOGIN_FAILED`。`target_type=USER`、`target_id` は入力されたユーザー ID（10 文字に切り詰め）。存在しない ID も記録し `actor_user_id` は NULL。token は記録しない |
 
 **データアクセス実装：**
 
@@ -288,7 +287,8 @@ auth-service は以下の 3 テーブルを **READ ONLY** で参照する。テ�
 | `/auth/refresh` エンドポイント | access token のみ、refresh フローなし |
 | refresh token（DB / Redis 問わず） | 同上 |
 | SMS 認証エンドポイント | Magic Link のみ採用 |
-| 一時状態（Magic Link token / 失敗カウント / ロック）の業務テーブル永続化 | Redis（TTL）のみ使用 |
+| 一時状態（Magic Link token）の業務テーブル永続化 | Redis（TTL）のみ使用 |
+| ログイン失敗回数のカウント・失敗ロック | DDMSAA では行わない（BR-AUTH-005） |
 
 **モジュール制約：**
 
@@ -306,4 +306,6 @@ auth-service は以下の 3 テーブルを **READ ONLY** で参照する。テ�
 |-----------|------|---------|
 | V1.0 | 2026-06-22 | `基盤基本設計.md` §3 / §3.6（認証）を独立ドキュメント化。方式概要・ロール・発行/検証分担・permit-all・SecurityConfig・エンドポイント表/シーケンス図・loginable 境界・token/JWT・Redis キー表・データ源・禁止事項を集約。具体コードは機読 spec へ誘導。 |
 | V1.1 | 2026-06-30 | 生成元メタ情報追加。§番号体系を指示仕様に統一（§1〜§6.6）。外部 SSOT 参照表を §1 に明示。§6.1 列挙攻撃対策の詳細補強。§6.3 Redis 特記事項追加（再送時 DEL / 業務テーブル永続化禁止の明記）。§6.5 例外マッピングにロック 429/E0005 行を追加。§6.6 生成禁止事項を表形式に整理・暗号化モジュール制約を補記。 |
+| V1.2 | 2026-10-20 | §1「失敗/ロック」と §6.3 の失敗カウントの記述を §6.5 に合わせて修正（Magic Link ではログイン失敗回数によるロックを行わない。ロックは `system_locks` のみ） |
+| V1.3 | 2026-10-20 | §2 のロールを DDMSAA の ADMIN / EMPLOYEE / CUSTOMER に確定し、不正値の既定ロールを廃止。失敗カウントの Redis キー・設定値を削除。停用判定列（`users.status`）を明記。ログイン監査のため `audit_logs` への INSERT を追加（BR-AUD-001） |
 <!-- devtool:endblock -->

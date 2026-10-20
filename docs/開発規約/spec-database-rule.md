@@ -176,13 +176,24 @@
 
 | テーブル名 | prefix | 連番の桁数 | シーケンス名 |
 |---|---|---|---|
-| `users` | `E`/`A`/`C` | 4 | `seq_id_e`/`seq_id_a`/`seq_id_c` |
-| `departments` | `DP` | 4 | `seq_id_dp` |
-| `change_requests` | `CR` | 8 | `seq_id_cr` |
-| `request_attachments` | `RA` | 8 | `seq_id_ra` |
-| `request_status_histories` | `RH` | 8 | `seq_id_rh` |
-| `system_lock_histories` | `LH` | 8 | `seq_id_lh` |
-| master×4(request_type_limits / escalation_emails / holidays / system_settings) | 自然キー PK(§4.1-NATURAL 参照、採番しない) | — | — |
+| `users` | `A`/`E`/`C`（ADMIN / EMPLOYEE / CUSTOMER） | 4 | `seq_id_a`/`seq_id_e`/`seq_id_c` |
+| `customers` | `CS` | 8 | `seq_id_cs` |
+| `customer_contacts` | `CC` | 8 | `seq_id_cc` |
+| `customer_assignments` | `AS` | 8 | `seq_id_as` |
+| `products` | `PR` | 8 | `seq_id_pr` |
+| `orders` | `OD` | 8 | `seq_id_od` |
+| `order_items` | `OI` | 8 | `seq_id_oi` |
+| `order_status_histories` | `OH` | 8 | `seq_id_oh` |
+| `approval_rules` | `AR` | 8 | `seq_id_ar` |
+| `approval_requests` | `AQ` | 8 | `seq_id_aq` |
+| `approval_histories` | `AH` | 8 | `seq_id_ah` |
+| `order_attachments` | `AT` | 8 | `seq_id_at` |
+| `notification_logs` | `NL` | 8 | `seq_id_nl` |
+| `export_jobs` | `EJ` | 8 | `seq_id_ej` |
+| `audit_logs` | `AL` | 8 | `seq_id_al` |
+| `user_contacts` / `system_locks` | 共有主キー（§4.1-SHARED、採番しない） | — | — |
+| `tax_rates` | 自然キー PK `tax_category`（§4.1-NATURAL、採番しない） | — | — |
+| `*_codes` | T07 の属性コード（§4.1-CODE、採番しない） | — | — |
 
 > ユーザーの prefix はアプリケーション層がユーザー種別(E/A/C)に応じて渡し、`next_business_id(prefix, 4)` を呼び出す(カラムに DEFAULT なし)。それ以外の prefix 固定のテーブルは、カラムの `DEFAULT public.next_business_id('XX', 桁数)` を用いる。id の全長は一律 `VARCHAR(10)` 以内とする。
 
@@ -192,7 +203,7 @@
 - **規則**：自身の `id` を省略**してよく**、親テーブルへの外部キーカラム `{parent_singular}_id` をそのまま主キーとする(当該カラムは PRIMARY KEY と FOREIGN KEY を兼ねる)。
 - **規則**：この種のテーブルには、採番 prefix / シーケンスを割り当て**ない**。
 - **DDL コメント**：当該カラムに `-- shared PK: same as {parent}.id` を宣言すること。
-- **例**：`user_contacts` / `user_secrets` / `user_bank_accounts` / `system_locks` はいずれも `user_id` を主キーとする。
+- **例**：`user_contacts` / `system_locks` はいずれも `user_id` を主キーとする。
 
 <!-- rule: db.pk-natural-master -->
 #### §4.1-NATURAL：設定・参照テーブルの自然キー主キー例外
@@ -204,10 +215,7 @@
 
 | テーブル名 | 自然キー PK | 型 |
 |---|---|---|
-| `request_type_limits` | `request_type` | INT |
-| `escalation_emails` | `email_address` | VARCHAR(255) |
-| `holidays` | `holiday_date` | DATE |
-| `system_settings` | `setting_key` | VARCHAR(100) |
+| `tax_rates` | `tax_category` | INT |
 
 <!-- rule: db.enum-code-table -->
 #### §4.1-CODE：列挙コードテーブルの規約
@@ -314,6 +322,7 @@
 - **規則**：1 つのテーブル内に複数の観点のステータス項目が存在する場合は、`{domain}_status` 形式を**使用しなければならない**。
 - **誤った例**：`st`、`state`、`orderStatus`、`order_state`
 - **正しい例**：`status`、`payment_status`、`shipping_status`
+- **EXCEPTION**：業務状態と性質が異なる技術的な状態（例：ファイルのウイルススキャン結果）は、テーブルに状態列が 1 つだけでも `{domain}_status` としてよい。DDMSAA では `order_attachments.scan_status` が該当する。
 
 ### 4.6. 金額・価格カラムの規約(Amount / Price Columns)
 - **規則**：金額または価格に関わるすべての項目には、それぞれ `{name}_amount` または `{name}_price` の接尾辞を**付与しなければならない**。
@@ -357,7 +366,7 @@
 | 長文テキスト·説明 | TEXT | NULL 許容 | 格納上限なし |
 | 金額·価格 | NUMERIC(15,2) | NOT NULL DEFAULT 0 | 浮動小数点型の使用は禁止 |
 | 数量·件数 | NUMERIC | NOT NULL DEFAULT 0 | |
-| ステータス·列挙型(T07) | INT | NOT NULL(カラムを NULL 可とすることも可) | 列挙/ステータスコードは**整数で格納**し、列挙型ごとのコードテーブルへの外部キーで値域を制約する（§4.1-CODE）。`CHECK` による値域列挙と `ENUM` 型は使用しない。値の定義は spec-data-dictionary-rule.md T07 を唯一の情報源とする。API 層では Java Enum 経由で UPPER_SNAKE_CASE の文字列として出力する。詳細は DBQ-01 |
+| ステータス·列挙型(T07) | INT | NOT NULL(カラムを NULL 可とすることも可) | 列挙/ステータスコードは**整数で格納**し、列挙型ごとのコードテーブルへの外部キーで値域を制約する（§4.1-CODE）。`CHECK` による値域列挙と `ENUM` 型は使用しない。値の定義は `spec-data-dictionary-project-temp.md` の T07 を唯一の情報源とする（形式は `spec-data-dictionary-rule.md`）。API 層では Java Enum 経由で UPPER_SNAKE_CASE の文字列として出力する。詳細は DBQ-01 |
 | 真偽値フラグ | BOOLEAN | NOT NULL DEFAULT FALSE | TRUE / FALSE / NULL の三値論理によるエラーを避けるため、NOT NULL の宣言が必須 |
 | 日時 datetime | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP | DB セッションのタイムゾーンはシステムタイムゾーン（Asia/Tokyo、`spec-01-system-architecture-ui.md`）に一致させる |
 | 日付のみ | DATE | NOT NULL | 時刻の精度が不要な場合に使用 |
@@ -394,7 +403,7 @@
 
 ### 6.2. インデックス設計ルール(Index Rules)
 - **規則**：複合インデックスを構築する際は、選択度が高いカラムほどインデックスのカラム順の先頭に**配置しなければならない**。
-- **規則**：すべての外部キーカラムに、独立したインデックスを明示的に**作成しなければならない**。
+- **規則**：すべての外部キーカラムに、独立したインデックスを明示的に**作成しなければならない**。ただし、その外部キーカラムを先頭カラムとする複合インデックス、又は `WHERE deleted_at IS NULL` の部分（ユニーク）インデックスが既にある場合は、それで満たすものとする（論理削除テーブルの検索は常に未削除行に限るため）。
 - **規則**：`created_at` 項目のみを対象とした単一カラムインデックスは作成不要とする(複合インデックスへの組み込みを推奨)。
 
 ---
@@ -497,5 +506,6 @@
 | 1.1.0 | 2026/06/08 | nebulasoft Co., Ltd | TIMESTAMPT→TIMESTAMPTZ　DECIMAL→NUMERIC |
 | 1.2.0 | 2026/06/08 | nebulasoft Co., Ltd | 主キー型の修正 |
 | 1.3.0 | 2026/06/09 | nebulasoft Co., Ltd | 主キー型の矛盾を修正(NUMERIC は IDENTITY にできない、例を同期)。§5 の主キー行を「文字列採番」「数値自動採番の代替」の 2 種に分割。§4.1-SEQ の文字列採番関数 `next_business_id` とシーケンス命名規約を追加(prefix 割当表に未確定項目を含む)。created_by/updated_by に `DEFAULT 'SYSTEM'` を追加 |
-| 1.4.0 | 2026/06/10 | nebulasoft Co., Ltd | §4.1-SHARED(1:1 / 0..1 子テーブルの共有主キー例外、自身の id を省略)を追加。§4.1-SEQ の prefix 割当表を確定(users E/A/C 4 桁、departments DP 4 桁、change_requests/request_attachments/request_status_histories/system_lock_histories 8 桁。4 つの master の主キー＝自然キー §4.1-NATURAL、DBQ-02 解決済み) |
+| 1.4.0 | 2026/06/10 | nebulasoft Co., Ltd | §4.1-SHARED(1:1 / 0..1 子テーブルの共有主キー例外、自身の id を省略)を追加。§4.1-SEQ の prefix 割当表を確定(users E/A/C 4 桁、departments DP 4 桁、change_requests/request_attachments/request_status_histories/system_lock_histories 8 桁。4 つの master の主キー＝自然キー §4.1-NATURAL、DBQ-02 解決済み)。※ここに挙げた departments 等は旧プロジェクトのテーブルで、DDMSAA には存在しない。DDMSAA の prefix は `基本設計/共通/spec-06-db-physical.yaml` を正とする |
+| 1.5.0 | 2026/10/20 | nebulasoft Co., Ltd | §4.5 に技術的状態列（scan_status）の例外を追加。§6.2 の外部キーインデックス規則に、先頭カラムが一致する複合インデックス・部分インデックスで満たす旨を追加。T07 の参照先を修正 |
 <!-- devtool:endblock -->

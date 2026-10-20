@@ -48,3 +48,37 @@ messages:
   E0041: { category: ERROR, message: "认证令牌无效" }
   E0042: { category: ERROR, message: "请求的路由不存在" }
   E0043: { category: ERROR, message: "服务响应超时" }
+
+  # =========================================================== 業務メッセージ（画面・API 設計で採番）
+  I0020: { category: INFO, message: "已提交审批申请" }
+  I0021: { category: INFO, message: "订单已取消" }
+  I0022: { category: INFO, message: "已批准" }
+  I0023: { category: INFO, message: "已退回" }
+  I0024: { category: INFO, message: "上传完成。病毒扫描完成前无法下载" }
+  I0025: { category: INFO, message: "已锁定该用户" }
+  I0026: { category: INFO, message: "已受理重发" }
+  I0027: { category: INFO, message: "已受理 CSV 生成请求，完成后可下载" }
+  I0028: { category: INFO, message: "CSV 已生成完成" }
+  I0029: { category: INFO, message: "已解除锁定" }
+  I0030: { category: INFO, message: "即使修改或停用，已有订单的内容和税额也不会改变" }
+  I0031: { category: INFO, message: "变更仅适用于新的审批申请，不影响已提交的订单" }
+  I0032: { category: INFO, message: "已停用" }
+  I0033: { category: INFO, message: "已解除停用" }
+  I0034: { category: INFO, message: "已启用" }
+  I0035: { category: INFO, message: "已禁用" }
+  W0020: { category: WARNING, message: "将提交审批申请，提交后无法编辑。确定吗？" }
+  W0021: { category: WARNING, message: "将确认批准。确定吗？" }
+  W0022: { category: WARNING, message: "将取消订单，取消后无法恢复。确定吗？" }
+  W0023: { category: WARNING, message: "停用后该用户将无法重新登录（已登录时最长 60 分钟后无法使用）。确定吗？" }
+  W0024: { category: WARNING, message: "将重发通知。确定吗？" }
+  W0025: { category: WARNING, message: "停用后将无法为该客户创建新订单。确定吗？" }
+  W0026: { category: WARNING, message: "停用后在新订单中将无法选择。确定吗？" }
+  W0027: { category: WARNING, message: "将锁定该用户，锁定期间无法重新登录（已登录时最长 60 分钟后无法使用）。确定吗？" }
+  W0028: { category: WARNING, message: "将退回此申请。确定吗？" }
+  E0050: { category: ERROR, message: "CSV 生成失败，请确认条件后重试" }
+  E0051: { category: ERROR, message: "其他用户已更新此数据。请显示最新内容后再操作" }
+  E0052: { category: ERROR, message: "订单附件的总大小超过上限（50 MiB）" }
+  E0053: { category: ERROR, message: "不能上传空文件" }
+  E0054: { category: ERROR, message: "包含无效的客户、商品或非担当客户，无法执行" }
+  E0055: { category: ERROR, message: "有效的管理员只有 1 名，无法执行" }
+  E0056: { category: ERROR, message: "不能审批或退回自己申请的订单" }

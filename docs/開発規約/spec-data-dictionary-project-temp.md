@@ -1,5 +1,5 @@
 <!-- devtool:file-region id="document-header" -->
-# プロジェクトデータ辞書：{プロジェクト名}
+# プロジェクトデータ辞書：DDMSAA
 
 > 本ファイルはプロジェクト固有のデータ辞書であり、T07列挙型定義、列定義、Principle 3 ホワイトリストを記載する。
 > すべての規則は強制的な取り決めであり、例外はない。
@@ -10,14 +10,14 @@
 <!-- devtool:block id="rules.data-dictionary-project-temp.s01" -->
 ## 目次
 
-- [プロジェクトデータ辞書：{プロジェクト名}](#プロジェクトデータ辞書プロジェクト名)
+- [プロジェクトデータ辞書：DDMSAA](#プロジェクトデータ辞書ddmsaa)
   - [目次](#目次)
   - [文書関係表](#文書関係表)
 - [第1部：Principle 3 ホワイトリスト](#第1部principle-3-ホワイトリスト)
   - [タイプA：意味境界の絞り込み](#タイプa意味境界の絞り込み)
   - [タイプB：技術的競合による強制置換](#タイプb技術的競合による強制置換)
 - [第2部：T07 列挙型定義](#第2部t07-列挙型定義)
-    - [{列挙型名} ({enum\_type\_name\_snake\_case})](#列挙型名-enum_type_name_snake_case)
+    - T07-1〜T07-13（ロール〜出力状態）
 - [第3部：列定義](#第3部列定義)
   - [改訂履歴](#改訂履歴)
 
@@ -53,7 +53,7 @@
 
 | 変換 | 変換方向 | 理由 |
 |---|---|---|
-| `externalId` → `id` | DB（`external_id`）/ Backend（`externalId`）→ API JSON / Frontend | API と Frontend の文脈では、リソースの対外的な一意識別子は一つしかなく、`id` で十分に明確であり、`external` という限定語は冗長である。同時に、DB 内部の実装詳細（内部自動採番 Long + 対外 UUID の二重 ID 方式）を API 利用者に露出させることを避ける |
+| （DDMSAA は登録なし） | — | DDMSAA は業務キー（`VARCHAR(10)`）を主キー `id` としてそのまま API に出すため、`externalId` → `id` のような変換は不要（二重 ID 方式は使用しない。DBQ-08） |
 
 <!-- プロジェクトでタイプAの変換を追加する場合は、上記の形式で追記する -->
 
@@ -82,16 +82,163 @@
 
 <!-- category_code の昇順に並べる -->
 
-### {列挙型名} ({enum_type_name_snake_case})
+### ロール (user_role)
 
-- **対応 category_code**: {数字}
-- **DB実装**: `INT NOT NULL` または `INT NULL`
-- **コードテーブル**: `{enum_type_name_snake_case}_codes`（下表の行を保持する）
+- **対応 category_code**: 1
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `user_role_codes`（下表の行を保持する）
 
 | 属性コード | 属性名 | 英語名 |
 |---|---|---|
-| 1 | {属性名} | {english_name} |
-| 2 | {属性名} | {english_name} |
+| 1 | 管理者 | ADMIN |
+| 2 | 営業担当 | EMPLOYEE |
+| 3 | 顧客 | CUSTOMER |
+
+### 利用者状態 (user_status)
+
+- **対応 category_code**: 2
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `user_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 有効 | ACTIVE |
+| 2 | 停用 | DISABLED |
+
+### 顧客状態 (customer_status)
+
+- **対応 category_code**: 3
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `customer_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 有効 | ACTIVE |
+| 2 | 無効 | INACTIVE |
+
+### 商品状態 (product_status)
+
+- **対応 category_code**: 4
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `product_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 有効 | ACTIVE |
+| 2 | 無効 | INACTIVE |
+
+### 税区分 (tax_category)
+
+- **対応 category_code**: 5
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `tax_category_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 標準税率 | STANDARD |
+| 2 | 軽減税率 | REDUCED |
+| 3 | 非課税 | EXEMPT |
+
+### 注文状態 (order_status)
+
+- **対応 category_code**: 6
+- **DB実装**: `INT NOT NULL`（`order_status_histories.from_status` のみ `INT NULL`）
+- **コードテーブル**: `order_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 下書き | DRAFT |
+| 2 | 承認待ち | PENDING_APPROVAL |
+| 3 | 差戻し | RETURNED |
+| 4 | 承認済み | APPROVED |
+| 5 | 取消済み | CANCELLED |
+
+### 承認依頼状態 (approval_request_status)
+
+- **対応 category_code**: 7
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `approval_request_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 承認待ち | PENDING |
+| 2 | 承認 | APPROVED |
+| 3 | 差戻し | RETURNED |
+
+### 承認操作 (approval_action)
+
+- **対応 category_code**: 8
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `approval_action_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 承認 | APPROVE |
+| 2 | 差戻し | RETURN |
+
+### 添付公開範囲 (attachment_visibility)
+
+- **対応 category_code**: 9
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `attachment_visibility_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 社内 | INTERNAL |
+| 2 | 顧客公開 | CUSTOMER |
+
+### スキャン状態 (scan_status)
+
+- **対応 category_code**: 10
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `scan_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 確認中 | PENDING |
+| 2 | 安全 | SAFE |
+| 3 | 拒否 | REJECTED |
+
+### 通知イベント (notification_event)
+
+- **対応 category_code**: 11
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `notification_event_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 承認依頼 | ORDER_SUBMITTED |
+| 2 | 承認 | ORDER_APPROVED |
+| 3 | 差戻し | ORDER_RETURNED |
+| 4 | 取消し | ORDER_CANCELLED |
+| 5 | CSV 出力完了 | EXPORT_COMPLETED |
+
+### 通知状態 (notification_status)
+
+- **対応 category_code**: 12
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `notification_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 待機中 | QUEUED |
+| 2 | 送信中 | SENDING |
+| 3 | 送信済み | SENT |
+| 4 | 失敗 | FAILED |
+
+### 出力状態 (export_status)
+
+- **対応 category_code**: 13
+- **DB実装**: `INT NOT NULL`
+- **コードテーブル**: `export_status_codes`（下表の行を保持する）
+
+| 属性コード | 属性名 | 英語名 |
+|---|---|---|
+| 1 | 待機中 | QUEUED |
+| 2 | 生成中 | RUNNING |
+| 3 | ダウンロード可 | READY |
+| 4 | 失敗 | FAILED |
+| 5 | 期限切れ | EXPIRED |
 
 ---
 
@@ -107,9 +254,7 @@
 > 共通列（主キー・監査列・論理削除日時）の定義はデータ辞書規範（`開発規約/spec-data-dictionary-rule.md`）を正とし、ここでの重複登録は不要。（`external_id`／二重 ID は使用しない。DBQ-08 解決済み）
 > 「必須/任意」列は、基礎型名のプレフィックスと一致させる：`必須` → 必須、`任意` → 任意。
 
-| 業務用語 | 英語列名 | 参照基礎型 | 必須/任意 | デフォルト値 | 説明 |
-|---|---|---|---|---|---|
-| {業務用語} | `{column_name}` | `{基礎型名}` | 必須/任意 | {デフォルト値または「-」} | {説明} |
+> **DDMSAA の列定義は `基本設計/共通/spec-13-data-dictionary-ui.md` §4 の項目語彙表（DI-xxx）を正とし、本部には重複登録しない。** 列の追加・変更は `spec-06-db-physical.yaml` → spec-13 の順に反映する。
 
 ---
 
@@ -119,7 +264,8 @@
 
 | バージョン | 日付 | 作成者 | 変更種別 | 変更内容 |
 |---|---|---|---|---|
-| 1.0.0 | YYYY-MM-DD | {作成者} | 初版 | 初版作成 |
+| 1.0.0 | 2026-10-20 | — | T07追加 | DDMSAA の T07 列挙型（13 種）を定義 |
+| 1.0.1 | 2026-10-20 | — | 説明修正 | タイプA の汎用例（externalId → id）を削除。第3部の列定義は spec-13 の項目語彙表を正とする旨に変更 |
 
 <!-- 変更種別：初版 / T07追加 / T07修正 / 列定義追加 / 列定義修正 / ホワイトリスト追加 / 説明修正 -->
 <!-- T07追加/T07修正 は DB マイグレーション（コードテーブルの更新）が必要。説明修正 は DB マイグレーション不要 -->

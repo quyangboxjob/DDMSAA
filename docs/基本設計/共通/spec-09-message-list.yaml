@@ -56,3 +56,37 @@ messages:
   E0041: { category: ERROR, message: "認証トークンが不正です" }
   E0042: { category: ERROR, message: "要求されたルートが存在しません" }
   E0043: { category: ERROR, message: "サービスの応答がタイムアウトしました" }
+
+  # =========================================================== 業務メッセージ（画面・API 設計で採番）
+  I0020: { category: INFO, message: "承認を依頼しました" }
+  I0021: { category: INFO, message: "注文を取り消しました" }
+  I0022: { category: INFO, message: "承認しました" }
+  I0023: { category: INFO, message: "差し戻しました" }
+  I0024: { category: INFO, message: "アップロードしました。ウイルススキャンが完了するまでダウンロードできません" }
+  I0025: { category: INFO, message: "利用者をロックしました" }
+  I0026: { category: INFO, message: "再送を受け付けました" }
+  I0027: { category: INFO, message: "CSV の作成を受け付けました。完了後にダウンロードできます" }
+  I0028: { category: INFO, message: "CSV の作成が完了しました" }
+  I0029: { category: INFO, message: "ロックを解除しました" }
+  I0030: { category: INFO, message: "変更・無効化しても、既存の注文の内容と税額は変わりません" }
+  I0031: { category: INFO, message: "変更は新しい承認依頼から適用されます。申請済みの注文には影響しません" }
+  I0032: { category: INFO, message: "停用しました" }
+  I0033: { category: INFO, message: "停用を解除しました" }
+  I0034: { category: INFO, message: "有効化しました" }
+  I0035: { category: INFO, message: "無効化しました" }
+  W0020: { category: WARNING, message: "承認を依頼します。申請後は編集できません。よろしいですか？" }
+  W0021: { category: WARNING, message: "承認を確定します。よろしいですか？" }
+  W0022: { category: WARNING, message: "注文を取り消します。取消し後は元に戻せません。よろしいですか？" }
+  W0023: { category: WARNING, message: "停用すると、この利用者は新たにログインできなくなります（ログイン中の場合は最長 60 分で利用できなくなります）。よろしいですか？" }
+  W0024: { category: WARNING, message: "通知を再送します。よろしいですか？" }
+  W0025: { category: WARNING, message: "無効化すると、この顧客に対して新規注文を作成できなくなります。よろしいですか？" }
+  W0026: { category: WARNING, message: "無効化すると、新規注文で選択できなくなります。よろしいですか？" }
+  W0027: { category: WARNING, message: "この利用者をロックします。ロック中は新たにログインできません（ログイン中の場合は最長 60 分で利用できなくなります）。よろしいですか？" }
+  W0028: { category: WARNING, message: "差し戻します。よろしいですか？" }
+  E0050: { category: ERROR, message: "CSV の作成に失敗しました。条件を確認して再度お試しください" }
+  E0051: { category: ERROR, message: "他の利用者が更新しました。最新の内容を表示してから、もう一度操作してください" }
+  E0052: { category: ERROR, message: "注文の添付ファイルの合計サイズが上限（50 MiB）を超えています" }
+  E0053: { category: ERROR, message: "空のファイルはアップロードできません" }
+  E0054: { category: ERROR, message: "無効な顧客・商品、又は担当外の顧客が含まれているため実行できません" }
+  E0055: { category: ERROR, message: "有効な管理者が 1 名だけのため実行できません" }
+  E0056: { category: ERROR, message: "自分が申請した注文は承認・差戻しできません" }

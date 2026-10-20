@@ -2,14 +2,14 @@
 
 ## 1. 利用者と操作
 
-ADMIN は全注文、EMPLOYEE は担当注文だけに添付をアップロード・削除できる。CUSTOMER は自顧客注文の `CUSTOMER` 公開かつ `SAFE` の添付だけを閲覧・ダウンロードできる。
+ADMIN は全注文、EMPLOYEE は担当注文だけに添付をアップロード・削除できる。CANCELLED の注文ではアップロード・削除できない（ダウンロードは可。BR-FIL-001）。CUSTOMER は自顧客注文の `CUSTOMER` 公開かつ `SAFE` の添付だけを閲覧・ダウンロードできる。
 
 ## 2. 保存規則
 
 | 項目 | 初版決定 |
 |---|---|
 | 許可形式 | PDF、DOCX、XLSX、CSV、PNG、JPG/JPEG |
-| 最大サイズ | 1 ファイル 10 MiB、注文合計 50 MiB |
+| 最大サイズ | 1 ファイル 10 MiB、注文合計 50 MiB（削除済み・REJECTED は合計に含めない。BR-FIL-005）。空ファイルは不可 |
 | 検証 | 拡張子と MIME を両方確認する |
 | スキャン | 保存直後は PENDING。SAFE だけ配信し、REJECTED は配信しない |
 | 公開範囲 | INTERNAL 又は CUSTOMER をアップロード者が指定する |

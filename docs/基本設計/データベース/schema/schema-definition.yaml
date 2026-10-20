@@ -12,10 +12,14 @@
 # 規約: テーブル名・主キー・共通列・列挙・時刻・制約/索引名は
 #   開発規約/spec-naming-rule.md および 開発規約/spec-database-rule.md に従う。
 # =============================================================================
+#
+# 生成元: 共通/spec-06-db-physical.yaml（DDMSAA 新基線。旧示例 users/departments は廃止）
+# 並び順: 外部キーの依存順（参照先を先に定義）
 
-# ============================================= ロールコード（列挙 T07 のコードテーブル）
+# ============================================= ロールコード
 user_role_codes:
-  description: "ロールコード"
+  description: "ロール列挙（T07-1）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
   columns:
     user_role_code:
       type: INT
@@ -24,106 +28,1346 @@ user_role_codes:
     user_role_name:
       type: VARCHAR(50)
       nullable: false
-      comment: "ロール名（T07 の英語名＝API 値）"
-    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP" }
-    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
-    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "トリガーで更新" }
-    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+      comment: "ロール名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
     - name: "uq_user_role_codes_user_role_name"
       columns: ["user_role_name"]
       type: "UNIQUE"
+  seed:   # T07-1
+    - { user_role_code: 1, user_role_name: "ADMIN" }
+    - { user_role_code: 2, user_role_name: "EMPLOYEE" }
+    - { user_role_code: 3, user_role_name: "CUSTOMER" }
 
-# ============================================= ユーザ
-users:
-  description: "ユーザ"
+# ============================================= 利用者状態コード
+user_status_codes:
+  description: "利用者状態列挙（T07-2）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
   columns:
-    user_id:
-      type: VARCHAR(10)
-      primary_key: true
-      comment: "ユーザID（業務キー。アプリケーション層で採番、DEFAULT なし）"
-    department_id:
-      type: VARCHAR(10)
-      nullable: false
-      comment: "部門ID (FK→departments.id)"
-    user_name:
-      type: VARCHAR(100)
-      nullable: false
-      comment: "ユーザ名"
-    email:
-      type: VARCHAR(255)
-      nullable: false
-      comment: "メールアドレス（未削除行で一意）"
-    phone_number:
-      type: VARCHAR(512)
-      nullable: true
-      encrypted: true
-      comment: "電話番号（暗号化して保存）"
-    role:
+    user_status_code:
       type: INT
+      primary_key: true
+      comment: "利用者状態コード（T07 の属性コード。採番しない）"
+    user_status_name:
+      type: VARCHAR(50)
       nullable: false
-      comment: "ロール (FK→user_role_codes.user_role_code。コードは T07、例：1=ADMIN, 2=MANAGER, 3=USER)"
-    disabled_date:
-      type: DATE
-      nullable: true
-      comment: "停止日"
-    created_at:
-      type: TIMESTAMPTZ
-      nullable: false
-      default: "CURRENT_TIMESTAMP"
-    created_by:
-      type: VARCHAR(10)
-      nullable: false
-      default: "'SYSTEM'"
-    updated_at:
-      type: TIMESTAMPTZ
-      nullable: false
-      default: "CURRENT_TIMESTAMP"
-      comment: "トリガーで更新"
-    updated_by:
-      type: VARCHAR(10)
-      nullable: false
-      default: "'SYSTEM'"
-    deleted_at:
-      type: TIMESTAMPTZ
-      nullable: true
-      comment: "論理削除（NULL=有効）"
+      comment: "利用者状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "idx_users_department_id"
-      columns: ["department_id"]
-      type: "BTREE"
-    - name: "uq_users_email"
-      columns: ["email"]
+    - name: "uq_user_status_codes_user_status_name"
+      columns: ["user_status_name"]
       type: "UNIQUE"
-      where: "deleted_at IS NULL"
-  foreign_keys:
-    - name: "fk_users_departments"
-      column: "department_id"
-      references: "departments(id)"
-    - name: "fk_users_user_role_codes"
-      column: "role"
-      references: "user_role_codes(user_role_code)"
+  seed:   # T07-2
+    - { user_status_code: 1, user_status_name: "ACTIVE" }
+    - { user_status_code: 2, user_status_name: "DISABLED" }
 
-# ============================================= 部門マスタ
-departments:
-  description: "部門マスタ"
+# ============================================= 顧客状態コード
+customer_status_codes:
+  description: "顧客状態列挙（T07-3）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    customer_status_code:
+      type: INT
+      primary_key: true
+      comment: "顧客状態コード（T07 の属性コード。採番しない）"
+    customer_status_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "顧客状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_customer_status_codes_customer_status_name"
+      columns: ["customer_status_name"]
+      type: "UNIQUE"
+  seed:   # T07-3
+    - { customer_status_code: 1, customer_status_name: "ACTIVE" }
+    - { customer_status_code: 2, customer_status_name: "INACTIVE" }
+
+# ============================================= 商品状態コード
+product_status_codes:
+  description: "商品状態列挙（T07-4）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    product_status_code:
+      type: INT
+      primary_key: true
+      comment: "商品状態コード（T07 の属性コード。採番しない）"
+    product_status_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "商品状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_product_status_codes_product_status_name"
+      columns: ["product_status_name"]
+      type: "UNIQUE"
+  seed:   # T07-4
+    - { product_status_code: 1, product_status_name: "ACTIVE" }
+    - { product_status_code: 2, product_status_name: "INACTIVE" }
+
+# ============================================= 税区分コード
+tax_category_codes:
+  description: "税区分列挙（T07-5）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    tax_category_code:
+      type: INT
+      primary_key: true
+      comment: "税区分コード（T07 の属性コード。採番しない）"
+    tax_category_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "税区分名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_tax_category_codes_tax_category_name"
+      columns: ["tax_category_name"]
+      type: "UNIQUE"
+  seed:   # T07-5
+    - { tax_category_code: 1, tax_category_name: "STANDARD" }
+    - { tax_category_code: 2, tax_category_name: "REDUCED" }
+    - { tax_category_code: 3, tax_category_name: "EXEMPT" }
+
+# ============================================= 注文状態コード
+order_status_codes:
+  description: "注文状態列挙（T07-6）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    order_status_code:
+      type: INT
+      primary_key: true
+      comment: "注文状態コード（T07 の属性コード。採番しない）"
+    order_status_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "注文状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_order_status_codes_order_status_name"
+      columns: ["order_status_name"]
+      type: "UNIQUE"
+  seed:   # T07-6
+    - { order_status_code: 1, order_status_name: "DRAFT" }
+    - { order_status_code: 2, order_status_name: "PENDING_APPROVAL" }
+    - { order_status_code: 3, order_status_name: "RETURNED" }
+    - { order_status_code: 4, order_status_name: "APPROVED" }
+    - { order_status_code: 5, order_status_name: "CANCELLED" }
+
+# ============================================= 承認依頼状態コード
+approval_request_status_codes:
+  description: "承認依頼状態列挙（T07-7）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    approval_request_status_code:
+      type: INT
+      primary_key: true
+      comment: "承認依頼状態コード（T07 の属性コード。採番しない）"
+    approval_request_status_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "承認依頼状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_approval_request_status_codes_approval_request_status_name"
+      columns: ["approval_request_status_name"]
+      type: "UNIQUE"
+  seed:   # T07-7
+    - { approval_request_status_code: 1, approval_request_status_name: "PENDING" }
+    - { approval_request_status_code: 2, approval_request_status_name: "APPROVED" }
+    - { approval_request_status_code: 3, approval_request_status_name: "RETURNED" }
+
+# ============================================= 承認操作コード
+approval_action_codes:
+  description: "承認操作列挙（T07-8）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    approval_action_code:
+      type: INT
+      primary_key: true
+      comment: "承認操作コード（T07 の属性コード。採番しない）"
+    approval_action_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "承認操作名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_approval_action_codes_approval_action_name"
+      columns: ["approval_action_name"]
+      type: "UNIQUE"
+  seed:   # T07-8
+    - { approval_action_code: 1, approval_action_name: "APPROVE" }
+    - { approval_action_code: 2, approval_action_name: "RETURN" }
+
+# ============================================= 添付公開範囲コード
+attachment_visibility_codes:
+  description: "添付公開範囲列挙（T07-9）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    attachment_visibility_code:
+      type: INT
+      primary_key: true
+      comment: "添付公開範囲コード（T07 の属性コード。採番しない）"
+    attachment_visibility_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "添付公開範囲名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_attachment_visibility_codes_attachment_visibility_name"
+      columns: ["attachment_visibility_name"]
+      type: "UNIQUE"
+  seed:   # T07-9
+    - { attachment_visibility_code: 1, attachment_visibility_name: "INTERNAL" }
+    - { attachment_visibility_code: 2, attachment_visibility_name: "CUSTOMER" }
+
+# ============================================= スキャン状態コード
+scan_status_codes:
+  description: "スキャン状態列挙（T07-10）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    scan_status_code:
+      type: INT
+      primary_key: true
+      comment: "スキャン状態コード（T07 の属性コード。採番しない）"
+    scan_status_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "スキャン状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_scan_status_codes_scan_status_name"
+      columns: ["scan_status_name"]
+      type: "UNIQUE"
+  seed:   # T07-10
+    - { scan_status_code: 1, scan_status_name: "PENDING" }
+    - { scan_status_code: 2, scan_status_name: "SAFE" }
+    - { scan_status_code: 3, scan_status_name: "REJECTED" }
+
+# ============================================= 通知イベントコード
+notification_event_codes:
+  description: "通知イベント列挙（T07-11）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    notification_event_code:
+      type: INT
+      primary_key: true
+      comment: "通知イベントコード（T07 の属性コード。採番しない）"
+    notification_event_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "通知イベント名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_notification_event_codes_notification_event_name"
+      columns: ["notification_event_name"]
+      type: "UNIQUE"
+  seed:   # T07-11
+    - { notification_event_code: 1, notification_event_name: "ORDER_SUBMITTED" }
+    - { notification_event_code: 2, notification_event_name: "ORDER_APPROVED" }
+    - { notification_event_code: 3, notification_event_name: "ORDER_RETURNED" }
+    - { notification_event_code: 4, notification_event_name: "ORDER_CANCELLED" }
+    - { notification_event_code: 5, notification_event_name: "EXPORT_COMPLETED" }
+
+# ============================================= 通知状態コード
+notification_status_codes:
+  description: "通知状態列挙（T07-12）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    notification_status_code:
+      type: INT
+      primary_key: true
+      comment: "通知状態コード（T07 の属性コード。採番しない）"
+    notification_status_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "通知状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_notification_status_codes_notification_status_name"
+      columns: ["notification_status_name"]
+      type: "UNIQUE"
+  seed:   # T07-12
+    - { notification_status_code: 1, notification_status_name: "QUEUED" }
+    - { notification_status_code: 2, notification_status_name: "SENDING" }
+    - { notification_status_code: 3, notification_status_name: "SENT" }
+    - { notification_status_code: 4, notification_status_name: "FAILED" }
+
+# ============================================= 出力状態コード
+export_status_codes:
+  description: "出力状態列挙（T07-13）のコード表"
+  soft_delete: false   # no soft delete: コードテーブル
+  columns:
+    export_status_code:
+      type: INT
+      primary_key: true
+      comment: "出力状態コード（T07 の属性コード。採番しない）"
+    export_status_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "出力状態名（T07 の英語名（API 値））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_export_status_codes_export_status_name"
+      columns: ["export_status_name"]
+      type: "UNIQUE"
+  seed:   # T07-13
+    - { export_status_code: 1, export_status_name: "QUEUED" }
+    - { export_status_code: 2, export_status_name: "RUNNING" }
+    - { export_status_code: 3, export_status_name: "READY" }
+    - { export_status_code: 4, export_status_name: "FAILED" }
+    - { export_status_code: 5, export_status_name: "EXPIRED" }
+
+# ============================================= 顧客
+customers:
+  description: "顧客マスタ"
+  id_generation: "next_business_id('CS', 8)"
   columns:
     id:
       type: VARCHAR(10)
       primary_key: true
-      default: "next_business_id('DP', 4)"
-      comment: "部門ID（DP+4桁を採番）"
-    department_name:
-      type: VARCHAR(100)
+      default: "next_business_id('CS', 8)"
+      comment: "顧客ID（CS+8桁を採番）"
+    customer_code:
+      type: VARCHAR(30)
       nullable: false
-      comment: "部門名（未削除行で一意）"
-    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP" }
-    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
-    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "トリガーで更新" }
-    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
-    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "論理削除（NULL=有効）" }
+      comment: "顧客コード（未削除行で一意）"
+    customer_name:
+      type: VARCHAR(200)
+      nullable: false
+      comment: "顧客名"
+    email:
+      type: VARCHAR(255)
+      nullable: true
+      comment: "メールアドレス"
+    phone_number:
+      type: VARCHAR(50)
+      nullable: true
+      comment: "電話番号"
+    status:
+      type: INT
+      nullable: false
+      comment: "状態（参照: 顧客状態（T07-3：1=ACTIVE, 2=INACTIVE）。） FK→customer_status_codes.customer_status_code"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "uq_departments_department_name"
-      columns: ["department_name"]
+    - name: "uq_customers_customer_code"
+      columns: ["customer_code"]
       type: "UNIQUE"
       where: "deleted_at IS NULL"
+    - name: "idx_customers_status"
+      columns: ["status"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_customers_customer_status_codes"
+      column: "status"
+      references: "customer_status_codes(customer_status_code)"
+
+# ============================================= ユーザ
+users:
+  description: "利用者。パスワードは保持しない（Magic Link 認証）"
+  id_generation: "アプリケーション層で next_business_id(prefix, 4)。prefix=A/E/C（ロール別）。DEFAULT なし"
+  columns:
+    user_id:
+      type: VARCHAR(10)
+      primary_key: true
+      comment: "ユーザID（業務キー。ロールに応じた prefix（A=ADMIN / E=EMPLOYEE / C=CUSTOMER）+4桁をアプリケーション層で採番。DEFAULT なし）"
+    user_name:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "表示名"
+    role:
+      type: INT
+      nullable: false
+      comment: "ロール（参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。） FK→user_role_codes.user_role_code"
+    status:
+      type: INT
+      nullable: false
+      comment: "状態（参照: 利用者状態（T07-2：1=ACTIVE, 2=DISABLED）。） FK→user_status_codes.user_status_code"
+    customer_id:
+      type: VARCHAR(10)
+      nullable: true
+      comment: "顧客ID（CUSTOMER は必須、ADMIN / EMPLOYEE は NULL（chk_users_customer_id）） FK→customers.id"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_users_customer_id"
+      columns: ["customer_id"]
+      type: "BTREE"
+    - name: "idx_users_role_status"
+      columns: ["role", "status"]
+      type: "BTREE"
+    - name: "idx_users_status"
+      columns: ["status"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_users_user_role_codes"
+      column: "role"
+      references: "user_role_codes(user_role_code)"
+    - name: "fk_users_user_status_codes"
+      column: "status"
+      references: "user_status_codes(user_status_code)"
+    - name: "fk_users_customers"
+      column: "customer_id"
+      references: "customers(id)"
+  checks:
+    - name: "chk_users_customer_id"
+      expression: "(role = 3) = (customer_id IS NOT NULL)"
+
+# ============================================= ユーザ連絡先
+user_contacts:
+  description: "Magic Link・通知の送信先メール（users と 1:1）。users と同時に作成し、行は更新のみで削除しない"
+  soft_delete: false   # no soft delete: users の 1:1 子（その場で更新）
+  columns:
+    user_id:
+      type: VARCHAR(10)
+      primary_key: true
+      comment: "ユーザID（共有主キー（§4.1-SHARED）） FK→users.user_id"
+    email:
+      type: VARCHAR(255)
+      nullable: false
+      comment: "メールアドレス（全行で一意）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "uq_user_contacts_email"
+      columns: ["email"]
+      type: "UNIQUE"
+  foreign_keys:
+    - name: "fk_user_contacts_users"
+      column: "user_id"
+      references: "users(user_id)"
+
+# ============================================= システムロック
+system_locks:
+  description: "ADMIN による利用者ロック（users と 1:0..1）。ログイン可否判定に使用。解除は lock_started_at を NULL に更新し、行は削除しない"
+  soft_delete: false   # no soft delete: users の 1:0..1 子（その場で更新）
+  columns:
+    user_id:
+      type: VARCHAR(10)
+      primary_key: true
+      comment: "ユーザID（共有主キー（§4.1-SHARED）） FK→users.user_id"
+    lock_started_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "ロック開始日時（NULL=ロックなし。ロック操作時の現在時刻を設定する（未来時刻は設定しない））"
+    lock_reason:
+      type: VARCHAR(500)
+      nullable: true
+      comment: "ロック理由"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  foreign_keys:
+    - name: "fk_system_locks_users"
+      column: "user_id"
+      references: "users(user_id)"
+
+# ============================================= 顧客連絡先
+customer_contacts:
+  description: "顧客の連絡先・通知先"
+  id_generation: "next_business_id('CC', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('CC', 8)"
+      comment: "顧客連絡先ID（CC+8桁を採番）"
+    customer_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "顧客ID FK→customers.id"
+    contact_name:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "連絡先名"
+    email:
+      type: VARCHAR(255)
+      nullable: false
+      comment: "メールアドレス"
+    is_notification_recipient:
+      type: BOOLEAN
+      nullable: false
+      default: "FALSE"
+      comment: "通知先フラグ"
+    is_active:
+      type: BOOLEAN
+      nullable: false
+      default: "TRUE"
+      comment: "有効フラグ"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_customer_contacts_customer_id_is_active"
+      columns: ["customer_id", "is_active"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_customer_contacts_customers"
+      column: "customer_id"
+      references: "customers(id)"
+
+# ============================================= 担当割当
+customer_assignments:
+  description: "EMPLOYEE と担当顧客の割当（属性を持つため業務エンティティとして扱う）"
+  id_generation: "next_business_id('AS', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('AS', 8)"
+      comment: "担当割当ID（AS+8桁を採番）"
+    customer_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "顧客ID FK→customers.id"
+    user_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "ユーザID（担当 EMPLOYEE） FK→users.user_id"
+    is_active:
+      type: BOOLEAN
+      nullable: false
+      default: "TRUE"
+      comment: "有効フラグ（解除は FALSE にする（論理削除しない）。同じ顧客・社員を再割当するときは同じ行を TRUE に戻し、割当日を当日にする）"
+    assigned_date:
+      type: DATE
+      nullable: false
+      default: "CURRENT_DATE"
+      comment: "割当日"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "uq_customer_assignments_customer_id_user_id"
+      columns: ["customer_id", "user_id"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"
+    - name: "idx_customer_assignments_user_id_is_active"
+      columns: ["user_id", "is_active"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_customer_assignments_customers"
+      column: "customer_id"
+      references: "customers(id)"
+    - name: "fk_customer_assignments_users"
+      column: "user_id"
+      references: "users(user_id)"
+
+# ============================================= 商品
+products:
+  description: "商品マスタ"
+  id_generation: "next_business_id('PR', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('PR', 8)"
+      comment: "商品ID（PR+8桁を採番）"
+    product_code:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "商品コード（未削除行で一意）"
+    product_name:
+      type: VARCHAR(200)
+      nullable: false
+      comment: "商品名"
+    product_category:
+      type: VARCHAR(100)
+      nullable: true
+      comment: "商品カテゴリ"
+    standard_unit_price:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "標準単価（0 以上（chk_products_standard_unit_price））"
+    tax_category:
+      type: INT
+      nullable: false
+      comment: "税区分（参照: 税区分（T07-5：1=STANDARD, 2=REDUCED, 3=EXEMPT）。） FK→tax_category_codes.tax_category_code"
+    status:
+      type: INT
+      nullable: false
+      comment: "状態（参照: 商品状態（T07-4：1=ACTIVE, 2=INACTIVE）。） FK→product_status_codes.product_status_code"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "uq_products_product_code"
+      columns: ["product_code"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"
+    - name: "idx_products_tax_category"
+      columns: ["tax_category"]
+      type: "BTREE"
+    - name: "idx_products_status"
+      columns: ["status"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_products_tax_category_codes"
+      column: "tax_category"
+      references: "tax_category_codes(tax_category_code)"
+    - name: "fk_products_product_status_codes"
+      column: "status"
+      references: "product_status_codes(product_status_code)"
+  checks:
+    - name: "chk_products_standard_unit_price"
+      expression: "standard_unit_price >= 0"
+
+# ============================================= 税率
+tax_rates:
+  description: "税区分ごとの税率（§4.1-NATURAL）。注文時に明細へ複写する"
+  columns:
+    tax_category:
+      type: INT
+      primary_key: true
+      comment: "税区分（参照: 税区分（T07-5：1=STANDARD, 2=REDUCED, 3=EXEMPT）。自然キー主キー） FK→tax_category_codes.tax_category_code"
+    tax_rate:
+      type: NUMERIC(5,2)
+      nullable: false
+      default: "0"
+      comment: "税率（0.00〜100.00（chk_tax_rates_tax_rate））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  foreign_keys:
+    - name: "fk_tax_rates_tax_category_codes"
+      column: "tax_category"
+      references: "tax_category_codes(tax_category_code)"
+  checks:
+    - name: "chk_tax_rates_tax_rate"
+      expression: "tax_rate BETWEEN 0 AND 100"
+  seed:
+    - { tax_category: 1, tax_rate: 10.00 }
+    - { tax_category: 2, tax_rate: 8.00 }
+    - { tax_category: 3, tax_rate: 0.00 }
+
+# ============================================= 注文
+orders:
+  description: "注文ヘッダ。注文番号は id とする"
+  id_generation: "next_business_id('OD', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('OD', 8)"
+      comment: "注文ID（注文番号）（OD+8桁を採番）"
+    customer_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "顧客ID FK→customers.id"
+    sales_user_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "担当者ユーザID（注文顧客の担当 EMPLOYEE（BR-ORD-008）） FK→users.user_id"
+    order_date:
+      type: DATE
+      nullable: false
+      comment: "注文日"
+    status:
+      type: INT
+      nullable: false
+      comment: "状態（参照: 注文状態（T07-6：1=DRAFT, 2=PENDING_APPROVAL, 3=RETURNED, 4=APPROVED, 5=CANCELLED）。） FK→order_status_codes.order_status_code"
+    subtotal_amount:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "小計（サーバー再計算値）"
+    tax_amount:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "税額（サーバー再計算値）"
+    total_amount:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "合計（サーバー再計算値）"
+    revised_from_order_id:
+      type: VARCHAR(10)
+      nullable: true
+      comment: "訂正元注文ID（取消済み（CANCELLED）・同一顧客の元注文。新規作成時のみ設定し、1 注文につき訂正は 1 回（BR-ORD-009）） FK→orders.id"
+    cancel_reason:
+      type: VARCHAR(500)
+      nullable: true
+      comment: "取消し理由（CANCELLED のとき必須（chk_orders_cancel_reason））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_orders_customer_id_order_date"
+      columns: ["customer_id", "order_date"]
+      type: "BTREE"
+    - name: "idx_orders_sales_user_id_status"
+      columns: ["sales_user_id", "status"]
+      type: "BTREE"
+    - name: "idx_orders_status_order_date"
+      columns: ["status", "order_date"]
+      type: "BTREE"
+    - name: "uq_orders_revised_from_order_id"
+      columns: ["revised_from_order_id"]
+      type: "UNIQUE"
+      where: "revised_from_order_id IS NOT NULL AND deleted_at IS NULL"
+  foreign_keys:
+    - name: "fk_orders_customers"
+      column: "customer_id"
+      references: "customers(id)"
+    - name: "fk_orders_users"
+      column: "sales_user_id"
+      references: "users(user_id)"
+    - name: "fk_orders_order_status_codes"
+      column: "status"
+      references: "order_status_codes(order_status_code)"
+    - name: "fk_orders_orders"
+      column: "revised_from_order_id"
+      references: "orders(id)"
+  checks:
+    - name: "chk_orders_cancel_reason"
+      expression: "status <> 5 OR cancel_reason IS NOT NULL"
+
+# ============================================= 注文明細
+order_items:
+  description: "注文明細。商品・税率は注文時点で複写する"
+  id_generation: "next_business_id('OI', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('OI', 8)"
+      comment: "注文明細ID（OI+8桁を採番）"
+    order_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "注文ID FK→orders.id"
+    line_number:
+      type: NUMERIC
+      nullable: false
+      default: "0"
+      comment: "行番号"
+    product_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "商品ID FK→products.id"
+    product_code:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "商品コード（複写）"
+    product_name:
+      type: VARCHAR(200)
+      nullable: false
+      comment: "商品名（複写）"
+    quantity:
+      type: NUMERIC(15,3)
+      nullable: false
+      default: "0"
+      comment: "数量（0 より大きい（chk_order_items_quantity））"
+    unit_price:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "単価（商品の standard_unit_price の複写（保存・申請時。BR-PRD-002）。0 以上（chk_order_items_unit_price））"
+    tax_category:
+      type: INT
+      nullable: false
+      comment: "税区分（複写）（参照: 税区分（T07-5：1=STANDARD, 2=REDUCED, 3=EXEMPT）。） FK→tax_category_codes.tax_category_code"
+    tax_rate:
+      type: NUMERIC(5,2)
+      nullable: false
+      default: "0"
+      comment: "税率（複写）"
+    line_amount:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "明細金額（quantity × unit_price）"
+    tax_amount:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "明細税額（HALF_UP(line_amount × tax_rate / 100)）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "uq_order_items_order_id_line_number"
+      columns: ["order_id", "line_number"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"
+    - name: "idx_order_items_product_id"
+      columns: ["product_id"]
+      type: "BTREE"
+    - name: "idx_order_items_tax_category"
+      columns: ["tax_category"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_order_items_orders"
+      column: "order_id"
+      references: "orders(id)"
+    - name: "fk_order_items_products"
+      column: "product_id"
+      references: "products(id)"
+    - name: "fk_order_items_tax_category_codes"
+      column: "tax_category"
+      references: "tax_category_codes(tax_category_code)"
+  checks:
+    - name: "chk_order_items_quantity"
+      expression: "quantity > 0"
+    - name: "chk_order_items_unit_price"
+      expression: "unit_price >= 0"
+
+# ============================================= 注文状態履歴
+order_status_histories:
+  description: "注文状態の遷移履歴（追加専用）。変更者・日時は created_by / created_at"
+  soft_delete: false   # no soft delete: 履歴テーブル
+  id_generation: "next_business_id('OH', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('OH', 8)"
+      comment: "注文状態履歴ID（OH+8桁を採番）"
+    order_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "注文ID FK→orders.id"
+    from_status:
+      type: INT
+      nullable: true
+      comment: "変更前状態（参照: 注文状態（T07-6：1=DRAFT, 2=PENDING_APPROVAL, 3=RETURNED, 4=APPROVED, 5=CANCELLED）。新規作成時は NULL） FK→order_status_codes.order_status_code"
+    to_status:
+      type: INT
+      nullable: false
+      comment: "変更後状態（参照: 注文状態（T07-6：1=DRAFT, 2=PENDING_APPROVAL, 3=RETURNED, 4=APPROVED, 5=CANCELLED）。） FK→order_status_codes.order_status_code"
+    reason:
+      type: VARCHAR(500)
+      nullable: true
+      comment: "理由（取消し・差戻しの理由）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "idx_order_status_histories_order_id_created_at"
+      columns: ["order_id", "created_at"]
+      type: "BTREE"
+    - name: "idx_order_status_histories_from_status"
+      columns: ["from_status"]
+      type: "BTREE"
+    - name: "idx_order_status_histories_to_status"
+      columns: ["to_status"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_order_status_histories_orders"
+      column: "order_id"
+      references: "orders(id)"
+    - name: "fk_order_status_histories_from_status"
+      column: "from_status"
+      references: "order_status_codes(order_status_code)"
+    - name: "fk_order_status_histories_to_status"
+      column: "to_status"
+      references: "order_status_codes(order_status_code)"
+
+# ============================================= 承認ルール
+approval_rules:
+  description: "承認経路。初版は 0〜上限なし・1 段・ADMIN の 1 行のみ（BR-APR-001）。承認者は特定しない（有効な ADMIN のうち申請者以外）"
+  id_generation: "next_business_id('AR', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('AR', 8)"
+      comment: "承認ルールID（AR+8桁を採番）"
+    min_amount:
+      type: NUMERIC(15,2)
+      nullable: false
+      default: "0"
+      comment: "金額下限"
+    max_amount:
+      type: NUMERIC(15,2)
+      nullable: true
+      comment: "金額上限（NULL=上限なし）"
+    approval_step:
+      type: NUMERIC
+      nullable: false
+      default: "1"
+      comment: "承認段階"
+    approver_role:
+      type: INT
+      nullable: false
+      comment: "承認者ロール（参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。初版は 1=ADMIN 固定（chk_approval_rules_approver_role）） FK→user_role_codes.user_role_code"
+    is_active:
+      type: BOOLEAN
+      nullable: false
+      default: "TRUE"
+      comment: "有効フラグ"
+    effective_from_date:
+      type: DATE
+      nullable: false
+      comment: "適用開始日"
+    effective_to_date:
+      type: DATE
+      nullable: true
+      comment: "適用終了日"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_approval_rules_is_active_effective_from_date"
+      columns: ["is_active", "effective_from_date"]
+      type: "BTREE"
+    - name: "idx_approval_rules_approver_role"
+      columns: ["approver_role"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_approval_rules_user_role_codes"
+      column: "approver_role"
+      references: "user_role_codes(user_role_code)"
+  checks:
+    - name: "chk_approval_rules_approver_role"
+      expression: "approver_role = 1"
+    - name: "chk_approval_rules_max_amount"
+      expression: "max_amount IS NULL OR max_amount >= min_amount"
+    - name: "chk_approval_rules_effective_to_date"
+      expression: "effective_to_date IS NULL OR effective_to_date >= effective_from_date"
+  seed:
+    - { min_amount: 0, max_amount: null, approval_step: 1, approver_role: 1, is_active: true, effective_from_date: "2026-01-01" }
+
+# ============================================= 承認依頼
+approval_requests:
+  description: "注文ごとの承認依頼と適用ルールのスナップショット。再申請ごとに新しい行を作る"
+  id_generation: "next_business_id('AQ', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('AQ', 8)"
+      comment: "承認依頼ID（AQ+8桁を採番）"
+    order_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "注文ID FK→orders.id"
+    approval_step:
+      type: NUMERIC
+      nullable: false
+      default: "1"
+      comment: "承認段階"
+    approver_user_id:
+      type: VARCHAR(10)
+      nullable: true
+      comment: "承認者ユーザID（実際に承認・差戻しした ADMIN。申請時は NULL。申請者（created_by）とは異なる（BR-APR-002）） FK→users.user_id"
+    rule_snapshot:
+      type: JSONB
+      nullable: false
+      comment: "ルールスナップショット（申請時点の approval_rules の複写。申請者は created_by）"
+    status:
+      type: INT
+      nullable: false
+      comment: "状態（参照: 承認依頼状態（T07-7：1=PENDING, 2=APPROVED, 3=RETURNED）。） FK→approval_request_status_codes.approval_request_status_code"
+    acted_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "処理日時"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_approval_requests_order_id_status"
+      columns: ["order_id", "status"]
+      type: "BTREE"
+    - name: "idx_approval_requests_approver_user_id_status"
+      columns: ["approver_user_id", "status"]
+      type: "BTREE"
+    - name: "idx_approval_requests_status"
+      columns: ["status"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_approval_requests_orders"
+      column: "order_id"
+      references: "orders(id)"
+    - name: "fk_approval_requests_users"
+      column: "approver_user_id"
+      references: "users(user_id)"
+    - name: "fk_approval_requests_approval_request_status_codes"
+      column: "status"
+      references: "approval_request_status_codes(approval_request_status_code)"
+
+# ============================================= 承認履歴
+approval_histories:
+  description: "承認・差戻しの操作履歴（追加専用）。操作者・日時は created_by / created_at"
+  soft_delete: false   # no soft delete: 履歴テーブル
+  id_generation: "next_business_id('AH', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('AH', 8)"
+      comment: "承認履歴ID（AH+8桁を採番）"
+    approval_request_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "承認依頼ID FK→approval_requests.id"
+    approval_action:
+      type: INT
+      nullable: false
+      comment: "操作（参照: 承認操作（T07-8：1=APPROVE, 2=RETURN）。） FK→approval_action_codes.approval_action_code"
+    reason:
+      type: VARCHAR(500)
+      nullable: true
+      comment: "理由（差戻し時は必須（1〜500 文字））"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+  indexes:
+    - name: "idx_approval_histories_approval_request_id"
+      columns: ["approval_request_id"]
+      type: "BTREE"
+    - name: "idx_approval_histories_approval_action"
+      columns: ["approval_action"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_approval_histories_approval_requests"
+      column: "approval_request_id"
+      references: "approval_requests(id)"
+    - name: "fk_approval_histories_approval_action_codes"
+      column: "approval_action"
+      references: "approval_action_codes(approval_action_code)"
+  checks:
+    - name: "chk_approval_histories_reason"
+      expression: "approval_action <> 2 OR reason IS NOT NULL"
+
+# ============================================= 注文添付
+order_attachments:
+  description: "注文添付のメタデータ。ファイル本体はオブジェクトストレージ"
+  id_generation: "next_business_id('AT', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('AT', 8)"
+      comment: "添付ID（AT+8桁を採番）"
+    order_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "注文ID FK→orders.id"
+    original_file_name:
+      type: VARCHAR(255)
+      nullable: false
+      comment: "元ファイル名"
+    storage_path:
+      type: VARCHAR(512)
+      nullable: false
+      comment: "保存パス（オブジェクトストレージのキー。利用者へ返さない）"
+    content_type:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "コンテンツタイプ"
+    file_size:
+      type: NUMERIC
+      nullable: false
+      default: "0"
+      comment: "ファイルサイズ（バイト。1〜10485760（chk_order_attachments_file_size））"
+    visibility:
+      type: INT
+      nullable: false
+      comment: "公開範囲（参照: 添付公開範囲（T07-9：1=INTERNAL, 2=CUSTOMER）。） FK→attachment_visibility_codes.attachment_visibility_code"
+    scan_status:
+      type: INT
+      nullable: false
+      comment: "スキャン状態（参照: スキャン状態（T07-10：1=PENDING, 2=SAFE, 3=REJECTED）。） FK→scan_status_codes.scan_status_code"
+    storage_purged_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "ファイル削除日時（ストレージ上のファイルを削除した日時（BAT-04）。NULL=未削除）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "uq_order_attachments_storage_path"
+      columns: ["storage_path"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"
+    - name: "idx_order_attachments_order_id_visibility_scan_status"
+      columns: ["order_id", "visibility", "scan_status"]
+      type: "BTREE"
+    - name: "idx_order_attachments_visibility"
+      columns: ["visibility"]
+      type: "BTREE"
+    - name: "idx_order_attachments_scan_status"
+      columns: ["scan_status"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_order_attachments_orders"
+      column: "order_id"
+      references: "orders(id)"
+    - name: "fk_order_attachments_attachment_visibility_codes"
+      column: "visibility"
+      references: "attachment_visibility_codes(attachment_visibility_code)"
+    - name: "fk_order_attachments_scan_status_codes"
+      column: "scan_status"
+      references: "scan_status_codes(scan_status_code)"
+  checks:
+    - name: "chk_order_attachments_file_size"
+      expression: "file_size > 0 AND file_size <= 10485760"
+
+# ============================================= CSV 出力ジョブ
+export_jobs:
+  description: "CSV 出力ジョブ（全件を記録。10,000 件以下は同期生成して READY、10,001 件以上は QUEUED で非同期生成。BR-RPT-002）。依頼者は created_by"
+  id_generation: "next_business_id('EJ', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('EJ', 8)"
+      comment: "出力ジョブID（EJ+8桁を採番）"
+    filter_condition:
+      type: JSONB
+      nullable: false
+      comment: "抽出条件"
+    status:
+      type: INT
+      nullable: false
+      comment: "状態（参照: 出力状態（T07-13：1=QUEUED, 2=RUNNING, 3=READY, 4=FAILED, 5=EXPIRED）。） FK→export_status_codes.export_status_code"
+    storage_path:
+      type: VARCHAR(512)
+      nullable: true
+      comment: "保存パス"
+    record_count:
+      type: NUMERIC
+      nullable: false
+      default: "0"
+      comment: "件数"
+    expires_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "有効期限（完了から 24 時間。経過後は BAT-03 が EXPIRED にする）"
+    error_message:
+      type: TEXT
+      nullable: true
+      comment: "エラー内容"
+    completed_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "完了日時"
+    storage_purged_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "ファイル削除日時（ストレージ上のファイルを削除した日時（BAT-03）。NULL=未削除）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_export_jobs_created_by_status"
+      columns: ["created_by", "status"]
+      type: "BTREE"
+    - name: "idx_export_jobs_status"
+      columns: ["status"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_export_jobs_export_status_codes"
+      column: "status"
+      references: "export_status_codes(export_status_code)"
+
+# ============================================= 通知ログ
+notification_logs:
+  description: "業務メール通知のアウトボックスと送信履歴（Magic Link は auth-service が送信し、ここには記録しない）"
+  id_generation: "next_business_id('NL', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('NL', 8)"
+      comment: "通知ID（NL+8桁を採番）"
+    notification_event:
+      type: INT
+      nullable: false
+      comment: "通知イベント（参照: 通知イベント（T07-11：1=ORDER_SUBMITTED, 2=ORDER_APPROVED, 3=ORDER_RETURNED, 4=ORDER_CANCELLED, 5=EXPORT_COMPLETED）。） FK→notification_event_codes.notification_event_code"
+    order_id:
+      type: VARCHAR(10)
+      nullable: true
+      comment: "注文ID FK→orders.id"
+    recipient_email:
+      type: VARCHAR(255)
+      nullable: false
+      comment: "宛先メール"
+    status:
+      type: INT
+      nullable: false
+      comment: "状態（参照: 通知状態（T07-12：1=QUEUED, 2=SENDING, 3=SENT, 4=FAILED）。再試行待ちは QUEUED のまま、最終失敗だけ FAILED） FK→notification_status_codes.notification_status_code"
+    export_job_id:
+      type: VARCHAR(10)
+      nullable: true
+      comment: "出力ジョブID（出力完了通知（EXPORT_COMPLETED）の対象ジョブ。それ以外は NULL） FK→export_jobs.id"
+    attempt_count:
+      type: NUMERIC
+      nullable: false
+      default: "0"
+      comment: "試行回数（送信を試みた回数（初回を含む。最大 4 回＝初回＋再試行 3 回。手動再送で 0 に戻す。BR-NTF-002））"
+    next_attempt_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "次回送信日時（次回送信予定日時。QUEUED のとき送信ワーカーが `next_attempt_at <= 現在` の行を処理する（BR-NTF-002））"
+    error_message:
+      type: TEXT
+      nullable: true
+      comment: "エラー内容"
+    sent_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "送信日時"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_notification_logs_status_created_at"
+      columns: ["status", "created_at"]
+      type: "BTREE"
+    - name: "idx_notification_logs_status_next_attempt_at"
+      columns: ["status", "next_attempt_at"]
+      type: "BTREE"
+    - name: "idx_notification_logs_export_job_id"
+      columns: ["export_job_id"]
+      type: "BTREE"
+    - name: "idx_notification_logs_order_id"
+      columns: ["order_id"]
+      type: "BTREE"
+    - name: "idx_notification_logs_notification_event"
+      columns: ["notification_event"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_notification_logs_notification_event_codes"
+      column: "notification_event"
+      references: "notification_event_codes(notification_event_code)"
+    - name: "fk_notification_logs_orders"
+      column: "order_id"
+      references: "orders(id)"
+    - name: "fk_notification_logs_export_jobs"
+      column: "export_job_id"
+      references: "export_jobs(id)"
+    - name: "fk_notification_logs_notification_status_codes"
+      column: "status"
+      references: "notification_status_codes(notification_status_code)"
+
+# ============================================= 監査ログ
+audit_logs:
+  description: "重要操作の監査ログ（追加専用。論理削除は運用上行わない）"
+  id_generation: "next_business_id('AL', 8)"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('AL', 8)"
+      comment: "監査ログID（AL+8桁を採番）"
+    actor_user_id:
+      type: VARCHAR(10)
+      nullable: true
+      comment: "操作者ユーザID（未認証の操作は NULL） FK→users.user_id"
+    audit_action:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "操作"
+    target_type:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "対象種別"
+    target_id:
+      type: VARCHAR(100)
+      nullable: true
+      comment: "対象ID"
+    trace_id:
+      type: VARCHAR(100)
+      nullable: true
+      comment: "トレースID"
+    ip_address:
+      type: VARCHAR(45)
+      nullable: true
+      comment: "IP アドレス"
+    audit_detail:
+      type: JSONB
+      nullable: true
+      comment: "監査詳細（メール本文・ファイル本体・Magic Link token を含めない）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "作成日時" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "作成者（操作者のユーザ ID。システム処理は SYSTEM）" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
+  indexes:
+    - name: "idx_audit_logs_actor_user_id_created_at"
+      columns: ["actor_user_id", "created_at"]
+      type: "BTREE"
+    - name: "idx_audit_logs_target_type_target_id"
+      columns: ["target_type", "target_id"]
+      type: "BTREE"
+  foreign_keys:
+    - name: "fk_audit_logs_users"
+      column: "actor_user_id"
+      references: "users(user_id)"
