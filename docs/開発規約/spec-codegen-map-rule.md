@@ -1,8 +1,11 @@
+<!-- devtool:file-region id="document-header" -->
 # Codegen Spec Map（フロント・バックエンド一頁早見表）
 
 > spec-wf-codegen によるコード生成時に、「どの成果物がどの規約に従い、どの SSOT を読み、どのゲートを通すか」を示す一頁索引である。
 > 本ファイルは**ナビゲーション**のみを担い、規則は再定義しない。規則は参照先の各ファイルを正とする。
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.codegen-map-rule.s01" -->
 ## 0. パイプライン上の位置
 
 ```
@@ -10,10 +13,14 @@
                                                                   ↑ 本マップはこのステップを対象とする
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.codegen-map-rule.s02" -->
 ## 1. 権威順序（競合時の優先順位）
 
 競合時の優先順位は [`spec-generation-rule.md`](spec-generation-rule.md) §1 を正とする（本マップでは再掲しない）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.codegen-map-rule.s03" -->
 ## 2. SSOT データソース（項目/エンドポイント/メッセージの出所）
 
 | SSOT | 提供内容 | バックエンド | フロント |
@@ -23,6 +30,8 @@
 | `spec-09-message-list.{yaml,zh,en}` | messageId・3言語文言 | ✅ MessageResolver/例外 | ✅ i18n |
 | `spec-03-auth-ui.md` | ロール×データ範囲×項目マトリクス | ✅ データ範囲/マスキング | ✅ 表示制御 |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.codegen-map-rule.s04" -->
 ## 3. バックエンド（spec-backend-coding-rule.md が主）
 
 | 成果物 | 規約の出所 | テンプレート（spec-wf-codegen/assets/）| データソース |
@@ -43,6 +52,8 @@
 - **生成後の検証ゲート**（§13）：G-列 / G-API / G-msg / G-命名 / G-アーキテクチャ / G-秘密鍵 / G-改行 / G-javadoc
 - ⚠ **出力先（本プロジェクトのマルチモジュール `ddmsaa-backend/`）**：業務ドメインのコードは `ddmsaa-backend/business-service-core/src/main/java/com/example/ddmsaa/service/core/<feature>/` に配置する。XML→`business-service-core/.../resources/mapper/`、DDL→`データベース` の Flyway `V<n>__*.sql`（スクリプトの正本は 02 に帰属）
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.codegen-map-rule.s05" -->
 ## 4. フロントエンド（spec-frontend-coding-rule.md が主）
 
 | 成果物 | 規約の出所 | データソース |
@@ -59,12 +70,16 @@
 - **生成後の検証ゲート**（§11）：G-型(enum なし) / G-API(=operationId) / G-msg(ハードコードなし) / G-命名 / G-権限 / G-改行 / G-tsdoc
 - **出力先**：`frontend/src/{types,api,components,pages}/<domain>/…` + `routes.tsx`
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.codegen-map-rule.s06" -->
 ## 5. spec-wf-codegen ゲート（生成前/生成後）
 
 - **生成前・SSOT 整合プリチェックゲート**：① スタブ状態の DB yaml、② messageId のずれ、③ PK 規約違反を遮断する。
 - **生成後・検証ゲート**：バックエンド §13 / フロント §11。いずれも機械的に検査可能。**G-改行**（ファイル規約への適合。`開発規約/spec-backend-coding-rule.md` §12 を参照）を含む。
 - **生成後・必須成果物**：`詳細設計/<機能名>/spec-<feature>-filelist.md` を書き込み/更新する（成果物一覧 + ゲート結果 + Flyway 追加バージョン + 参照 messageId + 手作業の残タスク）。レビュー・再生成・クリーンアップに供する。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.codegen-map-rule.s07" -->
 ## 6. 共有契約（3つのスキャフォールドで一致。一か所を変更したら同期が必要）
 
 | 契約 | 値 |
@@ -76,3 +91,4 @@
 
 ---
 **要点**：命名/DB 規約が最上位 → フロント・バックエンドの実装規約 → 詳細設計 → yaml データソース。成果物の種類ごとに出所があり、それぞれ生成順序に従い、検証ゲートを通す。本プロジェクトのバックエンドコードはマルチモジュール `ddmsaa-backend/` に配置する（業務ドメイン→`business-service-core`）。
+<!-- devtool:endblock -->

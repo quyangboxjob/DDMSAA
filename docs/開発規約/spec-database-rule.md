@@ -1,7 +1,10 @@
+<!-- devtool:file-region id="document-header" -->
 # DB 命名規約
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.postgresql.database-rule.s01" -->
 ## メタデータ
 - version: 1.4.0
 - target_db: PostgreSQL
@@ -11,6 +14,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s02" -->
 ## 利用方法
 - AI が DB Schema を生成する際は、本ファイルを Prompt に含めること。
 - 本ドキュメントには曖昧な表現を一切含めず、すべての規則を機械的に判定可能な形式で記述する。
@@ -18,6 +23,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s03" -->
 ## 1. Schema 命名規約(Schema Naming)
 
 > 本節は PostgreSQL にのみ適用する。
@@ -43,6 +50,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s04" -->
 ## 2. 共通規則(General Rules)
 
 ### 2.1. 命名言語の規約(Naming Language)
@@ -69,6 +78,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s05" -->
 ## 3. テーブル命名規約(Table Naming)
 
 ### 3.1. 基本命名ルール(Basic Rule)
@@ -105,6 +116,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s06" -->
 ## 4. カラム命名規約(Column Naming)
 
 ### 4.1. 主キーの規約(Primary Key)
@@ -325,6 +338,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s07" -->
 ## 5. データ型マッピング規約(Data Type Mapping)
 
 <!-- rule: db.type-mapping -->
@@ -360,6 +375,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s08" -->
 ## 6. 制約・インデックス命名規約(Constraint and Index Naming)
 
 ### 6.1. 命名パターン定義(Naming Patterns)
@@ -382,6 +399,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s09" -->
 ## 7. 使用禁止語・予約語の管理(Reserved and Banned Words)
 
 - **規則**：下表に挙げる語は、テーブル名またはカラム名として単独で使用することを**禁止**する。
@@ -412,6 +431,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s10" -->
 ## 8. 正誤事例対照表(Good VS Bad Examples)
 
 ### 8.1. テーブル名の事例対照(Table Names)
@@ -448,6 +469,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s11" -->
 ## 9. AI Prompt テンプレート(AI Prompt Template)
 
 本節では、AI が DB Schema を生成する際に、本規約ドキュメントを Prompt に埋め込んで利用する方法を示す。
@@ -464,6 +487,8 @@
 ```
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.database-rule.s12" -->
 ## 改訂履歴
 
 | バージョン | 日付 | 作成者 | 変更内容 |
@@ -473,3 +498,4 @@
 | 1.2.0 | 2026/06/08 | nebulasoft Co., Ltd | 主キー型の修正 |
 | 1.3.0 | 2026/06/09 | nebulasoft Co., Ltd | 主キー型の矛盾を修正(NUMERIC は IDENTITY にできない、例を同期)。§5 の主キー行を「文字列採番」「数値自動採番の代替」の 2 種に分割。§4.1-SEQ の文字列採番関数 `next_business_id` とシーケンス命名規約を追加(prefix 割当表に未確定項目を含む)。created_by/updated_by に `DEFAULT 'SYSTEM'` を追加 |
 | 1.4.0 | 2026/06/10 | nebulasoft Co., Ltd | §4.1-SHARED(1:1 / 0..1 子テーブルの共有主キー例外、自身の id を省略)を追加。§4.1-SEQ の prefix 割当表を確定(users E/A/C 4 桁、departments DP 4 桁、change_requests/request_attachments/request_status_histories/system_lock_histories 8 桁。4 つの master の主キー＝自然キー §4.1-NATURAL、DBQ-02 解決済み) |
+<!-- devtool:endblock -->

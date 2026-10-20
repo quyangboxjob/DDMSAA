@@ -1,4 +1,50 @@
 schemaVersion: 1
+visualization:
+  exclude:
+    - readme-basic-design
+    - readme-detail-design
+    - eclipse-formatter
+    - if-log-config
+  groups:
+    - id: message-list
+      title: 共通メッセージ一覧
+      members:
+        - message-list-ui
+        - message-list-ja
+        - message-list-zh
+        - message-list-en
+      primary: message-list-ja
+    - id: db-physical
+      title: DB 物理設計
+      members:
+        - db-physical-ui
+        - db-physical-yaml
+      primary: db-physical-ui
+    - id: database-rule
+      title: DB 命名規約
+      members:
+        - database-rule
+        - postgresql-column-types-rule
+      primary: database-rule
+    - id: sql-lint-rule
+      title: SQL Lint 規約
+      members:
+        - sql-lint-rule
+        - sqlfluff-rules-catalog
+      primary: sql-lint-rule
+    - id: db-connection
+      title: DB 接続・構築設計
+      members:
+        - db-connection
+        - db-connection-temp
+        - db-foundation-temp
+      primary: db-connection
+    - id: generation-rule
+      title: 生成共通規約
+      members:
+        - generation-rule
+        - backend-scaffold-rule
+      primary: generation-rule
 nodes:
   - id: doc-standard
     path: 基本設計/共通/spec-00-doc-standard-ui.md
@@ -7,9 +53,11 @@ nodes:
       - id: doc.header-block
         summary: 各設計書の冒頭に文書ヘッダ（文書情報と改訂履歴）を貼り付ける
       - id: doc.id-prefix-scheme
-        summary: 機能 F-/画面 SCR-/テーブル TBL-/バッチ BAT-/外部IF IF- のID接頭辞体系を全文書で用いる
+        summary: 機能 F-/画面 SCR-/テーブル TBL-/バッチ BAT-/帳票 RPT-/業務フロー BF-/業務ルール BR-/データ移行 MIG-/運用作業 OPS-/外部IF IF- のID接頭辞体系を全文書で用いる
       - id: doc.id-role-prefix
         summary: ロールIDは R- + ロール列挙値とする
+      - id: doc.output-file-naming
+        summary: 帳票等の出力ファイル名は <帳票名>_YYYYMMDD.<拡張子>、複数ファイルは ZIP にまとめる（帳票固有の規則のみ帳票設計に記載）
   - id: naming-rule
     path: 開発規約/spec-naming-rule.md
     title: 命名規約
@@ -380,6 +428,7 @@ nodes:
     uses:
       - doc.header-block
       - doc.id-prefix-scheme
+      - doc.output-file-naming
       - api.file-response-unwrapped
     dependsOn:
       - doc-standard
@@ -454,6 +503,7 @@ nodes:
         summary: Frontend は表示層の共通ユーティリティで日時を書式化し、コンポーネント内での個別タイムゾーン変換を禁止する
     uses:
       - doc.header-block
+      - doc.output-file-naming
       - msg.category-iwe-no-c
       - msg.no-hardcoded-text
       - api.returns-message-id-only
@@ -483,6 +533,87 @@ nodes:
       - naming-rule
       - database-rule
       - data-dictionary-rule
+  - id: function-list
+    path: 基本設計/共通/spec-02-function-list-ui.md
+    title: 機能一覧・機能構成
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+    dependsOn:
+      - doc-standard
+  - id: business-flow
+    path: 基本設計/共通/spec-04-business-flow-ui.md
+    title: 業務フロー設計
+    defines:
+      - id: flow.status-transition-ssot
+        summary: 業務データの許可遷移・禁止遷移は業務フロー設計 §3 を唯一の定義源とし、詳細設計・UT はここから導出する
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+    dependsOn:
+      - doc-standard
+  - id: screen-list
+    path: 基本設計/共通/spec-05-screen-list-ui.md
+    title: 画面一覧
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+    dependsOn:
+      - doc-standard
+  - id: screen-transition
+    path: 基本設計/共通/spec-10-screen-transition-ui.md
+    title: 画面遷移図
+    defines:
+      - id: screen.transition-ssot
+        summary: 画面遷移は画面遷移図を唯一の定義源とし、詳細設計・ルーティング実装はこれに整合させる（新規遷移は先に本書へ追加）
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+    dependsOn:
+      - doc-standard
+  - id: report-design
+    path: 基本設計/共通/spec-14-report-design-ui.md
+    title: 帳票設計
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+      - doc.output-file-naming
+    dependsOn:
+      - doc-standard
+  - id: batch-design
+    path: 基本設計/共通/spec-15-batch-design-ui.md
+    title: バッチ設計
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+    dependsOn:
+      - doc-standard
+  - id: screen-design
+    path: 基本設計/共通/spec-16-screen-design-ui.md
+    title: 画面設計（画面レイアウト・項目定義）
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+    dependsOn:
+      - doc-standard
+  - id: data-migration
+    path: 基本設計/共通/spec-17-data-migration-ui.md
+    title: データ移行設計
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+    dependsOn:
+      - doc-standard
+  - id: operation-design
+    path: 基本設計/共通/spec-18-operation-design-ui.md
+    title: 運用設計
+    uses:
+      - doc.header-block
+      - doc.id-prefix-scheme
+      - mig.no-manual-prod-change
+    dependsOn:
+      - doc-standard
+      - system-architecture
   - id: db-migration
     path: 基本設計/データベース/spec-db-migration-ui.md
     title: DB マイグレーション基本設計
@@ -666,6 +797,7 @@ nodes:
       - doc.id-prefix-scheme
       - gen.line-ending-lf-no-bom
       - gen.conflict-priority-order
+      - screen.transition-ssot
     dependsOn:
       - doc-standard
       - naming-rule
@@ -676,6 +808,7 @@ nodes:
       - message-list-ui
       - generation-rule
       - screen-common
+      - screen-transition
   - id: backend-scaffold-rule
     path: 開発規約/spec-backend-scaffold-rule.md
     title: Backend スキャフォールド規約
@@ -801,6 +934,8 @@ nodes:
       - naming.api-path-kebab-plural
       - doc.id-prefix-scheme
       - fname.doc-file-naming
+      - screen.transition-ssot
+      - flow.status-transition-ssot
     dependsOn:
       - doc-standard
       - naming-rule
@@ -816,6 +951,8 @@ nodes:
       - frontend-coding-rule
       - test-rule
       - generation-rule
+      - screen-transition
+      - business-flow
   - id: foundation-architecture
     path: 基本設計/基盤/spec-00-architecture-ui.md
     title: 基盤基本設計 アーキテクチャ（ハブ）

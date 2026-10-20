@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # Naming Spec
 
 > 本文書は React / Spring Boot / PostgreSQL 全スタックアーキテクチャにおける層間命名規約である。
@@ -7,6 +8,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.naming-rule.s01" -->
 ## 目次
 
 - [文書関係表](#文書関係表)
@@ -28,6 +31,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.naming-rule.s02" -->
 ## 文書関係表
 
 | 文書名 | ファイル名 | 役割 | 本文書との関係 |
@@ -42,6 +47,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.naming-rule.s03" -->
 ## 1. Case Convention by Layer
 
 本節は各層のオブジェクトに共通する命名規則を定義するものであり、すべての命名の基礎規則である。
@@ -97,6 +104,8 @@ enum OrderStatus { IN_PROGRESS = "IN_PROGRESS" }
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.naming-rule.s04" -->
 ## 2. Resource Naming Across Layers
 
 本節は、業務エンティティ名の各層における命名変換規則を定義する。
@@ -123,6 +132,8 @@ Frontend コンポーネントの役割接尾辞（一覧・用途・使用規�
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.naming-rule.s05" -->
 ## 3. Fundamental Principles
 
 本節は、データが層をまたいで受け渡される際の3つの基本原則を定義する。
@@ -175,6 +186,8 @@ order（Backend / Frontend）→ purchases（DB）
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.naming-rule.s06" -->
 ## 4. Abbreviation Whitelist
 
 本節は略語ホワイトリストを定義する。ホワイトリストに載っていない略語は、いずれの層でも使用を禁止する。
@@ -208,6 +221,8 @@ order（Backend / Frontend）→ purchases（DB）
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.naming-rule.s07" -->
 ## Appendix：命名チェックリスト（AI によるコード生成時の確認事項）
 
 AI がコードを生成する際は、以下の順序で項目ごとに確認しなければならない。
@@ -216,3 +231,4 @@ AI がコードを生成する際は、以下の順序で項目ごとに確認�
 2. **§2 の確認**：リソース名の単数/複数形と case 変換が規則に合致しているか
 3. **§3 の確認（層間マッピング）**：層をまたいで使用する名称について、意味単位の順序が一致しているか。層をまたいで受け渡され、かつ意味単位が変化する項目（広い語の絞り込みや予約語の置換など）は、§3 Principle 3 の規定に厳密に従い、【データ辞書】の Principle 3 変換マッピング表に明示的に登録し、整合させているか
 4. **§4 の確認（略語の適合）**：コード中で使用するすべての非正式名称の単語（`id`、`url`、`dto` など）が、§4 の略語ホワイトリストに載っているか。未登録の略語の使用は禁止する
+<!-- devtool:endblock -->

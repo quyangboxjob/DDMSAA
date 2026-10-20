@@ -1,9 +1,12 @@
-﻿# DB マイグレーション基本設計（Flyway）
+﻿<!-- devtool:file-region id="document-header" -->
+# DB マイグレーション基本設計（Flyway）
 
 > DDMSAAの DB スキーマ進化（マイグレーション）方式の基本設計。
 > 上位：[`../../基盤/spec-04-common-component-ui.md`](../基盤/spec-04-common-component-ui.md) §10（基盤側 Flyway 統合）。実装詳細（機読 spec）：[`../../基盤/インタフェース仕様/spec-project-structure.yaml`](../基盤/インタフェース仕様/spec-project-structure.yaml)・[`../../基盤/インタフェース仕様/spec-09-resource-file.yaml`](../基盤/インタフェース仕様/spec-09-resource-file.yaml)。
 > 規約：[`../../../開発規約/spec-flyway-migration-rule.md`](../../開発規約/spec-flyway-migration-rule.md)。
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s01" -->
 ## ドキュメント情報
 
 | 項目 | 内容 |
@@ -16,11 +19,15 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s02" -->
 ## 1. 目的・位置づけ
 
 DB の「初期構築」と「構築後の継続的なスキーマ変更」を**別機構**で扱い、後者を Flyway によりバージョン管理する。
 これにより、稼働中・データ投入済みの DB に対しても**破壊せず増分で**スキーマを進化させられる。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s03" -->
 ## 2. 二つの実行機構と責務分担
 
 <!-- rule: mig.two-mechanism-split -->
@@ -31,6 +38,8 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 
 > 機構Aは「最初に一回だけ作る（DB/ユーザー＋schema）」。機構Bは「schema 構築後の初期データ（V1）と以降の変更（V2+）を当てる」。schema は Flyway のバージョン管理対象外、**baseline=version 0**（§4）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s04" -->
 ## 3. 設計方針（本システムの選択）
 
 - **schema 初期構築は機構Aが行い、Flyway はスキーマを新規作成しない**（schema は Flyway のバージョン管理対象外）。
@@ -38,6 +47,8 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 <!-- rule: mig.script-location -->
 - マイグレーション SQL は `infrastructure` モジュールに一元配置し、両サービスから共有（同一スクリプト＝分岐しない）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s05" -->
 ## 4. baseline 戦略（既存 DB への導入）
 
 <!-- rule: mig.baseline-zero-v1-initial-data -->
@@ -50,6 +61,8 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 - **schema は機構A（docker）が作る前提**。空 DB に Flyway だけ当てる運用はしない（V1 はデータ投入で、表は機構Aが用意）。
 - **`V1` = 初期移行データ**（Flyway が最初に実行するマイグレーション）。以降の表構造変更は `V2` から。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s06" -->
 ## 5. トポロジ（誰が実行するか）
 
 - DB は単一 `ddmsaa`。接続するのは **auth-service(8081)** と **business-service-core(8082)** の 2 サービス（api-gateway は DB 非接続）。
@@ -57,6 +70,8 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 - 同時起動時も Flyway の advisory lock + 共有履歴により安全（先発が適用、後発は最新を確認し no-op）。
 - 本番厳格運用に移行する際は「マイグレーションを独立ステップ（`flyway:migrate` を CI/デプロイで実行、各サービスは `enabled:false`）」へ切替可能（詳細設計 §6）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s07" -->
 ## 6. 管理対象 / 非対象
 
 | 対象 | Flyway 管理 |
@@ -68,6 +83,8 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 | DB/ユーザー作成・権限付与（bootstrap） | ✕（機構A・接続前提のため対象外） |
 | 開発サンプル・単体(UT)テストデータ | ✕（環境専用・手動 psql / test profile） |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s08" -->
 ## 7. 環境別の振る舞い
 
 | 環境 | 初期構築 | Flyway |
@@ -76,6 +93,8 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 | CI / テスト | 機構A 相当でスキーマ用意 | 同上。テストデータは別途 |
 | 本番（将来） | スキーマは Flyway 全量 or 別途構築 | 独立ステップ実行推奨（§5） |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-migration-ui.s09" -->
 ## 8. 関連成果物
 
 | 成果物 | 役割 |
@@ -85,3 +104,4 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 | [`開発規約/spec-flyway-migration-rule.md`](../../開発規約/spec-flyway-migration-rule.md) | SQL ファイル作成・命名規約 |
 | `migrations/migration-version.yaml` | **設計記録/台帳**（実際に効くのは `infrastructure/.../db/migration/` のスクリプト） |
 | `setup/10_schema.sql` | 機構A の初期 schema（Flyway バージョン管理対象外。baseline=0 として扱われ V1 から適用） |
+<!-- devtool:endblock -->

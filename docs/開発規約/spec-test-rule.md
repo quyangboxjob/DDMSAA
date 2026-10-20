@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # テスト規約（spec-test-rule）
 
 > 本プロジェクトのテスト（単体・結合）の階層、ディレクトリ、文書命名、ID 規則、テスト名、テストデータの原則を定める。AI がテスト仕様書・テストコード・テストレポートを生成する際は、本ファイルを [`spec-naming-rule.md`](spec-naming-rule.md)、[`spec-file-naming-rule.md`](spec-file-naming-rule.md) および各層の coding-rule と同時にプロンプトへ含めること。
@@ -5,6 +6,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.test-rule.s01" -->
 ## 1. 適用範囲
 
 **適用対象**：バックエンド（Spring Boot）・フロントエンド（React）の単体テスト、API 結合テスト、画面結合テストの仕様書・コード・結果レポート、および詳細設計 §5.1 の UT 用例一覧。
@@ -13,6 +16,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s02" -->
 ## 2. テスト階層
 
 | 階層 | 工程略号 | 粒度 | 被テスト対象 | 外部依存の扱い |
@@ -40,6 +45,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s03" -->
 ## 3. ディレクトリ規約
 
 テスト関連の文書・成果物は、基本設計／詳細設計と同階層に置く。
@@ -87,6 +94,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s04" -->
 ## 4. テスト文書の命名
 
 命名は `spec-file-naming-rule.md` の構造に従う。テスト関連の接尾辞・名称は以下のとおり。
@@ -107,6 +116,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s05" -->
 ## 5. ID 規則
 
 <!-- rule: test.ut-id-format -->
@@ -124,6 +135,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s06" -->
 ## 6. テスト名と `@DisplayName`
 
 <!-- rule: test.displayname-id-first -->
@@ -136,6 +149,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s07" -->
 ## 7. 実行とレポート
 
 - **ランナーの束縛**：`*Test` は surefire（`test` フェーズ）、`*IT` は failsafe（`integration-test`／`verify` フェーズ）で実行する。対象モジュールに failsafe を設定しないと `*IT` が `mvn test` で実行されず、静かに漏れる。全層の実行は `mvn verify` とする。
@@ -146,6 +161,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s08" -->
 ## 8. テストデータと種子の原則
 
 本節は業務データを定めない。具体的なデータ値は各式様書・フィクスチャで、SSOT に基づいて定義する。
@@ -162,6 +179,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s09" -->
 ## 9. 品質ルール
 
 - **禁止事項**：空のアサーション、恒真アサーション、コメントアウトされたテスト、理由のない `@Disabled`、ゲートを通すためだけの空実装。
@@ -175,6 +194,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s10" -->
 ## 10. 他の規約との関係
 
 | 規約 | 関係 |
@@ -190,6 +211,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.test-rule.s11" -->
 ## 11. 未決事項
 
 - システムテスト（ST）の定義・ディレクトリ・文書名・ID 規則（参照元のテスト系 skill に ST 工程の規則が無いため未定義）。
@@ -199,5 +222,6 @@
 - 結合テスト式様書・結果レポートの接尾辞（`-integrationtest-sd` 等）の統一方針（現行は §4 の名称で運用）。
 - 詳細設計ディレクトリの `-testlist`／`-testreport` と `単体テスト／結合テスト` 配下レポートの使い分け・重複記録の扱い。
 - フロントエンドの機能単位の UT 用例一覧（§5.1 のフロントエンド版）の有無。
-- 画面結合テストの ID に使う画面 ID の表記（`SCR-<n>` か機能別接頭辞付きか）。
+- （決定済）画面結合テストの ID に使う画面 ID の表記は `SCR-<n>`（`spec-00-doc-standard-ui.md` §3）。機能別接頭辞は付けない。
 - L3 のデータベース（Testcontainers か常設 DB か）、シード戦略、CI での L3 実行可否（テスト基盤構築時の決定事項で、規約化されていない）。
+<!-- devtool:endblock -->

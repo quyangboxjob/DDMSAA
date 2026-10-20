@@ -1,7 +1,10 @@
+<!-- devtool:file-region id="document-header" -->
 # SQL Lint 規約（Flyway 実行前 静的検査）
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s01" -->
 ## メタデータ
 - version: 1.0.0
 - target_db: PostgreSQL（バージョンは `基本設計/共通/spec-01-system-architecture-ui.md` §2.3 に従う）
@@ -12,6 +15,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s02" -->
 ## 利用方法
 
 <!-- rule: lint.pre-execution-gate -->
@@ -23,6 +28,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s03" -->
 ## 1. 適用範囲
 
 | 区分 | パス | Lint 対象か |
@@ -38,6 +45,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s04" -->
 ## 2. ツールと設定
 
 - **ツール**：SQLFluff 4.x（検証時 4.2.2）（`lint` = 検査、`fix` = 自動修正）。
@@ -50,6 +59,8 @@
 ---
 
 <!-- rule: lint.rule-set -->
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s05" -->
 ## 3. Lint ルールセット
 
 SQLFluff 4.x のルール ID で管理する。方針は既存の `setup/10_schema.sql`・`V1` の実態に合わせて確定した（**キーワード/型は大文字、識別子/関数は小文字**）。全 5 SQL（`10_schema`/`00_bootstrap`/`01_schema_grants`/`20_seed`/`V1`）で **違反 0 件で通過済み**（2026/07/07 実測）。
@@ -86,6 +97,8 @@ SQLFluff 4.x のルール ID で管理する。方針は既存の `setup/10_sche
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s06" -->
 ## 4. 実行とゲート
 
 ### 4.1 ローカル（マイグレーション作成時）
@@ -115,6 +128,8 @@ PYTHONUTF8=1 python -m sqlfluff fix ddmsaa-backend/infrastructure/src/main/resou
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s07" -->
 ## 5. 設定の正本（`.sqlfluff`）
 
 プロジェクトルートに配置する。すべての lint はこのファイルに従う（SSOT）。
@@ -178,6 +193,8 @@ line_position = trailing
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s08" -->
 ## 6. 既存スクリプトへの適合（2026/07/07 実施済み）
 
 初回導入時に全対象へ `sqlfluff lint` を実行し、**ルール側をプロジェクトの実態に合わせて調整**して整合させた（スクリプトの大幅な改修は不要だった）。結果：**5 SQL すべて違反 0 件**。
@@ -189,6 +206,8 @@ line_position = trailing
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sql-lint-rule.s09" -->
 ## 7. 対象外（本規約でカバーしないもの）
 
 | 項目 | 担保先 |
@@ -197,3 +216,4 @@ line_position = trailing
 | カラム/型/列挙コードテーブル/主キーの設計整合 | `spec-database-rule` + `spec-06-db-physical.yaml`（skill ゲート DS6/MG6） |
 | 文字コード・改行 | `開発規約/spec-backend-coding-rule.md` §12 + `spec-flyway-migration-rule` R-09 |
 | SQL の実行結果・データの正当性 | 単体/結合テスト |
+<!-- devtool:endblock -->

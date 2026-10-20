@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # データ辞書規範（AI参照文書）
 
 > 本文書は AI が DB スキーマを生成する際の規則基盤である。
@@ -6,6 +7,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.data-dictionary-rule.s01" -->
 ## 目次
 
 - [データ辞書規範（AI参照文書）](#データ辞書規範ai参照文書)
@@ -34,6 +37,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s02" -->
 ## 文書関係表
 
 | 文書名 | ファイル名 | 役割 | 本文書との関係 |
@@ -45,6 +50,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s03" -->
 ## 使用規則
 
 - AI が DB スキーマを生成する際は、以下の文書を必ず併せて参照すること。
@@ -112,6 +119,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s04" -->
 ## T01 整数・識別子型グループ
 
 - 外部キー参照には `必須外部キー型` / `任意外部キー型`（文字列型）を使用しなければならず、外部キー列に `必須整数型` や `任意整数型` を使用することを禁止する
@@ -130,6 +139,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s05" -->
 ## T02 文字列型グループ
 
 <!-- rule: dict.encrypted-type-varchar512 -->
@@ -158,6 +169,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s06" -->
 ## T03 テキスト型グループ
 
 | 型名 | DB型 | 制約 | 用途説明 |
@@ -166,6 +179,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s07" -->
 ## T04 数値型グループ
 
 | 型名 | DB型 | 制約 | 用途説明 |
@@ -179,6 +194,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s08" -->
 ## T05 日付・日時型グループ
 
 - `更新日時型` は必ずトリガーにより自動更新を実装すること。トリガー規範と実装テンプレートの詳細は `spec-database-rule.md` §4.3-Trigger を参照
@@ -197,6 +214,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s09" -->
 ## T06 論理型グループ
 
 > 型名中の `フラグ` はカタカナであり、他の型名の漢字表記とは様式が異なるが、確立済みの命名として踏襲する。型名体系では、日本語の漢字とカタカナの併存を許容する。
@@ -208,6 +227,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s10" -->
 ## T07 列挙型グループ（規則説明）
 
 > T07 の具体的な列挙型定義（業務内容）は、各プロジェクトの `data-dictionary-{project}.md` に記載する。
@@ -290,6 +311,8 @@
 > 本節は、すべてのテーブルに共通する項目の各層における名称対照規範を定義し、全プロジェクト共用の基準とする。
 > 業務項目の層間対照は、プロジェクトデータ辞書の Principle 3 ホワイトリストで管理し、本節には登録しない。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s11" -->
 ## 共通項目の層間対照表
 
 | 業務概念 | DB | Backend Entity | API JSON | Frontend |
@@ -304,6 +327,8 @@
 
 > **採番主キーのプロジェクト（本プロジェクトが該当する類型）**：`id`(Long)/`external_id` の二重 ID を使用せず、業務主キーは `VARCHAR(10)` の採番を採用し、そのまま対外公開する（DB の `id`/`user_id` → API/Frontend で同名）。上表の `id`(Long)+`external_id` の2行は二重 ID 方式の汎用的な例示にすぎず、この類型のプロジェクトでは有効化しない（下記の説明および DBQ-08 を参照）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s12" -->
 ## 時間項目の取り扱い規則
 
 - **DB**：`TIMESTAMPTZ` 型（タイムゾーンの扱いは `spec-database-rule.md` §5.1 に従う）
@@ -311,6 +336,8 @@
 - **API JSON**：日時の表記は `基本設計/共通/spec-07-api-list-ui.md` に従う
 - **Frontend**：`string` 型で受け取る（表示書式は `基本設計/共通/spec-12-screen-common-ui.md` に従う）
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s13" -->
 ## 共通項目の説明
 
 - `id`（内部主キー）と `deleted_at`（論理削除日時）は API および Frontend に対して非公開とする
@@ -320,6 +347,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-rule.s14" -->
 ## 改訂履歴
 
 | バージョン | 日付 | 変更種別 | 変更内容 |
@@ -335,3 +364,4 @@
 | 1.8.0 | 2026-06-16 | 説明修正 | 第3部の共通項目層間対照表に created_by/updated_by を補完し、external_id/id(Long) を二重 ID 方式の任意の例示として明記；共通列の必須項目は第2部の 6 列を正とする（B2 内部矛盾の修正） |
 | 1.9.0 | 2026-06-19 | 基礎型修正 | T01 `必須整数型`/`任意整数型` の DB 型を「`NUMERIC`」から「`INTEGER` または `NUMERIC` のいずれも可」に緩和し、実際のスキーマの `INT`（ユーザー管理の `dependent_count`/`review_limit_days`/`process_limit_days`）と `spec-database-rule.md` §5 の `NUMERIC` のどちらも適合となるようにして、整数列の基準の相違を解消 |
 | 1.10.0 | 2026-06-19 | 規則強化 | DDL コメント言語規則：「すべてのテーブル/列は `CREATE TABLE` と一緒にコメントを付与し、コメントがなければ未完了」と明確化し、`COMMENT ON TABLE/COLUMN ... IS '日本語論理名'` の形式と例を補足；「禁止/許可」対照表の方向の誤りを修正（旧表は v1.6.0 の「日本語で統一」規則と逆で、日本語が誤って禁止側に載っていた） |
+<!-- devtool:endblock -->

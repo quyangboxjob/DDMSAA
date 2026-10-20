@@ -1,7 +1,10 @@
+<!-- devtool:file-region id="document-header" -->
 # SQLFluff ルール全集一覧（追加可能な制限の完全カタログ）
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.postgresql.sqlfluff-rules-catalog.s01" -->
 ## メタデータ
 - version: 1.0.0
 - linter: SQLFluff 4.2.2（`sqlfluff rules` 生成時点）
@@ -10,6 +13,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sqlfluff-rules-catalog.s02" -->
 ## 本ファイルの位置付けと使い方
 - 本ファイルは **SQLFluff が適用できるすべての制限（ルール）の完全なカタログ**であり、全 **75 ルール**を収録する。プロジェクトに **SQL の制限を追加**したい場合は、まずここでルール番号を選び、下記の「追加フロー」に進む。
 - **ルール採否の正本は [`spec-sql-lint-rule.md`](spec-sql-lint-rule.md) §3**、機械可読な設定の正本はプロジェクトルートの `.sqlfluff` である。本ファイルは**選択肢の一覧**（catalog）であり、設定そのものではない。
@@ -19,6 +24,8 @@
   ```
   ⚠ プロジェクトディレクトリで実行すると **`exclude_rules` のルールが除外される**（表示されるのは全集ではなく「有効セット」）。全集を確認するには、**`.sqlfluff` のないディレクトリ**で実行すること。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sqlfluff-rules-catalog.s03" -->
 ## 凡例（本プロジェクトでの状態）
 - **✅ 調整**：`.sqlfluff` で**パラメータを明示的に設定**している（7 ルール）——CP01, CP02, CP03, CP05, LT04, LT05, RF04
 - **❌ 無効**：`exclude_rules` に登録され、**検査しない**（6 ルール）——AL03, LT01, LT02, LT09, LT14, PG01
@@ -28,6 +35,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sqlfluff-rules-catalog.s04" -->
 ## ルール目録（グループ別）
 
 ### AL — エイリアス aliasing（10 ルール）
@@ -162,6 +171,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sqlfluff-rules-catalog.s05" -->
 ## 制限を追加するフロー（`spec-sql-lint` skill と連携）
 
 1. **ルールを選ぶ**：上表から要件に合う番号を探す（例：「文末のセミコロン必須」→ `CV06`）。
@@ -180,7 +191,10 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.sqlfluff-rules-catalog.s06" -->
 ## 関連
 - ルール採否の正本：[`spec-sql-lint-rule.md`](spec-sql-lint-rule.md)（§3 有効/無効、§5 `.sqlfluff` 設定の正本）
 - 上位の大文字小文字/型：[`spec-database-rule.md`](spec-database-rule.md) / [`spec-postgresql-column-types-rule.md`](spec-postgresql-column-types-rule.md)
 - 実行スキル：`.claude/skills/spec-sql-lint/`
+<!-- devtool:endblock -->

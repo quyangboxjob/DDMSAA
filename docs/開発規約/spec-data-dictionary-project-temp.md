@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # プロジェクトデータ辞書：{プロジェクト名}
 
 > 本ファイルはプロジェクト固有のデータ辞書であり、T07列挙型定義、列定義、Principle 3 ホワイトリストを記載する。
@@ -5,6 +6,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.data-dictionary-project-temp.s01" -->
 ## 目次
 
 - [プロジェクトデータ辞書：{プロジェクト名}](#プロジェクトデータ辞書プロジェクト名)
@@ -20,6 +23,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-project-temp.s02" -->
 ## 文書関係表
 
 > 本文書内では具体的なファイル名ではなく「文書名」で統一して参照する。ファイル名を変更する場合は、本表のみ更新すればよい。
@@ -39,6 +44,8 @@
 > 登録規則は命名規約 §4 を参照する。
 > 本節のホワイトリストは、全層のコード生成における唯一の検索窓口である。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-project-temp.s03" -->
 ## タイプA：意味境界の絞り込み
 
 > 広い語が特定の文脈で十分に意味が明確となる場合に、限定語の省略を許容する変換である。
@@ -50,6 +57,8 @@
 
 <!-- プロジェクトでタイプAの変換を追加する場合は、上記の形式で追記する -->
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-project-temp.s04" -->
 ## タイプB：技術的競合による強制置換
 
 > 概念名が DB 層で SQL 予約語と競合する場合の強制置換の登録である。
@@ -104,6 +113,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.data-dictionary-project-temp.s05" -->
 ## 改訂履歴
 
 | バージョン | 日付 | 作成者 | 変更種別 | 変更内容 |
@@ -112,3 +123,4 @@
 
 <!-- 変更種別：初版 / T07追加 / T07修正 / 列定義追加 / 列定義修正 / ホワイトリスト追加 / 説明修正 -->
 <!-- T07追加/T07修正 は DB マイグレーション（コードテーブルの更新）が必要。説明修正 は DB マイグレーション不要 -->
+<!-- devtool:endblock -->

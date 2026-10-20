@@ -1,76 +1,129 @@
-meta:
-  system: DDMSAA
-  dbms: PostgreSQL 16
-  version: 1.0
-  authority: "../../共通/spec-06-db-physical.yaml"
-  note: "本書は論理/物理テーブルの索引。列、制約、初期値の唯一の正は spec-06-db-physical.yaml。"
-tables:
-  tax_categories:
-    pk: tax_category_code
-    columns: [tax_category_code, display_name, rate, active]
-    seed: [STANDARD:10.00, REDUCED:8.00, EXEMPT:0.00]
-  customers:
-    pk: customer_id
-    unique: [customer_code]
-    columns: [customer_id, customer_code, customer_name, email, phone, status, created_at, updated_at, deleted_at]
-  customer_contacts:
-    pk: customer_contact_id
-    fk: [customer_id->customers.customer_id]
-    columns: [customer_contact_id, customer_id, contact_name, email, is_notification_recipient, active]
-  users:
-    pk: user_id
-    unique: [login_id, email]
-    fk: [customer_id->customers.customer_id]
-    columns: [user_id, login_id, display_name, email, password_hash, role_code, customer_id, status, failed_login_count, locked_until, created_at, updated_at, deleted_at]
-    rule: "role_code は ADMIN / EMPLOYEE / CUSTOMER。CUSTOMER は customer_id 必須。平文パスワードは保存禁止。"
-  user_sessions:
-    pk: session_id
-    fk: [user_id->users.user_id]
-    unique: [token_hash]
-    columns: [session_id, user_id, token_hash, expires_at, revoked_at, created_at]
-  employee_customer_assignments:
-    pk: assignment_id
-    fk: [employee_user_id->users.user_id, customer_id->customers.customer_id]
-    unique: [[employee_user_id, customer_id]]
-  products:
-    pk: product_id
-    unique: [product_code]
-    fk: [tax_category_code->tax_categories.tax_category_code]
-    columns: [product_id, product_code, product_name, category, standard_unit_price, tax_category_code, status, created_at, updated_at, deleted_at]
-  orders:
-    pk: order_id
-    unique: [order_number]
-    fk: [customer_id->customers.customer_id, sales_user_id->users.user_id, revised_from_order_id->orders.order_id]
-    columns: [order_id, order_number, customer_id, sales_user_id, order_date, status, subtotal_amount, tax_amount, total_amount, version, revised_from_order_id, cancel_reason, created_at, updated_at]
-  order_items:
-    pk: order_item_id
-    fk: [order_id->orders.order_id, product_id->products.product_id]
-    unique: [[order_id, line_no]]
-    columns: [order_item_id, order_id, line_no, product_id, product_code_snapshot, product_name_snapshot, quantity, unit_price, tax_category_code, tax_rate, line_amount, tax_amount]
-  order_status_histories:
-    pk: order_status_history_id
-    fk: [order_id->orders.order_id, changed_by->users.user_id]
-  approval_rules:
-    pk: approval_rule_id
-    fk: [approver_user_id->users.user_id]
-    initial_rule: "金額 0 以上、順序 1、ADMIN 一段承認"
-  approval_requests:
-    pk: approval_request_id
-    fk: [order_id->orders.order_id, approver_user_id->users.user_id, requested_by->users.user_id]
-    unique: [[order_id, sequence]]
-  approval_actions:
-    pk: approval_action_id
-    fk: [approval_request_id->approval_requests.approval_request_id, acted_by->users.user_id]
-  order_attachments:
-    pk: attachment_id
-    fk: [order_id->orders.order_id, uploaded_by->users.user_id]
-    columns: [attachment_id, order_id, original_file_name, storage_key, content_type, size_bytes, visibility, scan_status, uploaded_by, uploaded_at, deleted_at]
-  notification_logs:
-    pk: notification_id
-    fk: [order_id->orders.order_id]
-  export_jobs:
-    pk: export_job_id
-    fk: [requested_by->users.user_id]
-  audit_logs:
-    pk: audit_log_id
-    fk: [actor_user_id->users.user_id]
+# =============================================================================
+# データベーススキーマ定義 - DDMSAA
+# =============================================================================
+# 本ファイルは spec-06-db-physical.yaml と同期する機械可読のスキーマ定義（DDL 生成の中間層）。
+# 構造変更は先に spec-06-db-physical.yaml / spec-06-db-physical-ui.md を改訂し、その後に本ファイルへ同期する。
+# 両者が矛盾する場合は spec-06-db-physical.yaml を正とし、本ファイルを修正する。
+#
+# 適用範囲:
+#   - PostgreSQL 16（データベース名: ddmsaa / schema: public）
+#   - 文字セット: UTF8 / タイムゾーン: システムタイムゾーン（spec-01-system-architecture-ui.md）
+#
+# 規約: テーブル名・主キー・共通列・列挙・時刻・制約/索引名は
+#   開発規約/spec-naming-rule.md および 開発規約/spec-database-rule.md に従う。
+# =============================================================================
+
+# ============================================= ロールコード（列挙 T07 のコードテーブル）
+user_role_codes:
+  description: "ロールコード"
+  columns:
+    user_role_code:
+      type: INT
+      primary_key: true
+      comment: "ロールコード（T07 の属性コード。採番しない）"
+    user_role_name:
+      type: VARCHAR(50)
+      nullable: false
+      comment: "ロール名（T07 の英語名＝API 値）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "トリガーで更新" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+  indexes:
+    - name: "uq_user_role_codes_user_role_name"
+      columns: ["user_role_name"]
+      type: "UNIQUE"
+
+# ============================================= ユーザ
+users:
+  description: "ユーザ"
+  columns:
+    user_id:
+      type: VARCHAR(10)
+      primary_key: true
+      comment: "ユーザID（業務キー。アプリケーション層で採番、DEFAULT なし）"
+    department_id:
+      type: VARCHAR(10)
+      nullable: false
+      comment: "部門ID (FK→departments.id)"
+    user_name:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "ユーザ名"
+    email:
+      type: VARCHAR(255)
+      nullable: false
+      comment: "メールアドレス（未削除行で一意）"
+    phone_number:
+      type: VARCHAR(512)
+      nullable: true
+      encrypted: true
+      comment: "電話番号（暗号化して保存）"
+    role:
+      type: INT
+      nullable: false
+      comment: "ロール (FK→user_role_codes.user_role_code。コードは T07、例：1=ADMIN, 2=MANAGER, 3=USER)"
+    disabled_date:
+      type: DATE
+      nullable: true
+      comment: "停止日"
+    created_at:
+      type: TIMESTAMPTZ
+      nullable: false
+      default: "CURRENT_TIMESTAMP"
+    created_by:
+      type: VARCHAR(10)
+      nullable: false
+      default: "'SYSTEM'"
+    updated_at:
+      type: TIMESTAMPTZ
+      nullable: false
+      default: "CURRENT_TIMESTAMP"
+      comment: "トリガーで更新"
+    updated_by:
+      type: VARCHAR(10)
+      nullable: false
+      default: "'SYSTEM'"
+    deleted_at:
+      type: TIMESTAMPTZ
+      nullable: true
+      comment: "論理削除（NULL=有効）"
+  indexes:
+    - name: "idx_users_department_id"
+      columns: ["department_id"]
+      type: "BTREE"
+    - name: "uq_users_email"
+      columns: ["email"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"
+  foreign_keys:
+    - name: "fk_users_departments"
+      column: "department_id"
+      references: "departments(id)"
+    - name: "fk_users_user_role_codes"
+      column: "role"
+      references: "user_role_codes(user_role_code)"
+
+# ============================================= 部門マスタ
+departments:
+  description: "部門マスタ"
+  columns:
+    id:
+      type: VARCHAR(10)
+      primary_key: true
+      default: "next_business_id('DP', 4)"
+      comment: "部門ID（DP+4桁を採番）"
+    department_name:
+      type: VARCHAR(100)
+      nullable: false
+      comment: "部門名（未削除行で一意）"
+    created_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP" }
+    created_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+    updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "トリガーで更新" }
+    updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'" }
+    deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "論理削除（NULL=有効）" }
+  indexes:
+    - name: "uq_departments_department_name"
+      columns: ["department_name"]
+      type: "UNIQUE"
+      where: "deleted_at IS NULL"

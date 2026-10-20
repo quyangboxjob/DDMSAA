@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # データベース接続設定テンプレート - DDMSAA
 
 **仕組み:**
@@ -18,6 +19,8 @@
 - DB_SCHEMA → 環境変数またはデプロイ時に指定
 - SSL 接続オプション、アイドルタイムアウト → application.yaml で設定
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="basic.database.postgresql.db-connection-temp.s01" -->
 ## 0. DB 初期作成規約
 
 1. DB 名称、スキーマ名、ユーザー、パスワードはすべてカスタム可能とする。
@@ -105,6 +108,8 @@ spring.datasource.password=${DB_PASSWORD}
 spring.datasource.driver-class-name=org.postgresql.Driver
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-connection-temp.s02" -->
 ## 1. 環境別接続設定
 
 ### 1.1 Windows 環境
@@ -159,6 +164,8 @@ psql
 psql "host=${DB_HOST} port=${DB_PORT} dbname=${DB_NAME} user=${DB_USER} password=${DB_PASSWORD} options='-c search_path=${DB_SCHEMA},public'"
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-connection-temp.s03" -->
 ## 2. コネクションプール設定
 
 ```properties
@@ -172,6 +179,8 @@ spring.datasource.hikari.auto-commit=true
 spring.datasource.hikari.connection-test-query=SELECT 1
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-connection-temp.s04" -->
 ## 3. MyBatis 設定（ネイティブ MyBatis、MyBatis Plus ではない）
 
 ```properties
@@ -185,6 +194,8 @@ mybatis.configuration.use-column-label=true
 mybatis.configuration.cache-enabled=false
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-connection-temp.s05" -->
 ## 4. トランザクション設定
 
 ```properties
@@ -192,3 +203,4 @@ mybatis.configuration.cache-enabled=false
 spring.datasource.hikari.transaction-isolation=TRANSACTION_READ_COMMITTED
 # TRANSACTION_READ_COMMITTED
 ```
+<!-- devtool:endblock -->

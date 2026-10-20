@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # Backend Scaffold Spec（基盤・業務 共通）
 
 > backend コード生成における「整形」と「定型メンバ」の責務を定義する横断規約。
@@ -7,6 +8,8 @@
 > 関連: [`spec-backend-coding-rule.md`](spec-backend-coding-rule.md)（実装規約・§13 校验门）/ 整形プラグイン設定は
 > [`基本設計/基盤/インタフェース仕様/spec-project-structure.yaml`](../基本設計/基盤/インタフェース仕様/spec-project-structure.yaml) の `build_plugins` / `root_files` / `code_generation_pipeline`。
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.springboot.backend-scaffold-rule.s01" -->
 ## 0. 責務分離（なぜ spec の粒度を下げられるか）
 
 決定論は 2 層に分けて担保する。spec が抱えるのは layer-1 のみ。
@@ -20,6 +23,8 @@
 - 各 spec から **getter/setter 等の定型メンバ**（後述 §1）と **整形記述**（行長・折り返し等）を削除してよい。
 - `spec-backend-coding-rule.md` §13 の **G-换行** は本規約の formatter 適用（`spotless:apply`）で自動担保される。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.springboot.backend-scaffold-rule.s02" -->
 ## 1. 派生メンバ生成規約（`fields` から機械展開。spec に getter/setter を書かない）
 
 ### フィールド宣言の拡張属性
@@ -100,6 +105,8 @@ record の accessor（`field()` 形式）は Java 標準のため**生成しな�
 - { name: timestamp, modifiers: [private, final], type: OffsetDateTime, label: タイムスタンプ, subject: 生成時刻, access: [get] }
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.springboot.backend-scaffold-rule.s03" -->
 ## 2. 整形の責務（formatter 側。spec では指定しない）
 
 - **正本**: Spotless（Eclipse formatter profile 方式）。**生成時専用ツール**として生成パイプライン最終段で適用する（`apply`）。**納品物には Spotless プラグインも profile も含めない**（整形済みコードのみ納品）。
@@ -111,6 +118,8 @@ record の accessor（`field()` 形式）は Java 標準のため**生成しな�
 - `code_body` は「意味が正しければ整形は問わない」。1 行で書いても formatter が規約幅で折り返すため、生成器ごとの整形揺れは差分にならない。
 - `signature_raw` は「修飾子順・`throws` 等の**意味**」のためのみ逐語使用。空白整形は formatter が正規化する。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.springboot.backend-scaffold-rule.s04" -->
 ## 3. 生成パイプライン（決定論の担保順序）
 
 ```
@@ -119,3 +128,4 @@ record の accessor（`field()` 形式）は Java 標準のため**生成しな�
 3. 整形      : mvn spotless:apply（eclipse.jdt.version pin）で行長・空行・空白・import順を正規化
 4. 比較      : 整形後コード同士で diff（決定論検証は必ず整形後で行う）
 ```
+<!-- devtool:endblock -->

@@ -1,8 +1,11 @@
+<!-- devtool:file-region id="document-header" -->
 # 〇〇〇〇 詳細設計
 
 > 詳細設計（内部設計）。**機能ごとに本ファイルをコピーして記入し**、`詳細設計/<機能名>/spec-<feature>-detail-sd.md` として保存する。
 > 本ファイルは単一情報源（SSOT）を参照するのみで、項目/列挙値/メッセージを再定義しない（`詳細設計テンプレート/README.md` §2 参照）。
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="detail.detail-temp.s01" -->
 ## 文書情報
 
 | 項目 | 内容 |
@@ -15,6 +18,8 @@
 | 作成日 | YYYY-MM-DD |
 | レビュー担当 | TBD |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s02" -->
 ## 改訂履歴
 
 | バージョン | 改訂日 | 改訂者 | 改訂内容 |
@@ -23,6 +28,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s03" -->
 ## 0. 対象と根拠
 
 | 項目 | 内容 |
@@ -59,6 +66,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s04" -->
 ## 1. バックエンド詳細設計
 
 ### 1.1 クラス一覧
@@ -170,6 +179,8 @@ sequenceDiagram
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s05" -->
 ## 2. フロントエンド詳細設計
 
 ### 2.1 画面別コンポーネント分解
@@ -217,7 +228,7 @@ sequenceDiagram
 |------|-----------|------|
 | 〇〇成功時 | `I00NN` | messages.yaml（フロントエンドが ID から文言を解決） |
 
-**画面遷移**
+**画面遷移**（正本は `基本設計/共通/spec-10-screen-transition-ui.md`。本機能の画面に関わる遷移のみ転記し、食い違わせないこと）
 
 | 遷移元 | 遷移先 | トリガー |
 |------|----|------|
@@ -225,6 +236,8 @@ sequenceDiagram
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s06" -->
 ## 3. バッチ詳細設計
 
 > BAT ごとに 1 節。バッチがない場合は「本機能 にバッチなし」と記載する。
@@ -253,6 +266,8 @@ sequenceDiagram
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s07" -->
 ## 4. 横断設計（本機能 固有）
 
 | 項目 | 内容 |
@@ -264,6 +279,8 @@ sequenceDiagram
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s08" -->
 ## 5. トレーサビリティマトリクス（UT / コードへの接続）
 
 > 本機能 の「要件→設計→コード→テスト」のトレーサビリティ。**UT-ID 列は §5.1 の UT 用例一覧の UT-ID 集合を記入し、空欄・「待 UT」としない。**
@@ -274,7 +291,7 @@ sequenceDiagram
 
 ### 5.1 UT 用例一覧
 
-> テストコード生成（テスト生成工程）の**唯一の入力**。本節に列挙された UT-ID の集合がそのまま単体テストの用例集合となり、テスト工程で用例を追加・発明しない。§1.2 の処理手順・例外、§3 の状態遷移、§4 のマスキング規則から**機械的に導出**する（新たな設計判断を持ち込まない）。導出の過程で §1.2 の例外分岐やマスキングマトリクスが未定と判明した場合は、本節に期待値を創作せず、設計側の TBD として差し戻す。
+> テストコード生成（テスト生成工程）の**唯一の入力**。本節に列挙された UT-ID の集合がそのまま単体テストの用例集合となり、テスト工程で用例を追加・発明しない。§1.2 の処理手順・例外、状態遷移（正本：`基本設計/共通/spec-04-business-flow-ui.md` §3）、§4 のマスキング規則から**機械的に導出**する（新たな設計判断を持ち込まない）。導出の過程で §1.2 の例外分岐やマスキングマトリクスが未定と判明した場合は、本節に期待値を創作せず、設計側の TBD として差し戻す。
 > テスト階層・命名・ディレクトリは `開発規約/spec-test-rule.md` に従う。フロントエンドの単体テスト項目は `単体テスト/フロントエンド/` の単体テスト仕様書で管理する。
 
 **UT-ID 採番規則**：`UT-<FEATURE>-NNN`
@@ -296,7 +313,7 @@ sequenceDiagram
 | 推奨層 | `L1`（純ロジック・Mock）／`L2`（Web スライス：ルーティング・検証・権限・包絡）／`L3`（端到端・実 DB・暗号化）。テスト工程での微調整を許容する経路指示 |
 | 種別 | 正常／異常／権限／検証／境界 のいずれか |
 | 期待結果 | **SSOT の参照のみ**：messageId ← `spec-09-message-list.yaml`、HTTP 状態 ← 例外型ごとの固定マッピング、マスク項目 ← `spec-03-auth-ui.md` のマトリクス。自前で定義しない |
-| 追跡 | 根拠となる F-ID と §1.2 の処理手順番号（または §3 / §4 の項目） |
+| 追跡 | 根拠となる F-ID と §1.2 の処理手順番号（または `spec-04` §3 の遷移 / §4 の項目） |
 
 **カバレッジ規約**（満たさない場合は本節未完了）
 
@@ -309,6 +326,8 @@ sequenceDiagram
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="detail.detail-temp.s09" -->
 ## 6. 生成指示（AI 主導実行用）
 
 **コード生成順序**（依存されるものを先に）
@@ -353,4 +372,5 @@ sequenceDiagram
 | D8 廃止事項 | 廃止済みの表記・方式（旧 `API-0NN` 識別子、旧メッセージ ID 形式、旧主キー方式など）を含まない | 基本設計の方針・各規約 |
 | D9 追跡 | §5 の各行で F → SCR → operationId → TBL → messageId → クラス → コンポーネントの連鎖が完結し、UT-ID 列が §5.1 にリンクしている | 本ファイル §5 |
 | D10 改行・文字コード | 文書中のコード／リソースの約束がファイル規約（改行・文字コード）に適合する | `spec-backend-coding-rule.md` |
-| D11 UT 用例完全性 | §5.1 が上記カバレッジ規約を満たし、各期待値が SSOT の参照のみで、UT-ID に欠落・重複がない | 本ファイル §1.2 / §3 / §4 + `spec-09-message-list.yaml` + `spec-03-auth-ui.md` |
+| D11 UT 用例完全性 | §5.1 が上記カバレッジ規約を満たし、各期待値が SSOT の参照のみで、UT-ID に欠落・重複がない | 本ファイル §1.2 / §4 + `基本設計/共通/spec-04-business-flow-ui.md` §3 + `spec-09-message-list.yaml` + `spec-03-auth-ui.md` |
+<!-- devtool:endblock -->

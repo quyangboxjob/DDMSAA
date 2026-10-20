@@ -48,24 +48,3 @@ messages:
   E0041: { category: ERROR, message: "The authentication token is invalid." }
   E0042: { category: ERROR, message: "The requested route does not exist." }
   E0043: { category: ERROR, message: "The service response timed out." }
-
-  # =========================================================== 画面業務メッセージ（画面設計で採番）
-  I0020: { category: INFO, message: "Approval has been requested." }
-  I0021: { category: INFO, message: "The order has been cancelled." }
-  I0022: { category: INFO, message: "Approved." }
-  I0023: { category: INFO, message: "Returned." }
-  I0024: { category: INFO, message: "Uploaded. The file cannot be downloaded until the virus scan completes." }
-  I0025: { category: INFO, message: "Your password has been changed. Please sign in again." }
-  I0026: { category: INFO, message: "Resend request accepted." }
-  I0027: { category: INFO, message: "CSV creation has been accepted. You can download it when it completes." }
-  I0028: { category: INFO, message: "CSV creation has completed." }
-  I0030: { category: INFO, message: "Changing or disabling this item does not affect existing orders or their tax amounts." }
-  I0031: { category: INFO, message: "Changes apply to new approval requests only. Submitted orders are not affected." }
-  W0020: { category: WARNING, message: "This will request approval. You cannot edit the order after submitting. Continue?" }
-  W0021: { category: WARNING, message: "This will approve the order. Continue?" }
-  W0022: { category: WARNING, message: "This will cancel the order and cannot be undone. Continue?" }
-  W0023: { category: WARNING, message: "Disabling this user will end their active sessions. Continue?" }
-  W0024: { category: WARNING, message: "This will resend the notification. Continue?" }
-  W0025: { category: WARNING, message: "Disabling this customer prevents new orders from being created for them. Continue?" }
-  W0026: { category: WARNING, message: "Disabling this product removes it from selection in new orders. Continue?" }
-  E0050: { category: ERROR, message: "CSV creation failed. Check the conditions and try again." }

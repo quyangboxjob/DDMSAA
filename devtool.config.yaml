@@ -13,7 +13,7 @@ paths:
   backend: .
   frontendComponents: src/components
 files:
-  functionList: 基本設計/共通/spec-02-function-list-ui.md
+  functionList: 基本設計/共通/spec-00-doc-standard-ui.md
   index: 基本設計/README.md
   openapi: 基本設計/共通/spec-07-api-list.yaml
 stages:

@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # ファイル命名規範（spec-file-naming-rule）
 
 > 本プロジェクトの「文書/仕様系」ファイルの命名規範である。コード/設定/フレームワーク固定名は一律対象外とする。
@@ -6,6 +7,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.file-naming-rule.s01" -->
 ## 1. 適用範囲
 
 **適用対象（文書/仕様系ファイル）**：規約、テンプレート、基本設計、詳細設計、業務処理フロー図、各種一覧/レポート、SSOT の `.md`／`.yaml`。
@@ -20,6 +23,8 @@
 ---
 
 <!-- rule: fname.doc-file-naming -->
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.file-naming-rule.s02" -->
 ## 2. 共通規則
 
 1. **すべて小文字**とし、単語間はハイフン `-`（kebab-case）で区切る。空白、アンダースコア、中国語・日本語、大文字は使用しない。
@@ -38,6 +43,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.file-naming-rule.s03" -->
 ## 3. 分類接尾辞（工程略号＝体系B）
 
 > 体系B（V字工程コード）：**UI = 基本設計（外部設計）**、**SD = 詳細設計（内部設計）**、UT/IT/ST = 各テスト工程。
@@ -61,6 +68,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.file-naming-rule.s04" -->
 ## 4. 推奨用語対照（手作業での改名の一貫性を保証する）
 
 | 日本語 | slug | 日本語 | slug |
@@ -76,11 +85,17 @@
 | 画面共通設計 | screen-common | セキュリティユーティリティ | security-util |
 | データ辞書 | data-dictionary | リソースファイル | resource-file |
 | 画面一覧 | screen-list | ログ設定 | log-config |
+| 機能一覧 | function-list | 業務フロー | business-flow |
+| 画面遷移図 | screen-transition | 画面設計 | screen-design |
+| 帳票設計 | report-design | バッチ設計 | batch-design |
+| データ移行設計 | data-migration | 運用設計 | operation-design |
 | gateway | gateway | business-core骨格 | business-core |
 | 単体テスト仕様書 | unittest | 結合テスト式様書 | it |
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.file-naming-rule.s05" -->
 ## 5. 機能単位の文書のファイル名例
 
 ### 詳細設計（SD 工程） `詳細設計/<機能名>/`
@@ -118,8 +133,11 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.file-naming-rule.s06" -->
 ## 6. 未定（別途決定しない限り現状維持）
 
 - **フォルダ名**（`基本設計/`、`開発規約/`、`詳細設計/`、`インタフェース仕様/` など）は本規範では当面扱わず、現状を維持する。英語化も行う場合は別途定める。
 - 機能単位のテスト文書は当面 `-testlist` / `-testreport` を使用する（1部で UT/IT/ST の各層を網羅）。層ごとに `-ut` / `-it` / `-st` へ分割する必要がある場合は、別途決定する。
 - システムテスト（ST）の文書名・配置は未定（`spec-test-rule.md` §11 参照）。
+<!-- devtool:endblock -->

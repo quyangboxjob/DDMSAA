@@ -1,25 +1,148 @@
-meta:
-  system: DDMSAA
-  module: business-core
-rules:
-  access_scope:
-    ADMIN: "all customers and all orders"
-    EMPLOYEE: "customers with active employee_customer_assignments"
-    CUSTOMER: "only own customer_id; no create/update/approve/upload/export"
-  order:
-    editable_statuses: [DRAFT, RETURNED]
-    submit_transition: "DRAFT|RETURNED -> PENDING_APPROVAL"
-    approved_change: "direct update forbidden; cancel then create a new order referencing revised_from_order_id when correction is needed"
-    tax: "line_amount=quantity*unit_price; tax_amount=HALF_UP(line_amount*tax_rate/100); totals are recalculated on the server"
-  approval:
-    initial_route: "amount >= 0, sequence 1, ADMIN role"
-    snapshot: "route is copied to approval_requests at submit time"
-  attachment:
-    allowed: [pdf, docx, xlsx, csv, png, jpg, jpeg]
-    max_file_bytes: 10485760
-    max_order_bytes: 52428800
-    download: "SAFE only; CUSTOMER requires CUSTOMER visibility and own customer"
-  export:
-    csv_encoding: UTF-8_BOM
-    async_over_records: 10000
-    expiry_hours: 24
+﻿# ============================================================
+# spec-10-business-core.yaml
+# 粒度: JDK interface レベル（型定義・メソッドシグネチャのみ）
+# 生成元: 基盤テンプレート/spec-backend-foundation-temp.md §4.4（モジュール構成）§4.6（基盤/業務 生成境界）
+#         基盤テンプレート/spec-java-springboot-mybatis-temp.yaml
+#           framework_mappings.transaction / audit_handler / logic_delete_condition / value_object_form
+# 位置づけ: テンプレート × バインディング 同時生成（基本設計 00-05 と兄弟関係）
+# ============================================================
+
+module: business-service-core
+package: com.example.ddmsaa.core
+
+# ---------------------------------------------------------------------------
+# 凡例
+#   <Feature>  : 業務ドメイン名のプレースホルダ（例: User / Department）
+#   <feature>  : 業務ドメイン名の小文字（例: user / department）
+# ---------------------------------------------------------------------------
+
+classes:
+
+  # ==========================================================================
+  # 1. 起動クラス
+  # ==========================================================================
+
+  - fqcn: com.example.ddmsaa.core.BusinessServiceCoreApplication
+    kind: class
+    package: com.example.ddmsaa.core
+    annotation:
+      - "@SpringBootApplication(scanBasePackages = {\"com.example.ddmsaa.core\", \"com.example.ddmsaa.common\", \"com.example.ddmsaa.infrastructure\"})"
+    purpose: >
+      business-service-core の起動クラス。common / infrastructure の Bean を取り込むため
+      3 パッケージを scanBasePackages に明示する。@MapperScan は付与しない（@Mapper 自動検出）。
+    methods:
+      - "void main(String[] args)"
+
+  # ==========================================================================
+  # 2. <Feature>Controller パターン定義
+  # ==========================================================================
+
+  - fqcn: com.example.ddmsaa.core.<feature>.controller.<Feature>Controller
+    kind: class
+    package: com.example.ddmsaa.core.<feature>.controller
+    annotation:
+      - "@RestController"
+      - "@RequestMapping(\"/api/v1/<feature>\")"
+    purpose: >
+      HTTP 受付・入力バリデーション委譲・Result ラップ・レスポンス返却を担う。
+      業務ロジックの実装を禁止する。
+      各ハンドラメソッドに @PreAuthorize("hasRole('ADMIN')") 等を付与し機能レベル権限を制御する
+      （ロール文字列はプロジェクトで定義する。例：ADMIN）。
+      返却値は Result.ok(dto, messageId) または Result.ok(PageResult.of(...)) で明示ラップする。
+      ResponseBodyAdvice による自動ラップは採用しない。
+      ファイルダウンロード応答は Result ラップを経由せず HttpServletResponse に直接書き出す。
+    methods:
+      - "Result<PageResult<Dto>> list(SearchCondition condition)"
+      - "Result<Dto> getById(String id)"
+      - "Result<Dto> create(@RequestBody @Valid CreateDto dto)"
+      - "Result<Dto> update(String id, @RequestBody @Valid UpdateDto dto)"
+      - "Result<Void> delete(String id)"
+
+  # ==========================================================================
+  # 3. <Feature>Service (interface)
+  # ==========================================================================
+
+  - fqcn: com.example.ddmsaa.core.<feature>.service.<Feature>Service
+    kind: interface
+    package: com.example.ddmsaa.core.<feature>.service
+    purpose: >
+      業務インタフェース定義。メソッドシグネチャは各機能の詳細設計で定義する。
+      実装コードを含まない。骨格パターンとして CRUD 相当のシグネチャのみ示す。
+    methods:
+      - "PageResult<Dto> search(SearchCondition condition)"
+      - "Dto getById(String id)"
+      - "Dto create(CreateDto dto)"
+      - "Dto update(String id, UpdateDto dto)"
+      - "void delete(String id)"
+
+  # ==========================================================================
+  # 4. <Feature>ServiceImpl
+  # ==========================================================================
+
+  - fqcn: com.example.ddmsaa.core.<feature>.service.impl.<Feature>ServiceImpl
+    kind: class
+    package: com.example.ddmsaa.core.<feature>.service.impl
+    implements:
+      - com.example.ddmsaa.core.<feature>.service.<Feature>Service
+    annotation:
+      - "@Service"
+      - "@Transactional(readOnly = true)"
+    purpose: >
+      業務ロジック・トランザクション境界・オーケストレーションを担う。
+      HTTP 層への依存および直接レスポンス生成を禁止する。
+      クラスデフォルトは @Transactional(readOnly = true) とし、
+      書き込みメソッドは @Transactional でオーバーライドする。
+      UserContext（sub=ユーザーID・role=ENUM 文字列）をもとに行レベルフィルタを強制適用する
+      （ロールごとの範囲はプロジェクトで定義する。例：ADMIN=全件・MANAGER=自部署・USER=本人のみ）。
+      MaskingService.maskByRole(dto, viewerRole, isSelf) を呼び出し列レベルマスクを適用する。
+      機微フィールド保存前に FieldEncryptor（AES-GCM）で暗号化する。
+      サービス間通信は RestClientFactory.create(name) 経由で行い、Mapper 直接呼び出しを禁止する。
+      トランザクション内は DB 操作のみに限定し、副作用は TransactionSynchronization.afterCommit() 後に実行する。
+      業務失敗は BusinessException(messageId, args...) を送出する（リターンコード判定・マジック文字列を禁止する）。
+    constructors:
+      - "<Feature>ServiceImpl(<Feature>Mapper mapper, <Feature>Converter converter, MaskingService maskingService, FieldEncryptor fieldEncryptor, RestClientFactory restClientFactory)"
+    methods:
+      - "PageResult<Dto> search(SearchCondition condition)"
+      - "Dto getById(String id)"
+      - "Dto create(CreateDto dto)"
+      - "Dto update(String id, UpdateDto dto)"
+      - "void delete(String id)"
+
+  # ==========================================================================
+  # 5. <Feature>Mapper
+  # ==========================================================================
+
+  - fqcn: com.example.ddmsaa.core.<feature>.mapper.<Feature>Mapper
+    kind: interface
+    package: com.example.ddmsaa.core.<feature>.mapper
+    annotation:
+      - "@Mapper"
+    purpose: >
+      MyBatis DAO。SQL 実行のみを担い、業務ロジック・結合 SQL 文字列連結を禁止する。
+      XML ファイルは src/main/resources/mapper/<Feature>Mapper.xml に配置し
+      namespace は本インタフェースの FQCN と一致させる。
+      SQL 規約（論理削除・動的条件・削除操作）は 開発規約/spec-backend-coding-rule.md §6 に従う。
+      ページングは PageHelper.startPage() を ServiceImpl 側で呼び出すことで透過適用する。
+      map-underscore-to-camel-case: true を有効化し、複合マッピングは resultMap で明示する。
+    methods:
+      - "Entity selectById(String id)"
+      - "List<Entity> search(SearchCondition condition)"
+      - "int insert(Entity entity)"
+      - "int update(Entity entity)"
+      - "int deleteById(String id)"
+
+  # ==========================================================================
+  # 6. <Feature>Converter
+  # ==========================================================================
+
+  - fqcn: com.example.ddmsaa.core.<feature>.convert.<Feature>Converter
+    kind: interface
+    package: com.example.ddmsaa.core.<feature>.convert
+    annotation:
+      - "@Mapper(componentModel = \"spring\")"
+    purpose: >
+      MapStruct による Entity ↔ DTO 相互変換を担う。業務ロジックを含まない。
+      実装クラスは MapStruct がビルド時に自動生成する。
+    methods:
+      - "Dto toDto(Entity entity)"
+      - "Entity toEntity(Dto dto)"

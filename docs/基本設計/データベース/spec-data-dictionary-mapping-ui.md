@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # データ辞書：命名マッピングと型規約
 
 > 全テーブルの項目（列）について、論理名 → DB 物理名 → Backend/API 名 → 型の対応を整理し、バックエンド/API 実装の命名を統一する。
@@ -8,6 +9,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="basic.database.postgresql.data-dictionary-mapping-ui.s01" -->
 ## 1. 命名規則
 
 | 層 | スタイル | 例（`employment_type` の場合） |
@@ -22,6 +25,8 @@
 - **列挙**：DB は INT コード（T07）→ Java `Enum` → API 値は UPPER_SNAKE_CASE の文字列。値の定義は `開発規約/spec-data-dictionary-project-temp.md` の T07 を正とする。
 - **Principle 3 の変換**（`externalId` → `id` など）が登録されている項目は、プロジェクトデータ辞書のホワイトリストを優先する。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.data-dictionary-mapping-ui.s02" -->
 ## 2. 型マッピング
 
 | 基礎型/用途 | DB 型 | Java 型 | API JSON 型 | 備考 |
@@ -35,6 +40,8 @@
 | 列挙（T07） | `integer` + コードテーブル FK | `Enum` | string | DB コード ↔ API 値は T07 に従う |
 | 長文 | `text` | `String` | string | |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.data-dictionary-mapping-ui.s03" -->
 ## 3. 共通項目（全テーブル共通）
 
 | 論理名 | DB 物理名 | Backend / API（camelCase） | API JSON 型 | 備考 |
@@ -46,6 +53,8 @@
 | 更新者 | `updated_by` | `updatedBy` | string | |
 | 削除日時 | `deleted_at` | `deletedAt` | string(date-time) \| null | 論理削除。通常は API で公開しない |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.data-dictionary-mapping-ui.s04" -->
 ## 4. テーブル別マッピング
 
 > テーブルごとに節を立てて記載する。DI-xxx は `spec-13-data-dictionary-ui.md` の項目 ID と一致させる。
@@ -55,3 +64,4 @@
 | データ項目 ID | 論理名 | DB 物理名 | Backend / API（camelCase） | API JSON 型 | DB 型 | 備考 |
 |---|---|---|---|---|---|---|
 | DI-0xx | {{ 論理名 }} | `{{ physical_name }}` | `{{ camelName }}` | string | varchar(100) | |
+<!-- devtool:endblock -->

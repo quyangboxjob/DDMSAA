@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # PostgreSQL Column Types Spec（カラムで使用可能な型一覧）
 
 > PostgreSQL で 1 つのカラム（列）に宣言できるすべての型。
@@ -5,6 +6,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s01" -->
 ## 一、数値型
 
 | 型 | 別名 | バイト数 | 説明 |
@@ -24,6 +27,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s02" -->
 ## 二、文字（テキスト）型
 
 | 型 | 別名 | 説明 |
@@ -35,6 +40,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s03" -->
 ## 三、日付 / 時刻型
 
 | 型 | 別名 | 説明 |
@@ -48,6 +55,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s04" -->
 ## 四、真偽値型
 
 | 型 | 別名 | 説明 |
@@ -56,6 +65,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s05" -->
 ## 五、バイナリ型
 
 | 型 | 説明 |
@@ -64,6 +75,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s06" -->
 ## 六、JSON 型
 
 | 型 | 説明 |
@@ -73,6 +86,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s07" -->
 ## 七、UUID 型
 
 | 型 | 説明 |
@@ -81,6 +96,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s08" -->
 ## 八、ネットワークアドレス型
 
 | 型 | 説明 |
@@ -92,6 +109,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s09" -->
 ## 九、ビット列型
 
 | 型 | 説明 |
@@ -101,6 +120,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s10" -->
 ## 十、列挙型
 
 | 型 | 説明 |
@@ -115,6 +136,8 @@ CREATE TYPE status AS ENUM ('draft', 'submitted', 'approved');
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s11" -->
 ## 十一、配列型
 
 | 記法 | 説明 |
@@ -123,6 +146,8 @@ CREATE TYPE status AS ENUM ('draft', 'submitted', 'approved');
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s12" -->
 ## 十二、範囲型
 
 | 型 | 説明 |
@@ -147,6 +172,8 @@ CREATE TYPE status AS ENUM ('draft', 'submitted', 'approved');
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s13" -->
 ## 十三、全文検索型
 
 | 型 | 説明 |
@@ -156,6 +183,8 @@ CREATE TYPE status AS ENUM ('draft', 'submitted', 'approved');
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s14" -->
 ## 十四、幾何型
 
 | 型 | 説明 |
@@ -170,6 +199,8 @@ CREATE TYPE status AS ENUM ('draft', 'submitted', 'approved');
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s15" -->
 ## 十五、その他の型
 
 | 型 | 説明 |
@@ -182,6 +213,8 @@ CREATE TYPE status AS ENUM ('draft', 'submitted', 'approved');
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.postgresql-column-types-rule.s16" -->
 ## 業務向け型選定の早見表
 
 > 本プロジェクトの実際の型選定は `開発規約/spec-database-rule.md` §5 / `開発規約/spec-data-dictionary-rule.md` に従う。下表は PostgreSQL 全般の参考情報である。
@@ -198,3 +231,4 @@ CREATE TYPE status AS ENUM ('draft', 'submitted', 'approved');
 | 半構造化データ | `jsonb` |
 | ファイル/画像 | `bytea`（大きなファイルは S3 に外部化してパスを保存することを推奨） |
 | ステータスコード | コードテーブル + 外部キー（`ENUM` より優れ、コメントの保守が容易） |
+<!-- devtool:endblock -->

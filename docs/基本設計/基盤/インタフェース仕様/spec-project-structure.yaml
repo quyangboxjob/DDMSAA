@@ -1,31 +1,535 @@
-meta:
-  system: DDMSAA
-  version: 1.0
-frontend:
-  root: frontend
-  modules: [auth, users, customers, products, orders, approvals, attachments, reports]
-  technology: "React + TypeScript + Vite"
-backend:
-  root: backend
-  technology: "Spring Boot + MyBatis"
-  packages:
-    - common
-    - auth
-    - user
-    - customer
-    - product
-    - order
-    - approval
-    - attachment
-    - report
-    - infrastructure
-  resource_dirs: [db/migration, application]
-database:
-  migrations: "backend/src/main/resources/db/migration"
-documents:
-  physical_db: "docs/基本設計/共通/spec-06-db-physical.yaml"
-  api: "docs/基本設計/共通/spec-07-api-list.yaml"
-  business_rules: "docs/基本設計/共通/spec-08-business-rule-list.md"
-constraints:
-  - "No separate auth-service is created for initial release."
-  - "Authentication uses password + server-side session; mail is notification-only."
+﻿# ============================================================
+# プロジェクト全体構造
+# groupId: com.example.ddmsaa
+# artifactId: ddmsaa-platform (親 POM)
+# version: 0.1.0
+# Spring Boot: 3.5.13 / Java: 21
+# ============================================================
+
+project:
+  groupId: com.example.ddmsaa
+  artifactId: ddmsaa-platform
+  version: 0.1.0
+  packaging: pom
+  parent: "org.springframework.boot:spring-boot-starter-parent:3.5.13"
+  java_version: "21"
+  spring_cloud_version: "2025.0.2"
+
+# ============================================================
+# BOM 外ライブラリの版数 pin（親 POM の <properties>＝dependencyManagement で使用）
+# 決定論対象（scope B）。これらは Spring Boot BOM に含まれない/上書きが必要な座標。
+# プロパティキー名も固定（生成のたびに揺らさない）。Spring Boot BOM 管理のものは pin しない。
+# 注: 版数未固定だと生成器ごとに別版を選び決定論が崩れる（実測: jjwt・pagehelper で生成ごとに別版が選ばれた）。
+# ============================================================
+dependency_versions:
+  jjwt.version: "0.13.0"             # io.jsonwebtoken jjwt-api / jjwt-impl / jjwt-jackson
+  mybatis-starter.version: "3.0.4"   # mybatis-spring-boot-starter
+  pagehelper.version: "2.1.1"        # pagehelper-spring-boot-starter（MyBatis 3.5.19 同梱）
+  mapstruct.version: "1.6.3"         # org.mapstruct mapstruct + mapstruct-processor
+  aws-sdk.version: "2.x"             # software.amazon.awssdk:bom（AWS SDK for Java v2。s3 は BOM 管理で版数を子に書かない）
+  poi.version: "5.4.1"               # org.apache.poi poi-ooxml（BOM 外＝要 pin）。xlsx 帳票出力用
+  # flyway は Spring Boot BOM 管理＝明示 pin しない（flyway-core / flyway-database-postgresql）
+  # postgresql は BOM 管理（runtime）＝明示 pin しない
+  # 注: Spotless / Eclipse JDT formatter の版数は「生成時ツール」の pin であり納品 pom の property ではない。
+  #     code_generation_pipeline.formatter_step に記載（spotless 2.44.5 / eclipse.jdt 4.33）。
+
+# ============================================================
+# 親 POM の dependencyManagement（構造を固定＝両生成で同一集合・scope B）
+# 版数は dependency_versions / Spring Cloud BOM 由来。子は version を書かない。
+# ============================================================
+dependency_management:
+  bom_import:
+    - "org.springframework.cloud:spring-cloud-dependencies:${spring-cloud.version}（scope=import, type=pom）"
+    - "software.amazon.awssdk:bom:${aws-sdk.version}（scope=import, type=pom）"
+  internal:
+    - "com.example.ddmsaa:common:${project.version}"
+    - "com.example.ddmsaa:infrastructure:${project.version}"
+  bom_external_pins:
+    - "io.jsonwebtoken : jjwt-api / jjwt-impl / jjwt-jackson : ${jjwt.version}"
+    - "org.mapstruct : mapstruct / mapstruct-processor : ${mapstruct.version}"
+    - "org.apache.poi : poi-ooxml : ${poi.version}"
+    - "com.github.pagehelper : pagehelper-spring-boot-starter : ${pagehelper.version}"
+    - "org.mybatis.spring.boot : mybatis-spring-boot-starter : ${mybatis-starter.version}"
+
+# ============================================================
+# コーディング規約（コード生成時の強制事項）
+# ============================================================
+code_style:
+  encoding: UTF-8             # 全ファイル（Java / YAML / XML / SQL / properties）の文字コード。.editorconfig の charset=utf-8 と連動
+  # 整形（行長 / 引数折り返し / 空行 / 空白 / import順）は Spotless が正本（layer-2）。
+  # 行長 100 = config/eclipse-formatter.xml の lineSplit。
+  # 折り返し（第一引数は開き括弧と同行 / 継続 +8）= 同 alignment_* / continuation_indentation。
+  # 詳細は code_generation_pipeline を参照。spec 側でこれらを指定しない（formatter が上書き）。
+  # signature_raw は「修飾子順・throws 等の意味」のためのみ逐語使用。空白整形は formatter が正規化する。
+
+# ============================================================
+# コード生成パイプライン（決定論の担保順序）
+# ------------------------------------------------------------
+# 整形（layer-2）の責務を Spotless に移譲し、spec の整形記述を不要化するための手順。
+# 派生メンバ規約は 開発規約/spec-backend-scaffold-rule.md を参照（getter/setter 等を fields から展開）。
+# ============================================================
+code_generation_pipeline:
+  # ★★★ 必須 ★★★
+  # コード生成の最終工程として formatter（Spotless）を必ず適用すること。
+  # formatter 未適用のコードは「未完成」とみなす。生成器ごとの整形の揺れ（特にメソッド/
+  # コンストラクタ署名の折り返し位置）は formatter 適用前は不一致になるのが正常で、
+  # formatter 適用後に初めて決定論（毎回同一）が成立する。実測: spotless 適用で両生成が
+  # 58/61 一致（残差は formatter ではなく生成器の未対応＝別問題）。
+  formatter_required: true
+  steps:
+    - "1. 生成: spec（layer-1 = 意味）からコード生成。整形の揺れは許容する（formatter が正規化）。"
+    - "2. 派生展開: 開発規約/spec-backend-scaffold-rule.md §1 に従い getter/setter/record/ctor自動代入を展開。"
+    - "3. 【必須】整形: コード生成の最後に必ず formatter を適用する（下記 formatter_step）。"
+    - "4. 比較: 整形後コード同士で diff（決定論検証は必ず整形後で行う。生コード比較は無意味）。"
+  formatter_step:
+    mandatory: "生成パイプラインの最終段で必ず実行する。スキップ禁止。"
+    nature: >
+      formatter は【生成時専用ツール】。納品物（ddmsaa-backend）には Spotless プラグインも
+      eclipse-formatter.xml も含めない。生成器が整形を適用し、整形済みコードのみを納品する。
+    tool_versions: "spotless-maven-plugin 2.44.5 / eclipse.jdt 4.33（生成時ツールの pin。版数を上げると再整形差分が出るため固定）"
+    profile_master: "基本設計/基盤/インタフェース仕様/eclipse-formatter.xml（profile name=ddmsaa。SSOT。納品物にはコピーしない）"
+    how_to_run: >
+      納品 pom に依存させないため、生成ワークスペースに一時的な整形用 pom（Spotless プラグイン入り、
+      eclipse.file=上記 profile_master を指定）を置いて `apply` を実行し、整形後に一時 pom を破棄する。
+      恒久ゲートにしたい場合のみ別途プロジェクト pom へ常設する（既定は非常設＝生成時のみ）。
+    command_example: "mvn -f <生成時整形用pom> com.diffplug.spotless:spotless-maven-plugin:2.44.5:apply"
+    command_note: >
+      `mvn spotless:apply`（プレフィックス短縮形）は集約 POM でプレフィックス解決に失敗する場合が
+      あるため完全座標で起動すること（実測で確認）。
+    normalizes: "行長 / 引数折り返し / 空行 / 空白 / インデント / import順序・未使用import除去 / 行末・終端改行"
+    preserves: >
+      javadoc は formatter で再整形しない（プロファイルの comment.format_javadoc_comments=false）。
+      javadoc 文面・整列は spec（layer-1, SSOT）が正本のため。
+    keep_one_line_value_note: "keep_*_on_one_line の値は never ではなく one_line_never（Eclipse JDT 4.33 で検証）。"
+  determinism_layers:
+    layer_1_meaning: "spec が SSOT（メンバ集合 / code_body ロジック / javadoc 文面）。曖昧化禁止。"
+    layer_2_format:  "Spotless が SSOT（行長 / 空行 / 空白 / import順 / 引数折り返し）。spec で指定しない。"
+  note: >
+    本パイプライン導入後、code_style の line_length_limit / constructor_and_record_wrapping は
+    formatter プロファイル（config/eclipse-formatter.xml）へ移管済み。spec 本文の整形記述は
+    冗長（formatter が上書きする）。詳細な記述削減は段階的に実施する。
+
+# ============================================================
+# モジュール一覧
+# ============================================================
+modules:
+  - artifactId: common
+    packaging: jar
+    package_root: com.example.ddmsaa.common
+    description: "横断共通 jar。例外・レスポンスラッパ・メッセージ・暗号化・マスキング・TraceIdFilter"
+    port: ~
+
+  - artifactId: infrastructure
+    packaging: jar
+    package_root: com.example.ddmsaa.infrastructure
+    description: "DB/Redis/JWT/ストレージ/RestClient 横断基盤 jar"
+    port: ~
+
+  - artifactId: api-gateway
+    packaging: jar
+    package_root: com.example.ddmsaa.gateway
+    spring_boot_app: com.example.ddmsaa.gateway.GatewayApplication
+    description: "Spring Cloud Gateway (WebFlux)。トレース・JWT 検証・CORS・エラー整形"
+    port: 8080
+
+  - artifactId: auth-service
+    packaging: jar
+    package_root: com.example.ddmsaa.auth
+    spring_boot_app: com.example.ddmsaa.auth.AuthApplication
+    description: "パスワードレス Magic Link 認証・JWT 発行"
+    port: 8081
+
+  - artifactId: business-service-core
+    packaging: jar
+    package_root: com.example.ddmsaa.core
+    spring_boot_app: com.example.ddmsaa.core.BusinessServiceCoreApplication
+    description: "業務コア機能"
+    port: 8082
+
+# ============================================================
+# モジュール別 依存セット（compile スコープ省略、それ以外明示）
+# ============================================================
+dependencies:
+  common:
+    - { artifact: "spring-boot-starter-web",        scope: provided }
+    - { artifact: "spring-boot-starter-validation", scope: provided }
+    - { artifact: "spring-security-core",           scope: provided }
+    - { artifact: "spring-tx",                      scope: provided }  # GlobalExceptionHandler が DataAccessException を扱うため（spec-03-exception-handler.yaml）。消費側サービスは mybatis/jdbc 経由で推移提供
+    - { artifact: "snakeyaml" }
+    - { artifact: "spring-boot-starter-test",       scope: test }
+
+  infrastructure:
+    - { artifact: "common",                              scope: internal }
+    - { artifact: "spring-boot-starter-web",             scope: provided }
+    - { artifact: "spring-boot-starter-security",        scope: provided }
+    - { artifact: "spring-boot-starter-data-redis",      scope: provided }
+    - { artifact: "mybatis-spring-boot-starter",         scope: provided }  # MetaObjectHandler が org.apache.ibatis.* を使用するため必須
+    - { artifact: "jjwt-api" }
+    - { artifact: "jjwt-impl",                           scope: runtime }
+    - { artifact: "jjwt-jackson",                        scope: runtime }
+    - { artifact: "s3" }   # software.amazon.awssdk:s3（版数は AWS SDK BOM）
+    # Flyway: compile（auth/core へ推移し Spring Boot 自動構成を有効化、provided は推移しないため）。版数は Spring Boot BOM 管理
+    - { artifact: "flyway-core" }
+    - { artifact: "flyway-database-postgresql" }
+    - { artifact: "spring-boot-starter-test",            scope: test }
+
+  api-gateway:
+    - { artifact: "common",                                     scope: internal }
+    - { artifact: "spring-cloud-starter-gateway-server-webflux" }  # webflux を推移的に提供するため spring-boot-starter-webflux は重複追加しない
+    - { artifact: "spring-boot-starter-actuator" }
+    - { artifact: "jjwt-api" }
+    - { artifact: "jjwt-impl",    scope: runtime }
+    - { artifact: "jjwt-jackson", scope: runtime }
+    - { artifact: "spring-boot-starter-test", scope: test }
+    - { artifact: "reactor-test",             scope: test }
+
+  auth-service:
+    - { artifact: "common",                          scope: internal }
+    - { artifact: "infrastructure",                  scope: internal }
+    - { artifact: "spring-boot-starter-web" }
+    - { artifact: "spring-boot-starter-security" }
+    - { artifact: "spring-boot-starter-validation" }
+    - { artifact: "spring-boot-starter-data-redis" }
+    - { artifact: "spring-boot-starter-mail" }
+    - { artifact: "spring-boot-starter-actuator" }
+    - { artifact: "mybatis-spring-boot-starter" }
+    - { artifact: "postgresql",   scope: runtime }
+    - { artifact: "jjwt-api" }
+    - { artifact: "jjwt-impl",    scope: runtime }
+    - { artifact: "jjwt-jackson", scope: runtime }
+    - { artifact: "spring-boot-starter-test",   scope: test }
+    - { artifact: "spring-security-test",        scope: test }
+
+  business-service-core:
+    - { artifact: "common",                          scope: internal }
+    - { artifact: "infrastructure",                  scope: internal }
+    - { artifact: "spring-boot-starter-web" }
+    - { artifact: "spring-boot-starter-security" }
+    - { artifact: "spring-boot-starter-validation" }
+    - { artifact: "spring-boot-starter-actuator" }
+    - { artifact: "mybatis-spring-boot-starter" }
+    - { artifact: "pagehelper-spring-boot-starter" }
+    - { artifact: "postgresql",   scope: runtime }
+    - { artifact: "jjwt-api" }
+    - { artifact: "jjwt-impl",    scope: runtime }
+    - { artifact: "jjwt-jackson", scope: runtime }
+    - { artifact: "mapstruct" }
+    - { artifact: "s3" }   # software.amazon.awssdk:s3（版数は AWS SDK BOM）
+    - { artifact: "spring-boot-starter-mail" }
+    - { artifact: "poi-ooxml" }
+    - { artifact: "spring-boot-starter-test",   scope: test }
+    - { artifact: "spring-security-test",        scope: test }
+
+# ============================================================
+# ソースファイル一覧（main / test）
+# ============================================================
+source_files:
+
+  common:
+    main:
+      - com.example.ddmsaa.common.exception.AuthException
+      - com.example.ddmsaa.common.exception.BusinessException
+      - com.example.ddmsaa.common.exception.EntityNotFoundException
+      - com.example.ddmsaa.common.exception.GlobalExceptionHandler
+      - com.example.ddmsaa.common.message.MessageCatalog
+      - com.example.ddmsaa.common.message.YamlMessageCatalog
+      - com.example.ddmsaa.common.response.ErrorResponse
+      - com.example.ddmsaa.common.response.FieldError
+      - com.example.ddmsaa.common.response.PageResult
+      - com.example.ddmsaa.common.response.Result
+      - com.example.ddmsaa.common.security.DataMaskUtil
+      - com.example.ddmsaa.common.security.FieldEncryptor
+      - com.example.ddmsaa.common.security.MaskingService
+      - com.example.ddmsaa.common.security.DefaultMaskingService
+      - com.example.ddmsaa.common.web.filter.TraceIdFilter
+    test:
+      - com.example.ddmsaa.common.exception.AuthExceptionTest
+      - com.example.ddmsaa.common.exception.BusinessExceptionTest
+      - com.example.ddmsaa.common.exception.EntityNotFoundExceptionTest
+      - com.example.ddmsaa.common.exception.GlobalExceptionHandlerTest
+      - com.example.ddmsaa.common.message.YamlMessageCatalogTest
+      - com.example.ddmsaa.common.response.ErrorResponseTest
+      - com.example.ddmsaa.common.response.PageResultTest
+      - com.example.ddmsaa.common.response.ResultTest
+      - com.example.ddmsaa.common.security.DataMaskUtilTest
+      - com.example.ddmsaa.common.security.FieldEncryptorTest
+      - com.example.ddmsaa.common.web.filter.TraceIdFilterTest
+
+  infrastructure:
+    main:
+      - com.example.ddmsaa.infrastructure.auth.AuthStateStore
+      - com.example.ddmsaa.infrastructure.config.SecurityConfig
+      - com.example.ddmsaa.infrastructure.db.MetaObjectHandler
+      - com.example.ddmsaa.infrastructure.jwt.JwtAuthenticationFilter
+      - com.example.ddmsaa.infrastructure.jwt.JwtUtil
+      - com.example.ddmsaa.infrastructure.jwt.UserContext
+      - com.example.ddmsaa.infrastructure.rest.RestClientFactory
+      - com.example.ddmsaa.infrastructure.rest.ServiceClient
+      - com.example.ddmsaa.infrastructure.storage.FileStorageService
+      - com.example.ddmsaa.infrastructure.storage.LocalFileStorageService
+      - com.example.ddmsaa.infrastructure.storage.S3FileStorageService
+    test:
+      - com.example.ddmsaa.infrastructure.auth.AuthStateStoreTest
+      - com.example.ddmsaa.infrastructure.jwt.JwtAuthenticationFilterTest
+      - com.example.ddmsaa.infrastructure.jwt.JwtUtilTest
+      - com.example.ddmsaa.infrastructure.jwt.UserContextTest
+
+  api-gateway:
+    main:
+      - com.example.ddmsaa.gateway.GatewayApplication
+      - com.example.ddmsaa.gateway.config.CorsConfig
+      - com.example.ddmsaa.gateway.error.ErrorResponseWriter
+      - com.example.ddmsaa.gateway.error.GatewayErrorHandler
+      - com.example.ddmsaa.gateway.filter.JwtAuthGlobalFilter
+      - com.example.ddmsaa.gateway.filter.TraceIdGlobalFilter
+    test:
+      - com.example.ddmsaa.gateway.error.ErrorResponseWriterTest
+      - com.example.ddmsaa.gateway.error.GatewayErrorHandlerTest
+      - com.example.ddmsaa.gateway.filter.JwtAuthGlobalFilterTest
+      - com.example.ddmsaa.gateway.filter.TraceIdGlobalFilterTest
+
+  auth-service:
+    main:
+      - com.example.ddmsaa.auth.AuthApplication
+      - com.example.ddmsaa.auth.config.SecurityConfig
+      - com.example.ddmsaa.auth.controller.AuthController
+      - com.example.ddmsaa.auth.dto.LoginInitRequest
+      - com.example.ddmsaa.auth.dto.TokenResponse
+      - com.example.ddmsaa.auth.dto.VerifyMagicLinkRequest
+      - com.example.ddmsaa.auth.mapper.UserAuthMapper
+      - com.example.ddmsaa.auth.mapper.UserAuthView
+      - com.example.ddmsaa.auth.service.AuthService
+      - com.example.ddmsaa.auth.service.impl.AuthServiceImpl
+    resources:
+      - "mapper/UserAuthMapper.xml"
+      - "application.yml"
+    test:
+      - com.example.ddmsaa.auth.controller.AuthControllerTest
+      - com.example.ddmsaa.auth.service.impl.AuthServiceImplTest
+
+  business-service-core:
+    main:
+      - com.example.ddmsaa.core.BusinessServiceCoreApplication
+      - com.example.ddmsaa.core.config.SecurityConfig
+      - com.example.ddmsaa.core.controller.PingController
+    resources:
+      - "application.yml"
+    test: []
+
+# ============================================================
+# リソースファイル一覧
+# ============================================================
+resources:
+  common:
+    - path: "src/main/resources/messages/common-messages.yaml"
+      description: "メッセージカタログ正本。各サービスは依存で classpath 共有し重複コピーしない"
+
+  infrastructure:
+    - path: "src/main/resources/db/migration/"
+      description: "Flyway マイグレーション SQL（V<n>__*.sql / R__*.sql）。Flyway が classpath:db/migration を走査し auth/core 起動時に適用。SQL 内容の正本は データベース（DB チーム）、本モジュールは配置先のみ。命名は 開発規約/spec-flyway-migration-rule.md。初期移行データ＝V1、baseline-version=0（schema 構築は別機構＝版管理対象外）"
+
+  api-gateway:
+    - path: "src/main/resources/application.yml"
+      port: 8080
+      key_settings:
+        - "app.jwt.secret / app.jwt.issuer"
+        - "app.cors.allowed-origins"
+        - "app.services.auth.base-url: http://localhost:8081"
+        - "app.services.core.base-url: http://localhost:8082"
+        - "spring.cloud.gateway.routes"
+
+  auth-service:
+    - path: "src/main/resources/application.yml"
+      port: 8081
+      key_settings:
+        - "app.jwt.secret / app.jwt.issuer / app.jwt.expiration-seconds: 3600"
+        - "app.auth.magic-link.ttl-seconds: 3600"
+        - "app.auth.magic-link.base-url: http://localhost:3000/auth/verify"
+        - "app.auth.mail-from: no-reply@ddmsaa.local"
+        - "app.auth.login-lockout-seconds: 1800"
+        - "app.auth.max-login-failure-count: 5"
+        - "spring.datasource.*"
+        - "spring.data.redis.*"
+        - "spring.mail.*"
+    - path: "src/main/resources/mapper/UserAuthMapper.xml"
+
+  business-service-core:
+    - path: "src/main/resources/application.yml"
+      port: 8082
+      key_settings:
+        - "app.jwt.secret / app.jwt.issuer"
+        - "app.crypto.aes-key"
+        - "app.file.storage-type: s3"
+        - "app.file.s3.region / bucket / prefix / endpoint / path-style / presign-ttl-seconds（資格情報は既定資格情報チェーン）"
+        - "spring.datasource.*"
+
+# ============================================================
+# ビルドプラグイン
+# ============================================================
+build_plugins:
+  # 注: Spotless は「生成時専用ツール」であり納品 pom には含めない（code_generation_pipeline 参照）。
+  #     よって親 POM に formatter プラグインは宣言しない。
+  - module: api-gateway
+    plugin: spring-boot-maven-plugin
+  - module: auth-service
+    plugin: spring-boot-maven-plugin
+  - module: business-service-core
+    plugins:
+      - spring-boot-maven-plugin
+      - "maven-compiler-plugin (annotationProcessorPaths: mapstruct-processor)"
+  - module: infrastructure
+    plugin: flyway-maven-plugin
+    plugin_note: "独立実行用: mvn -pl infrastructure flyway:migrate。url/user/password は pom properties または -D で注入"
+    plugin_configuration_raw: |
+      <configuration>
+          <url>${flyway.url}</url>
+          <user>${flyway.user}</user>
+          <password>${flyway.password}</password>
+          <locations>filesystem:db/migration</locations>
+          <baselineOnMigrate>true</baselineOnMigrate>
+          <baselineVersion>0</baselineVersion>
+      </configuration>
+
+# ============================================================
+# ルートファイル
+# ============================================================
+root_files:
+  - path: ".gitattributes"
+    description: "LF 正規化（* text=auto, java/xml/yml/yaml/sql/sh → eol=lf, *.bat → eol=crlf, バイナリ → binary）"
+  - path: ".editorconfig"
+    description: "root=true, charset=utf-8, end_of_line=lf, indent: java/xml=4, yml/json=2"
+  # 注: eclipse-formatter.xml は納品物に含めない。formatter は生成時専用ツールであり、
+  #     プロファイル正本は 基本設計/基盤/インタフェース仕様/eclipse-formatter.xml に保持する
+  #     （code_generation_pipeline.formatter_step 参照）。
+
+# ============================================================
+# 環境変数一覧（機微値・必須）
+# ============================================================
+env_vars:
+  - { key: JWT_SECRET,               required: true,  services: [api-gateway, auth-service, business-service-core] }
+  - { key: JWT_ISSUER,               required: false, default: ddmsaa,   services: [api-gateway, auth-service, business-service-core] }
+  - { key: JWT_EXPIRATION_SECONDS,   required: false, default: "3600",  services: [auth-service, business-service-core] }
+  - { key: MAGIC_LINK_TTL_SECONDS,   required: false, default: "3600",  services: [auth-service] }
+  - { key: MAGIC_LINK_BASE_URL,      required: false, default: "http://localhost:3000/auth/verify", services: [auth-service] }
+  - { key: MAIL_FROM,                required: false, default: "no-reply@ddmsaa.local", services: [auth-service] }
+  - { key: LOGIN_LOCKOUT_SECONDS,    required: false, default: "1800",  services: [auth-service] }
+  - { key: MAX_LOGIN_FAILURE_COUNT,  required: false, default: "5",     services: [auth-service] }
+  - { key: CORS_ALLOWED_ORIGINS,     required: false, default: "http://localhost:3000", services: [api-gateway] }
+  - { key: AUTH_SERVICE_URI,         required: false, default: "http://localhost:8081", services: [api-gateway, business-service-core] }
+  - { key: CORE_SERVICE_URI,         required: false, default: "http://localhost:8082", services: [api-gateway] }
+  - { key: AES_KEY,                  required: true,  services: [business-service-core] }
+  - { key: "S3_REGION",             required: false, default: "ap-northeast-1", services: [business-service-core] }
+  - { key: "S3_BUCKET",             required: false, default: ddmsaa,   services: [business-service-core] }
+  - { key: "S3_PREFIX",             required: false, services: [business-service-core] }
+  - { key: "S3_ENDPOINT",           required: false, services: [business-service-core] }   # ローカル開発用 MinIO（S3 互換）接続時のみ
+  - { key: "S3_PATH_STYLE",         required: false, default: "false", services: [business-service-core] }
+  - { key: "S3_PRESIGN_TTL_SECONDS", required: false, default: "300", services: [business-service-core] }
+  # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY は SDK 既定資格情報チェーンの標準変数（アプリ独自項目ではない）。ローカル開発の MinIO 接続時のみ設定し、AWS 上ではタスクロール等を使う
+  # --- 接続系（application.yml spec ＝ spec-09-resource-file.yaml と整合。auth は DB_*/REDIS_*/MAIL_*、core は SPRING_DATASOURCE_*） ---
+  - { key: DB_USERNAME,              required: false, default: ddmsaa,   services: [auth-service] }   # auth datasource url は固定リテラル、username/password のみ env
+  - { key: DB_PASSWORD,              required: true,  services: [auth-service] }
+  - { key: REDIS_HOST,               required: false, default: localhost, services: [auth-service] }
+  - { key: REDIS_PORT,               required: false, default: "6379",  services: [auth-service] }
+  - { key: REDIS_PASSWORD,           required: false, default: "",       services: [auth-service] }
+  - { key: MAIL_HOST,                required: false, default: localhost, services: [auth-service] }
+  - { key: MAIL_PORT,                required: false, default: "25",     services: [auth-service] }
+  - { key: MAIL_USERNAME,            required: false, default: "",       services: [auth-service] }
+  - { key: MAIL_PASSWORD,            required: false, default: "",       services: [auth-service] }
+  - { key: SPRING_DATASOURCE_URL,      required: true,  services: [business-service-core] }
+  - { key: SPRING_DATASOURCE_USERNAME, required: true,  services: [business-service-core] }
+  - { key: SPRING_DATASOURCE_PASSWORD, required: true,  services: [business-service-core] }
+# 注: 接続系 env 命名は auth=DB_*/REDIS_*、core=SPRING_DATASOURCE_* と不統一（原本 ddmsaa-backend に準拠＝保持）。将来統一する場合は application.yml spec と同時に変更すること。
+
+# ============================================================
+# Javadoc / 注釈ポリシー（方針(B)＝Javadoc 本文を spec に pin＝決定論対象 scope B）
+# ------------------------------------------------------------
+# 方針(B): Javadoc 本文は各 spec の `javadoc` フィールド（型レベル）および
+#          method/constructor の `javadoc` フィールド（メソッドレベル）を【逐語】使用する。
+#          生成器は文言を創作しない。`javadoc` フィールドが無い要素には Javadoc を付けない（省略裁量を排除）。
+#          → Javadoc 本文も決定論対象（scope B）となり、生成のたびに byte 一致する。
+#   旧 `javadoc: none` / `javadoc_policy: none` マーカーは本方針で無効（実 `javadoc` フィールドが正本）。
+#   正本: 生成要件＝開発規約 spec-backend-coding-rule §11.1、決定論＝基本設計 アーキテクチャ §10.4。
+# ============================================================
+documentation_policy:
+  javadoc:
+    language: 日本語
+    determinism_scope: B   # 方針(B): Javadoc 本文も決定論対象。spec の javadoc フィールドを逐語使用＝byte 一致
+    source_of_text: "各 spec の `javadoc` フィールド（型レベル）/ method・constructor の `javadoc` フィールド（メソッドレベル）を逐語出力。生成器は創作・補完しない。"
+    coverage:
+      - "型レベル: すべての public 型（class/interface/record/enum）は `javadoc` フィールドを持ち、その本文を逐語出力する。"
+      - "メソッドレベル: method/constructor は `javadoc` フィールドを持つもののみ Javadoc を出力（@param/@return/@throws も同フィールド内に逐語記載）。`javadoc` の無い要素には Javadoc を付けない。"
+    no_discretion: "「trivial だから省略」等の生成器裁量を禁止。Javadoc の出力可否と文言は `javadoc` フィールドのみで決まる（決定論）。"
+    prohibitions:
+      - "spec に無い Javadoc を生成器が創作することを禁止。"
+      - "情報量のない placeholder 注釈を禁止。"
+    comment_language: "注釈言語は日本語。"
+  pom_conventions_ref: "POM メタデータ（<name>/<description>/<relativePath>/properties 等）の固定は本ファイルの pom_conventions を参照（決定論 scope B）。"
+
+# ============================================================
+# POM 規約（pom.xml メタデータの固定＝決定論 scope B）
+# 座標/継承/依存/scope/plugin は dependencies / dependency_versions / dependency_management / build_plugins が正本。
+# 本節は生成器ごとに揺れた「任意メタ要素」を固定する。値は正本 ddmsaa-backend に一致。
+# ============================================================
+pom_conventions:
+  xml_header: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                                 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  name_tag: "全 pom に <name> を含める（値 = artifactId）"
+  description_tag: "全 pom に <description> を含める（下記固定文言）"
+  descriptions:
+    ddmsaa-platform: "DDMSAA 基盤プラットフォーム親 POM"
+    common: "横断共通 jar"
+    infrastructure: "DB/Redis/JWT/ストレージ/RestClient 横断基盤 jar"
+    api-gateway: "Spring Cloud Gateway (WebFlux)"
+    auth-service: "パスワードレス Magic Link 認証・JWT 発行"
+    business-service-core: "業務コア機能"
+  parent_relativePath:
+    root: "<relativePath/>（空。spring-boot-starter-parent をリポジトリ解決）"
+    children: "<relativePath>../pom.xml</relativePath>（明記）"
+  root_properties: "java.version=21 / maven.compiler.release=21 / project.build.sourceEncoding=UTF-8 / spring-cloud.version / dependency_versions の各 *.version（この順）"
+  child_pom: "子 pom は groupId/version を書かず親継承。<artifactId>/<packaging>(jar)/<name>/<description> を明記。内部依存(common/infrastructure)は version 省略（dependencyManagement 解決）。"
+  child_pom_element_spacing: "子 pom の <artifactId>/<packaging>/<name>/<description> はこの順・要素間に空行なし（隣接記述）"
+  dependency_entry_spacing: "<dependencyManagement> および <dependencies> 内の各 <dependency> エントリ間に空行なし"
+
+# ============================================================
+# spec / リソース spec インデックス（基盤）
+# ============================================================
+class_spec_index:
+  # ---- インタフェース仕様/（テンプレート × バインディング 同時生成。基本設計 00-05 と兄弟関係） ----
+  - { file: spec-01-auth.yaml,            scope: "auth-service（AuthController/AuthService(Impl)/dto/mapper/SecurityConfig/AuthApplication）" }
+  - { file: spec-02-authorization.yaml,            scope: "infrastructure.config/gateway.config（SecurityConfig×2）" }
+  - { file: spec-03-exception-handler.yaml,         scope: "common.exception（GlobalExceptionHandler/3 例外型）" }
+  - { file: spec-04-unified-response.yaml,        scope: "common.response（Result/PageResult/ErrorResponse/FieldError）" }
+  - { file: spec-05-trace-message.yaml,    scope: "common.web.filter.TraceIdFilter / common.message（MessageCatalog/YamlMessageCatalog）/ common.security（FieldEncryptor/DataMaskUtil/MaskingService）" }
+  - { file: spec-06-gateway.yaml,             scope: "api-gateway（filter/error/config/GatewayApplication）" }
+  - { file: spec-07-infrastructure.yaml,   scope: "infrastructure（auth/storage/rest）" }
+  - { file: spec-08-security-util.yaml, scope: "infrastructure.jwt（JwtUtil/JwtAuthenticationFilter/UserContext）/ infrastructure.auth.AuthStateStore" }
+  - { file: spec-09-resource-file.yaml,       scope: "application.yml ×3 / UserAuthMapper.xml / メッセージカタログ配置" }
+  - { file: spec-10-business-core.yaml,   scope: "business-service-core（BusinessServiceCoreApplication/PingController/SecurityConfig）" }
+  - { file: spec-11-log-config.yaml,            scope: "logback-spring.xml ×3（実行モジュール）" }
+
+# ============================================================
+# 追加リソース: logback-spring.xml（インタフェース仕様/spec-11-log-config.yaml が正本）
+# ============================================================
+logback_resources:
+  api-gateway:
+    - { path: "src/main/resources/logback-spring.xml", spec: spec-11-log-config.yaml }
+  auth-service:
+    - { path: "src/main/resources/logback-spring.xml", spec: spec-11-log-config.yaml }
+  business-service-core:
+    - { path: "src/main/resources/logback-spring.xml", spec: spec-11-log-config.yaml }
+
+# ============================================================
+# テスト生成（本体コードは 01_UTSpec/ 配下が正本）
+# ------------------------------------------------------------
+# 要否は基本設計 アーキテクチャ §10.3 のテスト導出（T1/T2 必須・T3/T4 不要）で決まる。命名/フレームワーク/データ規約も同節。
+# source_files.<module>.test に列挙したクラスのコード本体は 01_UTSpec/ 配下を正本とする。
+# ============================================================
+test_generation:
+  derivation: "基本設計 アーキテクチャ §10.3（T1/T2 必須・JUnit5+Mockito+AssertJ、日本語 @DisplayName、固定テストデータ、鍵は Base64(new byte[32])）"
+  note: >
+    テスト spec は実装 spec（インタフェース仕様/spec_*.yaml）から派生する。
+    テスト生成の規約は 開発規約/spec-backend-scaffold-rule.md §1 を参照。

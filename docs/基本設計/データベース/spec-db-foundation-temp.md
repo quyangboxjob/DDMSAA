@@ -1,9 +1,14 @@
+<!-- devtool:file-region id="document-header" -->
 # DB 構築共通テンプレート
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s01" -->
 ## 1. 目的
 
 本テンプレートは、SPA + マイクロサービス + Spring Boot + MyBatis + PostgreSQL のバックエンド基盤に適用できる**汎用 DB 設計フレームワーク**を提供する。特定の業務シナリオから独立し、統一的なデータベースアーキテクチャ原則、Schema 構成、テーブル設計規約、初期化およびマイグレーション方針を定義することで、再利用・レビュー・実践を容易にする。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s02" -->
 ## 2. 適用範囲
 
 - PostgreSQL ベースのリレーショナルデータベース設計
@@ -13,6 +18,8 @@
 - プラットフォーム標準テーブル（認証 / 権限 / 監査 / パラメータテーブル等）と業務テーブルを含む
 - 文字エンコーディングは UTF-8、タイムゾーンはシステムタイムゾーン（`共通/spec-01-system-architecture-ui.md`）に統一
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s03" -->
 ## 3. DB アーキテクチャ概要
 
 ### 3.1 アーキテクチャ階層
@@ -54,6 +61,8 @@
 | **制約** | 外部キー・一意性・非 NULL 等を明示的に宣言する；NOT NULL 列には既定値を持たせるかアプリケーション層で保証する |
 | **インデックス** | 頻繁に検索する列・FK・ソート列にインデックスを作成する；過剰なインデックスは避ける |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s04" -->
 ## 4. 汎用 DB 設計
 
 ### 4.1 接続と初期化
@@ -283,6 +292,8 @@ INSERT INTO system_settings (id, setting_key, setting_value, description, is_sys
 | **中間テーブル** | 多対多の関係 | `user_role`、`department_user` |
 | **参照テーブル** | 列挙/定数テーブル；初期化データ | `holidays`、`country_codes` |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s05" -->
 ## 5. データベースのバージョンマイグレーション
 
 ### 5.1 マイグレーションツールと方針
@@ -319,6 +330,8 @@ CREATE INDEX idx_app_user_username ON app_user(username);
 3. **本番環境**：ロールバック計画を策定のうえ、DBA の承認を得て実行する
 4. **記録**：マイグレーションごとに実行ログ・変更内容・実施者を保存する
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s06" -->
 ## 6. 性能と監視
 
 ### 6.1 インデックス方針
@@ -368,6 +381,8 @@ SELECT * FROM users LIMIT #{pageSize} OFFSET #{offset}
 | ディスク使用率 | > 85% | 増設または履歴データの整理を計画 |
 | バックアップ失敗 | あらゆる失敗 | 直ちに対応 |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s07" -->
 ## 7. バックアップとリストア
 
 ### 7.1 バックアップ方針
@@ -397,6 +412,8 @@ pg_restore -U {{DB_USER}} -h {{HOST}} -d {{DB_NAME}} \
 # recovery.conf または recovery.signal を設定し、recovery_target_timeline / recovery_target_time を指定
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s08" -->
 ## 8. プロジェクトディレクトリテンプレート
 
 ```
@@ -419,6 +436,8 @@ backend-platform/
       spec-data-dictionary-mapping-ui.md           # 命名マッピングと型規約
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s09" -->
 ## 9. 設定情報テンプレート
 
 ### 9.1 アプリケーション層の接続設定
@@ -464,6 +483,8 @@ DB_USER=app_user
 DB_PASSWORD=secure-password-here
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s10" -->
 ## 10. 設計成果物の要点
 
 - 基本設計には、DB アーキテクチャ階層、Schema 構成、設計原則、接続/初期化の要点を残すこと
@@ -472,6 +493,8 @@ DB_PASSWORD=secure-password-here
 - すべてのテーブル名/列名と型は、データ辞書（`spec-data-dictionary-mapping-ui.md`）と schema 定義を優先して正とすること
 - 共通設計には業務の詳細を埋め込まず、「業務領域 A / 領域 B」や汎用テーブル種別（エンティティテーブル / 属性テーブル / イベントテーブル等）で表現すること
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s11" -->
 ## 11. 技術スタック標準とバージョンアンカー
 
 | 項目 | 選定 | バージョン | 管理方式 |
@@ -484,6 +507,8 @@ DB_PASSWORD=secure-password-here
 | マイグレーションツール | Flyway | （Spring Boot に従う） | BOM |
 | データベースツール | DBeaver / pgAdmin | 最新 | 推奨開発ツール |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s12" -->
 ## 12. 操作ガイド
 
 ### 12.1 Windows 環境での PostgreSQL 接続
@@ -523,7 +548,10 @@ psql -U app_user -h localhost -d ddmsaa -c "SELECT version();"
 psql -U app_user -d ddmsaa -f migrations/V2__create_app_user.sql
 ```
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.database.postgresql.db-foundation-temp.s13" -->
 ## 13. 補足
 
 本 DB 構築共通テンプレートはバックエンド基盤構築共通テンプレートと対をなし、データベース層の統一設計フレームワークを提供する。具体的な業務テーブル定義はこれを土台に補完し、本テンプレートの命名規約・列標準・インデックス方針に従うこと。すべてのテーブルは監査列の要件を満たし、バージョンマイグレーションと性能監視に対応すること。
 
+<!-- devtool:endblock -->

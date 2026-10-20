@@ -1,3 +1,4 @@
+<!-- devtool:file-region id="document-header" -->
 # 09 共通メッセージ一覧
 
 <!-- rule: msg.no-hardcoded-text -->
@@ -9,6 +10,8 @@
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="basic.common.09-message-list-ui.s01" -->
 ## 1. messageId 命名規則
 
 <!-- rule: msg.id-format -->
@@ -30,10 +33,11 @@
 | `E0040`〜`E0043` | API Gateway（Token 欠落/不正・ルート未一致・タイムアウト） |
 | `I0001` / `I0003` / `I0010`〜`I0012` | 認証メール送信・ログイン・登録/更新/削除の完了通知 |
 | `W0010` / `W0011` | 削除確認・入力破棄確認 |
-| `I0020`〜`I0031` / `W0020`〜`W0026` / `E0050` | 画面業務メッセージ（承認・取消し・添付・出力・無効化確認など。画面設計で採番） |
 
 > 上記は基盤・規約・各 SSOT が参照する共通メッセージ。業務固有のメッセージは上記以外の空き番号で `spec-09-message-list.yaml`（および zh/en）へ追記する。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.common.09-message-list-ui.s02" -->
 ## 2. メッセージカタログ（多言語）
 
 メッセージ文言の唯一の出典は、言語別ディレクトリの yaml とする：
@@ -48,6 +52,8 @@
 - 動的な値は `{0},{1}` のプレースホルダで表し、バックエンドが `messageArgs` で渡す。
 - 実行時、フロントエンドは i18n（react-i18next）により現在の言語に応じて解決・表示する（`spec-12-screen-common-ui.md` §3 を参照）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="basic.common.09-message-list-ui.s03" -->
 ## 3. HTTP ステータスと messageId の関係
 
 - **messageId は唯一の識別・表示キー**である。HTTP ステータスは例外種別で決まり、messageId とは独立する（固定セットは `spec-07-api-list.yaml`/`.md` §1 を参照）。
@@ -58,3 +64,4 @@
 - メッセージの追加/変更は一律 `spec-09-message-list.yaml`（および zh/en の翻訳）で行い、本 md ではメッセージ明細を管理しない。
 - messageId は画面（`spec-12-screen-common-ui` / 各画面設計）および API（`spec-07-api-list`）から参照される。
 - 同一の事象（例：「ログインできない」）には必ず同じ messageId を再利用し、表現の一貫性を保つ。
+<!-- devtool:endblock -->

@@ -1,7 +1,10 @@
+<!-- devtool:file-region id="document-header" -->
 # Flyway マイグレーション規約（SQL ファイル作成・命名規約）
 
 ---
 
+<!-- devtool:end-file-region -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s01" -->
 ## メタデータ
 - version: 1.0.0
 - target_db: PostgreSQL（バージョンは `基本設計/共通/spec-01-system-architecture-ui.md` §2.3 に従う）
@@ -12,6 +15,8 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s02" -->
 ## 利用方法
 - DB 変更用のマイグレーションスクリプトを作成する際は、本規約を遵守しなければならない。AI がマイグレーションスクリプトを生成する際は、本ファイルを Prompt に含めること。
 - 本ドキュメントは機械的に判定可能な規則として記述する。例外は `EXCEPTION:` タグで明示する。
@@ -21,12 +26,16 @@
 
 ---
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s03" -->
 ## 1. ファイルの配置（唯一）
 
 - マイグレーションスクリプトは一律 `ddmsaa-backend/infrastructure/src/main/resources/db/migration/` に配置する。
 - 当該ディレクトリは `infrastructure` jar にパッケージ化され、`auth-service` / `business-service-core` で共有される（同一ソース、分岐させない）。
 - `EXCEPTION:` テスト/環境専用データは本ディレクトリに配置**しない**（§5 参照）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s04" -->
 ## 2. 命名規約
 
 ### 2.1 バージョン式マイグレーション（一回限り）
@@ -55,6 +64,8 @@ R__<description>.sql
 - ファイル名にスペース、全角文字、大文字の説明を含めない。
 - 使用済みのバージョン番号を再利用しない（`V1` は初期移行データで使用済み、§4 参照）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s05" -->
 ## 3. 作成規約（スクリプトの内容）
 
 <!-- rule: mig.applied-script-immutable -->
@@ -72,12 +83,16 @@ R__<description>.sql
 | R-10 | **ロールバック方針**：自動 undo には依存しない（コミュニティ版には存在しない）。ロールバックが必要な場合は**逆方向の `V*` を新規追加**する（例：`V5__revert_v4_xxx.sql`）。履歴スクリプトは削除・変更しない。 |
 | R-11 | **コメント**：ファイル先頭行に `-- V<n>__<desc>：<目的・関連チケット>` の形式で意図を記載する。 |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s06" -->
 ## 4. バージョンベースライン（baseline）の取り決め
 
 - **schema（14 テーブル）は機構A = docker で構築する**（`setup/10_schema.sql`）。**Flyway のバージョンには含めない**。
 - Flyway は `baseline-on-migrate=true` / `baseline-version=0` で設定する。既存（docker で schema 構築済み）の DB を初めて接続する際に `baseline(0)`（空のベースライン）を記録し、その後 **`V1`** から適用する。
 - したがって **`V1` = 初期移行データ**（Flyway が最初に実行するマイグレーション）とし、以降のテーブル構造変更は **`V2` 以降**とする。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s07" -->
 ## 5. 管理対象 / 対象外
 
 | 区分 | `db/migration` に含めるか | 配置先 |
@@ -89,11 +104,15 @@ R__<description>.sql
 | DB/ユーザー作成・権限付与（bootstrap） | `EXCEPTION:` 含めない | `setup/00_bootstrap.sql` / `01_schema_grants.sql` |
 | 開発サンプル・単体(UT)テストデータ（`20_seed` のサンプル、`21_*`〜`26_*`） | `EXCEPTION:` 含めない | 手動 psql / test profile。**主マイグレーションディレクトリには含めない**（本番を汚染するため） |
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s08" -->
 ## 6. レビュー・提出ルール
 - `V*`/`R__` を新規追加する場合はレビューを経ること：命名の適合、checksum リスク（履歴を変更しない）、冪等性、`spec-06-db-physical.yaml` との整合。
 - 複数人での協働ではバージョン番号の衝突を避ける：マージ前に `db/migration/` 配下に同番号がないことを確認し、衝突する場合はバージョンを繰り下げる。
 - 物理設計の変更は、**先に** `spec-06-db-physical.yaml` + `データベース` に反映してから、それに基づいてマイグレーションを作成する（SSOT の一致を保つ）。
 
+<!-- devtool:endblock -->
+<!-- devtool:block id="rules.postgresql.flyway-migration-rule.s09" -->
 ## 7. 例
 
 `V2__add_user_nickname.sql`
@@ -111,3 +130,4 @@ INSERT INTO request_type_limits (request_type, review_limit_days, process_limit_
   (2, 5, 5)
 ON CONFLICT DO NOTHING;
 ```
+<!-- devtool:endblock -->
