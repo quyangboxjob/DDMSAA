@@ -24,6 +24,8 @@ paths:
     post: { operationId: logout, summary: ログアウト, responses: { '204': { description: 完了 } } }
   /me:
     get: { operationId: getMe, summary: ログイン利用者取得, responses: { '200': { description: 本人情報 } } }
+  /me/password:
+    post: { operationId: changePassword, summary: パスワード変更（現パスワード確認。成功時は全セッション失効）, responses: { '204': { description: 変更完了。再ログインが必要 }, '400': { description: 入力誤り }, '401': { description: 現パスワード不一致 } } }
   /users:
     get: { operationId: listUsers, summary: 利用者一覧, x-roles: [ADMIN], responses: { '200': { description: 一覧 } } }
     post: { operationId: createUser, summary: 利用者登録, x-roles: [ADMIN], responses: { '201': { description: 登録完了 }, '409': { description: 重複 } } }
@@ -33,10 +35,10 @@ paths:
     get: { operationId: listAuditLogs, summary: 監査ログ一覧, x-roles: [ADMIN], responses: { '200': { description: 一覧 } } }
   /customers:
     get: { operationId: listCustomers, summary: 顧客一覧, x-roles: [ADMIN, EMPLOYEE], responses: { '200': { description: 権限内一覧 } } }
-    post: { operationId: createCustomer, summary: 顧客登録, x-roles: [ADMIN], responses: { '201': { description: 登録完了 } } }
+    post: { operationId: createCustomer, summary: 顧客登録（連絡先 contacts と担当社員 assignedEmployeeIds を同一リクエストで受ける）, x-roles: [ADMIN], responses: { '201': { description: 登録完了 } } }
   /customers/{customerId}:
-    get: { operationId: getCustomer, summary: 顧客詳細, x-roles: [ADMIN, EMPLOYEE, CUSTOMER], parameters: [{ $ref: '#/components/parameters/CustomerId' }], responses: { '200': { description: 権限内詳細 } } }
-    patch: { operationId: updateCustomer, summary: 顧客更新, x-roles: [ADMIN], parameters: [{ $ref: '#/components/parameters/CustomerId' }], responses: { '200': { description: 更新完了 } } }
+    get: { operationId: getCustomer, summary: 顧客詳細（連絡先・担当社員を含む。CUSTOMER には担当社員を返さない）, x-roles: [ADMIN, EMPLOYEE, CUSTOMER], parameters: [{ $ref: '#/components/parameters/CustomerId' }], responses: { '200': { description: 権限内詳細 } } }
+    patch: { operationId: updateCustomer, summary: 顧客更新（連絡先 contacts と担当社員 assignedEmployeeIds を全件置換で受ける）, x-roles: [ADMIN], parameters: [{ $ref: '#/components/parameters/CustomerId' }], responses: { '200': { description: 更新完了 } } }
   /customers/{customerId}/status:
     patch: { operationId: updateCustomerStatus, summary: 顧客状態更新, x-roles: [ADMIN], parameters: [{ $ref: '#/components/parameters/CustomerId' }], responses: { '200': { description: 更新完了 } } }
   /products:
@@ -51,7 +53,7 @@ paths:
     get: { operationId: listOrders, summary: 注文検索, x-roles: [ADMIN, EMPLOYEE, CUSTOMER], responses: { '200': { description: 行単位認可済み一覧 } } }
     post: { operationId: createOrder, summary: 下書き注文登録, x-roles: [ADMIN, EMPLOYEE], responses: { '201': { description: 登録完了 } } }
   /orders/{orderId}:
-    get: { operationId: getOrder, summary: 注文詳細, x-roles: [ADMIN, EMPLOYEE, CUSTOMER], parameters: [{ $ref: '#/components/parameters/OrderId' }], responses: { '200': { description: 権限内詳細 } } }
+    get: { operationId: getOrder, summary: 注文詳細（version と、承認待ちのとき現在の approvalRequestId を含む）, x-roles: [ADMIN, EMPLOYEE, CUSTOMER], parameters: [{ $ref: '#/components/parameters/OrderId' }], responses: { '200': { description: 権限内詳細 } } }
     patch: { operationId: updateOrder, summary: 注文更新, x-roles: [ADMIN, EMPLOYEE], parameters: [{ $ref: '#/components/parameters/OrderId' }], responses: { '200': { description: 更新完了 }, '409': { description: 状態または version の競合 } } }
   /orders/{orderId}/submit:
     post: { operationId: submitOrder, summary: 承認依頼, x-roles: [ADMIN, EMPLOYEE], parameters: [{ $ref: '#/components/parameters/OrderId' }], responses: { '202': { description: 依頼登録 } } }

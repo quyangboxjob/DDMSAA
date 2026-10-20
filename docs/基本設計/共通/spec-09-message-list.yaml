@@ -56,3 +56,24 @@ messages:
   E0041: { category: ERROR, message: "認証トークンが不正です" }
   E0042: { category: ERROR, message: "要求されたルートが存在しません" }
   E0043: { category: ERROR, message: "サービスの応答がタイムアウトしました" }
+
+  # =========================================================== 画面業務メッセージ（画面設計で採番）
+  I0020: { category: INFO, message: "承認を依頼しました" }
+  I0021: { category: INFO, message: "注文を取り消しました" }
+  I0022: { category: INFO, message: "承認しました" }
+  I0023: { category: INFO, message: "差し戻しました" }
+  I0024: { category: INFO, message: "アップロードしました。ウイルススキャンが完了するまでダウンロードできません" }
+  I0025: { category: INFO, message: "パスワードを変更しました。再度ログインしてください" }
+  I0026: { category: INFO, message: "再送を受け付けました" }
+  I0027: { category: INFO, message: "CSV の作成を受け付けました。完了後にダウンロードできます" }
+  I0028: { category: INFO, message: "CSV の作成が完了しました" }
+  I0030: { category: INFO, message: "変更・無効化しても、既存の注文の内容と税額は変わりません" }
+  I0031: { category: INFO, message: "変更は新しい承認依頼から適用されます。申請済みの注文には影響しません" }
+  W0020: { category: WARNING, message: "承認を依頼します。申請後は編集できません。よろしいですか？" }
+  W0021: { category: WARNING, message: "承認を確定します。よろしいですか？" }
+  W0022: { category: WARNING, message: "注文を取り消します。取消し後は元に戻せません。よろしいですか？" }
+  W0023: { category: WARNING, message: "無効化すると、この利用者のセッションは失効します。よろしいですか？" }
+  W0024: { category: WARNING, message: "通知を再送します。よろしいですか？" }
+  W0025: { category: WARNING, message: "無効化すると、この顧客に対して新規注文を作成できなくなります。よろしいですか？" }
+  W0026: { category: WARNING, message: "無効化すると、新規注文で選択できなくなります。よろしいですか？" }
+  E0050: { category: ERROR, message: "CSV の作成に失敗しました。条件を確認して再度お試しください" }

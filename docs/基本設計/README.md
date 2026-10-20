@@ -48,6 +48,7 @@
 | `spec-09-message-list.yaml`（+ `.zh` / `.en`） | 共通メッセージ一覧（機械可読） | messageId・文言の SSOT（日/中/英） | 同上 |
 | `spec-11-non-functional-ui.md` | 非機能要件 | 性能・セキュリティ・可用性・運用など | 要件定義 |
 | `spec-12-screen-common-ui.md` | 画面共通設計（共通 UI 方針） | 全画面共通の UI 標準：レイアウト・コンポーネント・メッセージ表示・状態・形式・ロール別表示・ダウンロード・レスポンシブ | 権限・メッセージ・非機能 |
+| `spec-screen-list-ui.md` | 画面一覧・画面遷移 | 全画面の SCR-ID・パス・ロール・利用 API と画面遷移図。個別画面は `業務設計/<module>/spec-<module>-screen-ui.md` | 要件定義・権限・API |
 | `spec-13-data-dictionary-ui.md` | データ辞書（総覧） | 項目語彙表・T07 列挙型の位置づけ（DI-xxx で表定義から参照） | `spec-06-db-physical-ui.md` |
 
 > **列挙/コード値の定義は本テンプレートの対象外**——`開発規約/spec-data-dictionary-project-temp.md` の T07 列挙型（category_code）で一元管理する。

@@ -15,7 +15,7 @@ API の単一の正式定義は [spec-07-api-list.yaml](spec-07-api-list.yaml) �
 
 | モジュール | operationId |
 | --- | --- |
-| 認証・利用者 | `login`、`logout`、`getMe`、`listUsers`、`createUser`、`updateUser`、`listAuditLogs` |
+| 認証・利用者 | `login`、`logout`、`getMe`、`changePassword`、`listUsers`、`createUser`、`updateUser`、`listAuditLogs` |
 | 顧客 | `listCustomers`、`createCustomer`、`getCustomer`、`updateCustomer`、`updateCustomerStatus` |
 | 商品 | `listProducts`、`createProduct`、`getProduct`、`updateProduct`、`updateProductStatus` |
 | 注文 | `listOrders`、`createOrder`、`getOrder`、`updateOrder`、`submitOrder`、`cancelOrder` |
