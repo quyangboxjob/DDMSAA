@@ -1,0 +1,84 @@
+# 模板 · ServiceImpl
+
+## 1. 适用层 & 何时套用
+业务逻辑、事务边界、权限数据范围、状态迁移。每个聚合一个 `{{Feature}}ServiceImpl`。
+
+## 2. 依据（SSOT 指针）
+- 分层、事务：`docs/開発規約/spec-backend-coding-rule.md` §2、§4（异常→HTTP）、§7（`@Transactional` 仅在 ServiceImpl；副作用放提交后）、§8（三层权限）
+- 契约：`基盤/インタフェース仕様/spec-10-business-core.yaml` §4
+- 业务规则：`docs/基本設計/共通/spec-08-business-rule-list.md`（BR-xxx，**以其为准**，详细设计引用同一编号）
+- 权限与数据范围：`docs/基本設計/共通/spec-03-auth-ui.md`；成功/错误消息：`spec-09-message-list.yaml`
+- 审计列由 `MetaObjectHandler` 自动写入（`spec-07-infrastructure.yaml`）；操作审计（`audit_logs`）和状态履历按 BR-ORD-011 / BR-AUD-001
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.service.impl;
+
+import com.example.ddmsaa.common.exception.BusinessException;
+import com.example.ddmsaa.common.exception.EntityNotFoundException;
+import com.example.ddmsaa.common.response.PageResult;
+import com.example.ddmsaa.common.security.MaskingService;
+import com.example.ddmsaa.infrastructure.jwt.UserContext;
+import com.github.pagehelper.PageHelper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+/**
+ * {{Feature}} の業務ロジック。トランザクション境界。HTTP の概念を持ち込まない。
+ */
+@Service
+@Transactional(readOnly = true)
+public class {{Feature}}ServiceImpl implements {{Feature}}Service {
+
+    private final {{Entity}}Mapper mapper;
+    private final {{Feature}}Converter converter;
+    private final MaskingService maskingService;
+    // 他の Mapper / 共通コンポーネントは詳細設計に従い構築子注入
+
+    @Override
+    public {{Name}}Vo get{{Feature}}({{pkType}} {{pkField}}) {
+        // 1. 実行者：UserContext.getUserId() / getRole()
+        // 2. データ範囲を求める（BR-AUTH-003：ADMIN 全件、EMPLOYEE 担当顧客、CUSTOMER 自社）
+        // 3. 範囲外・不存在は EntityNotFoundException("E0005")（BR-AUTH-006。存在を開示しない）
+        // 4. Entity → VO（converter）→ maskingService.maskByRole（CUSTOMER に隠す項目を null。BR-APR-006）
+    }
+
+    @Override
+    @Transactional
+    public {{Name}}Vo update{{Feature}}({{pkType}} {{pkField}}, {{Name}}Dto dto) {
+        // 1. 範囲・状態の検証（状態不可 → BusinessException("E0006")）
+        // 2. 業務値は Service で決める（金額再計算、商品マスタからの再複写 等。詳細設計の手順どおり）
+        // 3. mapper.updateWithLock(entity, dto.updatedAt())：0 行なら BusinessException("E0051")
+        //    ※ created_by / updated_by / updated_at は設定しない（MetaObjectHandler）
+        // 4. 状態履歴・監査ログ（BR-ORD-011 / BR-AUD-001）を同一トランザクションで保存
+        // 5. 副作用（通知投入以外のメール送信等）は afterCommit で実行
+        registerAfterCommit(() -> { /* メール送信など。トランザクション内では DB 操作のみ */ });
+        // 6. 保存後を再読込して VO を返す
+    }
+
+    @Override
+    public PageResult<{{Name}}ListItem> page{{Feature}}s({{Name}}SearchCondition cond, int pageNum, int pageSize) {
+        // 範囲条件を cond に合成してから PageHelper.startPage(pageNum, pageSize) → mapper.search(cond)
+        // return PageResult.of(records, total, pageNum, pageSize);
+    }
+
+    private void registerAfterCommit(Runnable action) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { action.run(); }
+        });
+    }
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** `@Transactional(readOnly = true)` 为类默认，写方法单独 `@Transactional`；跨表写入（例：注文 + 明细 + 状态履历 + 审计）在同一事务。
+- **MUST** 业务失败一律 `BusinessException(messageId, args…)`，状态不可用 `E0006`、乐观锁冲突 `E0051`、不存在/范围外 `E0005`，不用返回码或魔法字符串。
+- **MUST** 数据范围与角色在 Service/SQL 强制，不依赖前端；范围外单件 404、一览自动排除（BR-AUTH-006）。
+- **MUST** 业务规则编号与 `spec-08-business-rule-list.md` 一致，Javadoc 引用 BR-xxx。
+- **MUST** 413 类（附件超限）用 `PayloadTooLargeException`（coding-rule §4），不要用 `BusinessException`（会变 409）；若共通模块尚无该类，停止并报告交给脚手架补齐。
+- **MUST-NOT** 手动设置 `createdBy/updatedBy/createdAt/updatedAt`（审计列由拦截器写入）。
+- **MUST-NOT** 在事务内做邮件发送等副作用（用 afterCommit，或写 `notification_logs` 交 BAT-01 发送）。
+- **MUST-NOT** 返回 Entity；**MUST-NOT** 持有 HTTP/Servlet 对象。
+- `UserContext` 取值用 `getUserId()` / `getRole()`（`com.example.ddmsaa.infrastructure.jwt.UserContext`）；批处理线程为 null 时审计列自动记 `SYSTEM`。

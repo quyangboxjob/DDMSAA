@@ -1,0 +1,44 @@
+# 模板 · 输入 DTO（record）
+
+## 1. 适用层 & 何时套用
+请求体 / 入参 DTO（Create / Update / 各状态操作的请求）。不可变，用 `record`。
+
+## 2. 依据（SSOT 指针）
+- schema（字段 / required / maxLength / enum / pattern）：`docs/基本設計/共通/spec-07-api-list.yaml` `components.schemas`（如 `OrderSaveDTO`、`OrderStateDTO`、`ApprovalReturnDTO`）
+- 校验：`docs/開発規約/spec-backend-coding-rule.md` §10（违反 → 400 + `E0008` + `details[]`）
+- 命名：coding-rule §11（07 的 `...DTO` → Java `...Dto`）
+- 乐观锁字段：`updatedAt` 在 07 中为 date-time 字符串（微秒 6 位）
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.dto;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/**
+ * {{操作}}リクエスト（07 {{SchemaName}}）。
+ * 例：注文保存（OrderSaveDTO）。単価・合計はサーバーが決めるため含めない。
+ */
+public record {{Name}}Dto(
+        @NotBlank @Size(max = 10) String customerId,       // required 字段加 @NotBlank/@NotNull
+        @NotNull LocalDate orderDate,
+        @NotEmpty @Valid List<{{Item}}Dto> items,
+        OffsetDateTime updatedAt                           // 乐观锁：更新时必填（Service 检查），整串原样接收
+) {
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** `record`；字段名、`required`、`maxLength`、`enum`、`pattern`、`minimum/maximum` **严格对齐** 07 schema。
+- **MUST** `required` 字段加 Bean Validation；嵌套对象加 `@Valid`。违反 → 400 `E0008`。
+- **MUST** 枚举字段用 Java enum 类型（`MUST-NOT` 用 String 裸传）。
+- **MUST** `updatedAt` 用 `OffsetDateTime` 接收（微秒精度不丢失），并以 07 约定的格式序列化。
+- **MUST-NOT** 暴露 Entity；**MUST-NOT** 放系统生成字段（id、审计列、状态、金额合计、明细单价等）。07 没有的字段不要加。

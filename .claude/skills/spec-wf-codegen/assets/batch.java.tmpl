@@ -1,0 +1,53 @@
+# 模板 · 批处理（可选层）
+
+## 1. 适用层 & 何时套用
+仅当 `docs/基本設計/共通/spec-15-batch-design-ui.md` 定义了与本 feature 相关的 BAT-xx（如 BAT-01 通知发送、BAT-02 CSV 异步生成、BAT-03 导出文件失效、BAT-04 附件保留期限、BAT-05 扫描结果回写）时生成。Spring `@Scheduled`（非 Quartz）。
+
+## 2. 依据（SSOT 指针）
+- 批处理定义（触发、对象查询、状态迁移、错误处理）：`spec-15-batch-design-ui.md` §1–§4 与对应业务规则（BR-NTF-002、BR-RPT-002、BR-FIL-006 等）
+- 调度框架：`docs/基本設計/共通/spec-01-system-architecture-ui.md` §2（Spring Scheduler）
+- 事务与副作用：`docs/開発規約/spec-backend-coding-rule.md` §7
+- 审计列：批处理线程没有登录用户，`MetaObjectHandler` 会自动记 `SYSTEM`
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.batch;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.ZoneId;
+
+/**
+ * {{BAT-xx 名称}}。1 件ずつコミットし、1 件の失敗で全体を止めない。
+ */
+@Component
+public class {{Bat}}Batch {
+    private static final Logger log = LoggerFactory.getLogger({{Bat}}Batch.class);
+
+    // 構築子注入：Mapper 等
+
+    @Scheduled(cron = "{{cron}}", zone = "Asia/Tokyo")     // 例：通知送信 "0 * * * * *"（1 分ごと）
+    public void run() {
+        // 1. 対象行を FOR UPDATE SKIP LOCKED で取得（多重起動・複数インスタンスでも二重処理しない）
+        // 2. 1 件ずつ try/catch で handleOne を呼び、成功・失敗件数を数える
+        // 3. 終了時に開始・終了・処理件数・エラー件数をまとめて INFO ログ
+    }
+
+    @Transactional
+    public void handleOne(/* 1 件 */) { /* 状態遷移と記録。副作用（メール・ファイル削除）は仕様どおりの順序で */ }
+}
+```
+`@EnableScheduling` は `{{feature}}/batch/SchedulingConfig.java`（`@Configuration @EnableScheduling`）に置く。**启动类 `BusinessServiceCoreApplication` 不改**；其他 feature 已有时不重复创建。
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** 逐条 try/catch + 成功/失败计数 + 汇总日志。
+- **MUST** `zone = "Asia/Tokyo"`；事务粒度为 `handleOne`。
+- **MUST** 幂等：条件含状态判定，重复执行不重复处理（例：通知只取 `QUEUED AND next_attempt_at <= now()`）。
+- **MUST** 多实例安全：取行用 `FOR UPDATE SKIP LOCKED`。
+- **MUST** 失败只在对象行的 `error_message` 与应用日志记录；不抛出到调度线程。
+- **MUST-NOT** 在事务内做外部副作用后再回滚（先落库状态，提交后发送，见 coding-rule §7）。
+- **MUST-NOT** 直接改启动类；**MUST-NOT** 自行决定执行频率与保留天数（以 spec-15 / BR 为准）。

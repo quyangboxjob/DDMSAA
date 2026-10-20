@@ -1,0 +1,87 @@
+# 模板 · Mapper XML（resultMap 明示 + underscore 映射）
+
+## 1. 适用层 & 何时套用
+Mapper 接口对应的 SQL，落 `ddmsaa-backend/business-service-core/src/main/resources/mapper/{{Entity}}Mapper.xml`。
+
+## 2. 依据（SSOT 指针）
+- 规约：`docs/開発規約/spec-backend-coding-rule.md` §6（`resultMap` 优先、`WHERE deleted_at IS NULL`、乐观锁、`<where>/<if>`、列级数据分离）
+- 契约：`基盤/インタフェース仕様/spec-10-business-core.yaml` §5（开启 `map-underscore-to-camel-case`，复合映射用 `resultMap`）
+- 列名/类型：`docs/基本設計/共通/spec-06-db-physical.yaml` 本表段
+- 审计列由 `MetaObjectHandler` 写入 Entity 字段：`spec-07-infrastructure.yaml`
+
+> 已知文档不一致：`spec-codegen-map-rule.md` §3 写 "resultType+underscore"，coding-rule §6 写 "resultMap 优先"。本模板按 coding-rule §6。简单单表查询允许省略 resultMap 用自动映射，但 JOIN 派生列、枚举等必须 `resultMap`。
+
+## 3. 骨架（带占位符）
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="{{basePkg}}.{{feature}}.mapper.{{Entity}}Mapper">
+
+    <resultMap id="{{entity}}Map" type="{{basePkg}}.{{feature}}.entity.{{Entity}}">
+        <id     property="{{pkField}}" column="{{pkColumn}}"/>
+        <result property="customerId"  column="customer_id"/>
+        <result property="status"      column="status"/>
+        <!-- 06 yaml の列を 1 件ずつ明示。共通列も含める -->
+        <result property="createdAt"   column="created_at"/>
+        <result property="createdBy"   column="created_by"/>
+        <result property="updatedAt"   column="updated_at"/>
+        <result property="updatedBy"   column="updated_by"/>
+        <result property="deletedAt"   column="deleted_at"/>
+    </resultMap>
+
+    <sql id="columns">{{列清单 e.col, …}}</sql>
+
+    <select id="selectById" resultMap="{{entity}}Map">
+        SELECT <include refid="columns"/>
+        FROM {{table}} e
+        WHERE e.{{pkColumn}} = #{{'{'}}{{pkField}}{{'}'}}
+          AND e.deleted_at IS NULL
+    </select>
+
+    <!-- id は列に含めず DB DEFAULT（next_business_id）で採番。users は例外（アプリが前缀 A/E/C で採番した値を渡す） -->
+    <insert id="insert" parameterType="{{basePkg}}.{{feature}}.entity.{{Entity}}"
+            useGeneratedKeys="true" keyProperty="{{pkField}}" keyColumn="{{pkColumn}}">
+        INSERT INTO {{table}} ({{業務列}}, created_at, created_by, updated_at, updated_by)
+        VALUES ({{#{...}}}, #{createdAt}, #{createdBy}, #{updatedAt}, #{updatedBy})
+        <!-- created_*/updated_* は MetaObjectHandler が entity に設定済みの値を渡す -->
+    </insert>
+
+    <update id="updateWithLock">
+        UPDATE {{table}}
+        SET {{可変列 = #{entity.…}}}, updated_at = #{entity.updatedAt}, updated_by = #{entity.updatedBy}
+        WHERE {{pkColumn}} = #{entity.{{pkField}}}
+          AND updated_at = #{expectedUpdatedAt}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="softDeleteById">
+        UPDATE {{table}} SET deleted_at = now()
+        WHERE {{pkColumn}} = #{{'{'}}{{pkField}}{{'}'}} AND deleted_at IS NULL
+    </update>
+
+    <!-- 一覧：動的条件は <where>/<if>。データ範囲は必ず条件に含める。公開列のみ SELECT（個人情報は列レベルで除外） -->
+    <select id="search" resultMap="{{entity}}Map">
+        SELECT <include refid="columns"/>
+        FROM {{table}} e
+        <where>
+            e.deleted_at IS NULL
+            <if test="cond.customerIds != null and cond.customerIds.size() > 0">
+                AND e.customer_id IN
+                <foreach collection="cond.customerIds" item="cid" open="(" separator="," close=")">#{cid}</foreach>
+            </if>
+        </where>
+        ORDER BY {{固定ソート（07 の description に従う）}}
+    </select>
+    <!-- 比較演算子は &lt; / &lt;&gt; / &lt;= とエスケープ -->
+</mapper>
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** Entity 映射用 `resultMap`（JOIN/复合映射必须）；`map-underscore-to-camel-case: true` 同时开启。
+- **MUST** 所有查询带 `WHERE deleted_at IS NULL`（无该列的表除外：履历、`*_codes`、`user_contacts`、`system_locks`）。
+- **MUST** 更新用乐观锁条件 `updated_at = #{expectedUpdatedAt}`；更新行数 0 由 Service 抛 `E0051`。
+- **MUST** 动态条件用 `<where>/<if>`；**MUST-NOT** 用 `${}` 或字符串拼接 SQL（排序列也不接受用户输入的原样值，用白名单映射）。
+- **MUST** 一览类 SQL 只 SELECT 需要的列；需对某角色隐藏的数据在 Service 置 null，列表接口不返回的列不要 SELECT。
+- **MUST-NOT** 物理 `DELETE`。
+- `id` 的采番：DEFAULT 采番的表不在 INSERT 里写 id；`users` 由应用层传入（见 spec-database-rule §4.1-SEQ）。

@@ -1,0 +1,56 @@
+# 模板 · Mapper 接口
+
+## 1. 适用层 & 何时套用
+单表/单聚合 CRUD 接口。每个 Entity 一个 `@Mapper`，对应一个同名 XML。跨聚合的业务编排不在此，放 Service。
+
+## 2. 依据（SSOT 指针）
+- MyBatis 规约：`docs/開発規約/spec-backend-coding-rule.md` §6（逻辑删除、动态条件、分页、乐观锁）
+- 接口契约：`基盤/インタフェース仕様/spec-10-business-core.yaml` §5（`@Mapper` 自动检测，不加 `@MapperScan`）
+- 表与主键：`docs/基本設計/共通/spec-06-db-physical.yaml`
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.mapper;
+
+import {{basePkg}}.{{feature}}.entity.{{Entity}};
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/**
+ * {{table}} の CRUD。主キー＝{{pkColumn}}。論理削除は deleted_at。
+ */
+@Mapper
+public interface {{Entity}}Mapper {
+
+    /** 主キーで 1 件取得（未削除のみ）。 */
+    {{Entity}} selectById(@Param("{{pkField}}") {{pkType}} {{pkField}});
+
+    /** 登録。id は DB の DEFAULT（next_business_id）で採番され、entity に戻る。 */
+    int insert({{Entity}} entity);
+
+    /**
+     * 更新（楽観ロック）。expectedUpdatedAt が現在の updated_at と一致するときだけ更新する。
+     * @return 更新行数（0 のとき Service が BusinessException("E0051")）
+     */
+    int updateWithLock(@Param("entity") {{Entity}} entity,
+                       @Param("expectedUpdatedAt") OffsetDateTime expectedUpdatedAt);
+
+    /** 論理削除（UPDATE deleted_at）。物理 DELETE は禁止。 */
+    int softDeleteById(@Param("{{pkField}}") {{pkType}} {{pkField}});
+
+    /** 一覧（PageHelper は Service 側で startPage）。データ範囲の条件を必ず受け取る。 */
+    List<{{Entity}}> search(@Param("cond") {{Name}}SearchCondition cond);
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** 一个 Entity ↔ 一个 `<Entity>Mapper` 接口 + 同名 XML；namespace = 接口 FQCN。
+- **MUST** 多参数用 `@Param`；分页方法返回 `List<{{Entity}}>`，`PageHelper.startPage()` 在 ServiceImpl 调用。
+- **MUST** 乐观锁方法单独接收 `expectedUpdatedAt`（不复用 Entity 的 `updatedAt`，它会被拦截器覆盖）。
+- **MUST** 一览类方法的参数里带数据范围条件（EMPLOYEE 的担当顾客集合、CUSTOMER 的自社 ID），范围由 Service 求出后传入。
+- **MUST-NOT** 写跨聚合业务编排、字符串拼 SQL。
+- **MUST-NOT** 物理 `DELETE`（除 spec-database-rule §4.3 的例外表）；履历表无逻辑删除。
+- 不加 `@MapperScan`（启动类已通过 `@Mapper` 自动检测）。

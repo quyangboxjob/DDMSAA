@@ -1,0 +1,36 @@
+# 模板 · 出参 DTO（可变类 · 按角色置 null）
+
+## 1. 适用层 & 何时套用
+详情 / 参照类出参，且**某些角色看不到部分字段**（API 返回 `null`）时用可变类。无需按角色隐藏的出参用 `record`（结构同 input-record 模板）。
+
+## 2. 依据（SSOT 指针）
+- schema：`docs/基本設計/共通/spec-07-api-list.yaml`（如 `OrderVO`、`ApprovalHistoryVO`，可空字段 `nullable: true`）
+- 项目矩阵：`docs/基本設計/共通/spec-03-auth-ui.md` §3；规则 `spec-08-business-rule-list.md` BR-APR-006（CUSTOMER 看履历只返回操作种别和时间，操作者、理由为 null）
+- 隐藏处理：`docs/開発規約/spec-backend-coding-rule.md` §8（列级：由共通 `MaskingService.maskByRole` 一并置 null，不分散在 Controller）
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.dto;
+
+import java.time.OffsetDateTime;
+
+/**
+ * {{出参逻辑名}}（07 {{SchemaName}}）。
+ * ロール別の非表示項目は ServiceImpl が MaskingService.maskByRole で null にする。
+ */
+public class {{Name}}Vo {
+    private String id;
+    private {{EnumName}} status;                 // 出参用 Java enum（Jackson 出 API 字符串）
+    private String hiddenFromCustomer;           // 例：ApprovalHistoryVO.actedBy / reason（CUSTOMER では null）
+    private OffsetDateTime updatedAt;            // 乐观锁用。微秒精度のまま返す
+
+    // 全フィールドの getter / setter（可変：null 化に setter を使う）
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** 字段与 07 schema 一致；枚举字段用 Java enum；`updatedAt` 用 `OffsetDateTime`，不截断。
+- **MUST** 需要对某角色隐藏的字段保持可 `set…(null)`（可变类）。
+- **MUST-NOT** 在 DTO 内写隐藏逻辑（住在 ServiceImpl，见 service-impl 模板）。
+- **MUST-NOT** 暴露存储路径、内部 ID 等 07 未定义的字段（例：附件 `storage_path` 不返回）。
+- 不需要隐藏的一览项用 `record`。

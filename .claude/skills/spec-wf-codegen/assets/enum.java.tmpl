@@ -1,0 +1,51 @@
+# 模板 · 枚举（API 字符串 07 ↔ DB INT + *_codes）
+
+## 1. 适用层 & 何时套用
+本 feature 用到的业务枚举（如 `OrderStatus`、`ApprovalRequestStatus`、`TaxCategory`、`AttachmentVisibility`、`ScanStatus` 等 T07 枚举）。每个枚举一个文件。
+
+## 2. 依据（SSOT 指针）
+- API 枚举字符串值：`docs/基本設計/共通/spec-07-api-list.yaml` `components.schemas`（如 `OrderStatus`）
+- DB INT 码：`docs/開発規約/spec-data-dictionary-project-temp.md` 的 T07（13 种）；表 `*_codes` 见 `spec-06-db-physical.yaml`
+- 存储方式：`docs/開発規約/spec-database-rule.md` §4.1-CODE（INT + 代码表 FK，不使用 CHECK / DB ENUM）
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.dto;
+
+/**
+ * {{枚举逻辑名}}（T07-{{n}}。07 {{EnumName}} 的字符串值 ↔ DB INT コード）。
+ */
+public enum {{EnumName}} {
+    {{VALUE1}}(1),      // 例：OrderStatus.DRAFT(1)
+    {{VALUE2}}(2);
+    // …按 T07 的 INT 码顺序展开
+
+    private final int code;
+
+    {{EnumName}}(int code) { this.code = code; }
+
+    /** DB の INT コード。 */
+    public int getCode() { return code; }
+
+    /**
+     * INT コードから enum を得る。
+     *
+     * @param code DB の INT コード（null 可）
+     * @return 対応する enum。code が null なら null
+     * @throws IllegalArgumentException 未知のコードの場合
+     */
+    public static {{EnumName}} fromCode(Integer code) {
+        if (code == null) return null;
+        for ({{EnumName}} v : values()) if (v.code == code) return v;
+        throw new IllegalArgumentException("Unknown {{EnumName}} code: " + code);
+    }
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** enum 常量名 == 07 的字符串值（Jackson 序列化即为 API 值）。
+- **MUST** `code` == T07 的 INT 码，与 `*_codes` 表种子一致。
+- **MUST** 提供 `getCode()` 与静态 `fromCode(Integer)`（null→null，未知→`IllegalArgumentException`）。
+- **MUST-NOT** 在 Entity 中使用 enum（Entity 用 `Integer`）。
+- **MUST-NOT** 把 INT↔枚举的映射散落到 Converter 之外（统一在 Converter 的枚举映射方法中调用 `fromCode`/`getCode`）。
+- 不使用 CHECK 约束或 DB ENUM 类型表达值域（值域由 `*_codes` 外键保证）。

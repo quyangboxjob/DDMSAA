@@ -1,0 +1,43 @@
+# 模板 · Service 接口
+
+## 1. 适用层 & 何时套用
+业务契约。每个聚合一个 `{{Feature}}Service` 接口，方法对应 07 的 operationId。
+
+## 2. 依据（SSOT 指针）
+- 分层与禁止事项：`docs/開発規約/spec-backend-coding-rule.md` §2
+- 契约：`基盤/インタフェース仕様/spec-10-business-core.yaml` §3
+- 方法 = `docs/基本設計/共通/spec-07-api-list.yaml` 中本 feature 的 operationId；方法签名以详细设计为准
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.service;
+
+import com.example.ddmsaa.common.response.PageResult;
+import {{basePkg}}.{{feature}}.dto.*;
+
+/**
+ * {{Feature}} 業務契約（機能：F-xxx）。メソッド名は 07 の operationId に対応させる。
+ */
+public interface {{Feature}}Service {
+
+    /** operationId: page{{Feature}}s。データ範囲は実行者の UserContext から求める。 */
+    PageResult<{{Name}}ListItem> page{{Feature}}s({{Name}}SearchCondition cond, int pageNum, int pageSize);
+
+    /** operationId: get{{Feature}}。範囲外・不存在は EntityNotFoundException（404 E0005）。 */
+    {{Name}}Vo get{{Feature}}({{pkType}} {{pkField}});
+
+    /** operationId: create{{Feature}}。保存後の VO を返す（07 の応答に合わせる）。 */
+    {{Name}}Vo create{{Feature}}({{Name}}Dto dto);
+
+    /** operationId: update{{Feature}}。updatedAt 不一致は BusinessException("E0051")。 */
+    {{Name}}Vo update{{Feature}}({{pkType}} {{pkField}}, {{Name}}Dto dto);
+
+    // …07 の operationId を一対一で展開（状態遷移系：submit / approve / return / cancel 等）
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** 方法名与参数对应 07 的 operationId；分页返回 `PageResult<T>`。
+- **MUST** 返回类型与 07 响应 schema 一致（例：保存类返回 `OrderVO`，不是只返回 id）。
+- **MUST-NOT** 出现 HTTP/Servlet 概念；**MUST-NOT** 返回 Entity。
+- 方法 Javadoc 写明可抛出的 messageId（coding-rule §11.1）。

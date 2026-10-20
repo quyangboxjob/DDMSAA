@@ -1,0 +1,50 @@
+# 模板 · Converter（MapStruct）
+
+## 1. 适用层 & 何时套用
+Entity ↔ DTO 转换，每个聚合一个 `{{Feature}}Converter` 接口。MapStruct 在编译期生成实现，**不手写实现类**。
+
+## 2. 依据（SSOT 指针）
+- 规约：`docs/開発規約/spec-backend-coding-rule.md` §2（Converter = MapStruct，禁止手写易错映射）
+- 接口契约：`基盤/インタフェース仕様/spec-10-business-core.yaml` §6（`@Mapper(componentModel = "spring")`）
+- 枚举映射：INT ↔ Java enum ↔ API 字符串，见 `enum.java.tmpl`
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.convert;
+
+import {{basePkg}}.{{feature}}.dto.*;
+import {{basePkg}}.{{feature}}.entity.{{Entity}};
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+/**
+ * {{Entity}} と DTO の相互変換（MapStruct）。業務ロジックは持たない。
+ */
+@Mapper(componentModel = "spring")
+public interface {{Feature}}Converter {
+
+    /** Entity → 出参 DTO。列挙は Integer コード → enum に変換する。 */
+    @Mapping(target = "status", expression = "java({{EnumName}}.fromCode(entity.getStatus()))")
+    {{Name}}Detail toDetail({{Entity}} entity);
+
+    /** 入力 DTO → Entity。系統生成項目（id・監査列・状態・金額の再計算値）は設定しない。 */
+    @Mapping(target = "{{pkField}}", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    {{Entity}} toEntity({{Name}}CreateDto dto);
+
+    /** 列挙 → INT コード（enum を持つ入力のみ）。 */
+    default Integer toCode({{EnumName}} value) { return value == null ? null : value.getCode(); }
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** `@Mapper(componentModel = "spring")` 接口；**MUST-NOT** 手写 `@Component` 实现类。
+- **MUST** 不含业务逻辑：生成值（采番 id、金额再计算、状态迁移、数据范围）全部留在 ServiceImpl。
+- **MUST** 审计列、`id`、`deletedAt` 在 `toEntity` 中 `ignore`（审计列由 `MetaObjectHandler` 写入）。
+- **MUST** INT↔enum 的映射只出现在本接口（调用 enum 的 `fromCode`/`getCode`）。
+- **MUST-NOT** 暴露 Entity 给 Controller；**MUST-NOT** 在映射里读取 `UserContext` 或访问 DB。
+- 需要按角色置 `null` 的字段不在 Converter 处理，交给 ServiceImpl 的 `MaskingService.maskByRole`（见 service-impl 模板）。

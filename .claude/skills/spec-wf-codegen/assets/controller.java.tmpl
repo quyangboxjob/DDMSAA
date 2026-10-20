@@ -1,0 +1,54 @@
+# 模板 · Controller
+
+## 1. 适用层 & 何时套用
+REST 受付层。一个 Controller 对应一组资源，方法对应 07 的 operationId。
+
+## 2. 依据（SSOT 指针）
+- 职责与禁止事项：`docs/開発規約/spec-backend-coding-rule.md` §2（只做受付、绑定、调用 Service、`Result` 包装）、§8（`@PreAuthorize`）、§10（`@Valid`）、§11（路径复数 kebab）
+- 契约：`基盤/インタフェース仕様/spec-10-business-core.yaml` §2
+- 路径、方法、请求/响应 schema、状态码、`x-roles`：`docs/基本設計/共通/spec-07-api-list.yaml`（basePath `/api/v1`）
+- 响应类型：`spec-04-unified-response.yaml`（`Result` / `PageResult` 为 record）
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.controller;
+
+import com.example.ddmsaa.common.response.PageResult;
+import com.example.ddmsaa.common.response.Result;
+import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * {{Feature}} の REST 受付。業務ロジックは持たない。パスと権限は 07 の定義どおり。
+ */
+@RestController
+@RequestMapping("/api/v1")                       // 07 の servers.url。リソースパスは各メソッドに 07 の path
+public class {{Feature}}Controller {
+
+    private final {{Feature}}Service service;
+
+    /** operationId: get{{Feature}} */
+    @GetMapping("/{{path}}/{{{pkField}}}")        // 例：GET /orders/{orderId}
+    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYEE','CUSTOMER')")   // 07 の x-roles に一致させる
+    public Result<{{Name}}Vo> get{{Feature}}(@PathVariable {{pkType}} {{pkField}}) {
+        return Result.ok(service.get{{Feature}}({{pkField}}));
+    }
+
+    /** operationId: update{{Feature}} */
+    @PutMapping("/{{path}}/{{{pkField}}}")
+    @PreAuthorize("hasAnyRole('ADMIN','EMPLOYEE')")
+    public Result<{{Name}}Vo> update{{Feature}}(@PathVariable {{pkType}} {{pkField}},
+                                                @RequestBody @Valid {{Name}}Dto dto) {
+        return Result.ok(service.update{{Feature}}({{pkField}}, dto), "I0011");   // 成功 messageId は 07 の description
+    }
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** HTTP 方法、路径、请求/响应类型、`x-roles` 与 07 一致；返回 `Result<T>`，成功 messageId 取自 07 的 operation description。
+- **MUST** 每个方法 `@PreAuthorize`（ロール文字列は `ADMIN` / `EMPLOYEE` / `CUSTOMER`，按 `x-roles`）；数据范围不在 Controller 判断。
+- **MUST** 请求体 `@Valid`；分页参数 `pageNum`（默认 1）/ `pageSize`（默认 20，最大 100）按 07。
+- **MUST** 文件下载（附件、PDF、CSV）不经 `Result` 包装，直接写响应并带 `Content-Disposition`。
+- **MUST-NOT** 写业务逻辑、直接调用 Mapper、返回 Entity。
+- **MUST-NOT** 自行发明路径或角色；07 没有定义的接口不生成。

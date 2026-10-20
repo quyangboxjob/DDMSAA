@@ -1,0 +1,49 @@
+# 模板 · Entity
+
+## 1. 适用层 & 何时套用
+每个本 feature 需要的表一个 Entity（POJO）。表由 `spec-06-db-physical.yaml` 定义；*_codes 表不生成 Entity（用 T07 枚举 + `Integer` 列）。
+
+## 2. 依据（SSOT 指针）
+- 列、类型、主键、外键：`docs/基本設計/共通/spec-06-db-physical.yaml`（与 `schema/schema-definition.yaml` 冲突时以 06 为准）
+- 类的职责与禁止事项：`docs/開発規約/spec-backend-coding-rule.md` §2（POJO、camelCase↔snake_case、禁止业务方法、禁止直接对外公开）
+- 命名：coding-rule §11（单数 PascalCase）；主键与外键命名：§5、`spec-database-rule.md` §4.1/§4.2
+- 审计列的自动填充：`基盤/インタフェース仕様/spec-07-infrastructure.yaml` `MetaObjectHandler`
+
+## 3. 骨架（带占位符）
+```java
+package {{basePkg}}.{{feature}}.entity;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+/**
+ * {{table}} テーブルのマッピング（{{テーブル論理名}}）。主キー＝{{pkColumn}}。論理削除は deleted_at。
+ * 業務メソッドは持たない（coding-rule §2）。
+ */
+public class {{Entity}} {
+
+    private {{pkType}} {{pkField}};          // 例：Order.id（VARCHAR(10)、OD+8 桁。INSERT では null のまま DB 採番）
+    // ---- 業務列：06 yaml の列を camelCase で ----
+    private String customerId;               // FK 列は {{単数}}Id
+    private Integer status;                  // T07 列挙は Integer（enum は DTO 側）
+    private BigDecimal totalAmount;          // numeric(15,2)
+    // ---- 共通列（MetaObjectHandler が設定する。Service では設定しない）----
+    private OffsetDateTime createdAt;
+    private String createdBy;
+    private OffsetDateTime updatedAt;
+    private String updatedBy;
+    private OffsetDateTime deletedAt;        // 論理削除する表のみ（履歴・*_codes・user_contacts・system_locks は持たない）
+
+    // 全フィールドの getter / setter
+}
+```
+
+## 4. 本层硬约束（must / must-not）
+- **MUST** 字段与 06 yaml 的列逐一对应（类型：`varchar`→`String`、`numeric(p,s)`→`BigDecimal`、无小数位的 `numeric`→`Long`、`int`→`Integer`、`boolean`→`Boolean`、`date`→`LocalDate`、`timestamptz`→`OffsetDateTime`、`jsonb`→`String` 或指定类型）。
+- **MUST** 只有 06 yaml 中 `soft_delete: false` 以外的表才有 `deletedAt`。
+- **MUST** 主键类型和名称取自 06 yaml（默认 `id: String`；`users` 为 `userId`）；**MUST-NOT** 增加代理键 `Long id`。
+- **MUST** 枚举列用 `Integer`；**MUST-NOT** 在 Entity 内使用 enum。
+- **MUST-NOT** 在 Entity 写业务方法；**MUST-NOT** 直接作为 Controller 返回值。
+- **MUST-NOT** 用 `float/double` 表示金额与数量。
+- 不使用 Lombok 与持久化注解，除非规约另有规定。
+- 乐观锁：Entity 的 `updatedAt` 会被 `MetaObjectHandler` 在 UPDATE 时覆盖为当前时间，因此校验用的"客户端传来的旧值"必须另用参数传递（见 mapper 模板 `expectedUpdatedAt`），不要复用该字段。
