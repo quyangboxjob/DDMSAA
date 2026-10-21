@@ -51,7 +51,7 @@
 | 検証観点 | 方法 | 合格基準 |
 |------|------|------|
 | 件数 | 投入後に件数を確認 | INI-01 の 13 表の件数が T07 の定義と一致、INI-02 が 3 件、INI-03 が 1 件、INI-04・05 が各 1 件 |
-| 整合 | 外部キー・CHECK を満たす | 投入でエラーなし（`chk_users_customer_id`、`chk_approval_rules_approver_role` など） |
+| 整合 | 外部キー・CHECK を満たす | 投入でエラーなし（`chk_users_customer_id`、`chk_apr_rules_approver_role` など） |
 | 再実行 | `R__` を 2 回実行 | 結果が変わらない（upsert） |
 | ログイン | 初期管理者のメールに Magic Link が届き、A0001 でログインできる | ログイン成功（`spec-it-api` の疎通確認でも可） |
 

@@ -145,7 +145,7 @@
 | DI-065 | 商品コード | product_code | varchar(50) | 必須 |  | 未削除行で一意 |
 | DI-066 | 商品名 | product_name | varchar(200) | 必須 |  |  |
 | DI-067 | 商品カテゴリ | product_category | varchar(100) | 任意 |  |  |
-| DI-068 | 標準単価 | standard_unit_price | numeric(15,2) | 必須 |  | 0 以上（chk_products_standard_unit_price） |
+| DI-068 | 標準単価 | standard_unit_price | numeric(15,2) | 必須 |  | 0 以上（chk_products_std_unit_price） |
 | DI-069 | 税区分 | tax_category | int | 必須 | `T07-税区分` |  |
 | DI-070 | 状態 | status | int | 必須 | `T07-商品状態` |  |
 
@@ -243,7 +243,7 @@
 | DI-122 | 元ファイル名 | original_file_name | varchar(255) | 必須 |  |  |
 | DI-123 | 保存パス | storage_path | varchar(512) | 必須 |  | オブジェクトストレージのキー。利用者へ返さない |
 | DI-124 | コンテンツタイプ | content_type | varchar(100) | 必須 |  |  |
-| DI-125 | ファイルサイズ | file_size | numeric | 必須 |  | バイト。1〜10485760（chk_order_attachments_file_size） |
+| DI-125 | ファイルサイズ | file_size | numeric | 必須 |  | バイト。1〜10485760（chk_ord_atts_file_size） |
 | DI-126 | 公開範囲 | visibility | int | 必須 | `T07-添付公開範囲` |  |
 | DI-127 | スキャン状態 | scan_status | int | 必須 | `T07-スキャン状態` |  |
 | DI-154 | ファイル削除日時 | storage_purged_at | timestamptz | 任意 |  | ストレージ上のファイルを削除した日時（BAT-04）。NULL=未削除 |

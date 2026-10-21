@@ -232,6 +232,7 @@
 - **規則**：外部キーのカラム型は `VARCHAR` または `NUMERIC` で**なければならない**（§4.1-CODE のコードテーブルへの外部キーは `INT`）。
 - **誤った例**：`userId`、`fk_user`、`user`、`u_id`
 - **正しい例**：`user_id`(users テーブルを参照)、`order_id`(orders テーブルを参照)
+- **規則**：1 つのテーブルが同じテーブルを役割別に複数回、または役割を明示して参照する場合は、カラム名を `{役割}_{被参照テーブルの単数形}_id` としてよい（例：`sales_user_id`、`approver_user_id`、`actor_user_id` はいずれも users を参照）。役割名は業務上の意味を表す英単語とし、`{被参照テーブルの単数形}_id` で終わらなければならない。
 
 ### 4.3. グローバル必須カラムの規約(標準監査項目) (Required Columns)
 <!-- rule: db.common-columns -->
@@ -401,6 +402,10 @@
 | チェック制約 check | `chk_{table}_{column}` | `chk_products_unit_price` |
 | トリガー trigger | `trg_set_updated_at_{table}` | `trg_set_updated_at_users` |
 
+- **規則**：制約名・インデックス名にも §2.4 の 30 文字制限を適用する。パターンどおりに作ると 30 文字を超える場合は、略語を用いて 30 文字以内に短縮しなければならない。短縮した名前は各プロジェクトの物理設計書（DDMSAA では `基本設計/共通/spec-06-db-physical-ui.md` §5.1）に登録する。トリガー名は従来どおり免除（§2.4 の長さの免除）。
+- **誤った例**：`fk_order_status_histories_from_status`（37 文字）
+- **正しい例**：`fk_ord_sts_hist_from_status`（26 文字。登録が必要）
+
 ### 6.2. インデックス設計ルール(Index Rules)
 - **規則**：複合インデックスを構築する際は、選択度が高いカラムほどインデックスのカラム順の先頭に**配置しなければならない**。
 - **規則**：すべての外部キーカラムに、独立したインデックスを明示的に**作成しなければならない**。ただし、その外部キーカラムを先頭カラムとする複合インデックス、又は `WHERE deleted_at IS NULL` の部分（ユニーク）インデックスが既にある場合は、それで満たすものとする（論理削除テーブルの検索は常に未削除行に限るため）。
@@ -508,4 +513,5 @@
 | 1.3.0 | 2026/06/09 | nebulasoft Co., Ltd | 主キー型の矛盾を修正(NUMERIC は IDENTITY にできない、例を同期)。§5 の主キー行を「文字列採番」「数値自動採番の代替」の 2 種に分割。§4.1-SEQ の文字列採番関数 `next_business_id` とシーケンス命名規約を追加(prefix 割当表に未確定項目を含む)。created_by/updated_by に `DEFAULT 'SYSTEM'` を追加 |
 | 1.4.0 | 2026/06/10 | nebulasoft Co., Ltd | §4.1-SHARED(1:1 / 0..1 子テーブルの共有主キー例外、自身の id を省略)を追加。§4.1-SEQ の prefix 割当表を確定(users E/A/C 4 桁、departments DP 4 桁、change_requests/request_attachments/request_status_histories/system_lock_histories 8 桁。4 つの master の主キー＝自然キー §4.1-NATURAL、DBQ-02 解決済み)。※ここに挙げた departments 等は旧プロジェクトのテーブルで、DDMSAA には存在しない。DDMSAA の prefix は `基本設計/共通/spec-06-db-physical.yaml` を正とする |
 | 1.5.0 | 2026/10/20 | nebulasoft Co., Ltd | §4.5 に技術的状態列（scan_status）の例外を追加。§6.2 の外部キーインデックス規則に、先頭カラムが一致する複合インデックス・部分インデックスで満たす旨を追加。T07 の参照先を修正 |
+| 1.6.0 | 2026/10/21 | nebulasoft Co., Ltd | §4.2 に役割別の外部キー列名（`{役割}_{単数}_id`）を追加。§6.1 に、制約名・インデックス名にも 30 文字制限を適用し、超過時は略語で短縮して物理設計書へ登録する規則を追加 |
 <!-- devtool:endblock -->

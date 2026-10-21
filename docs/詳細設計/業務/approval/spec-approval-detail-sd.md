@@ -361,7 +361,7 @@ sequenceDiagram
 3. Result.ok(list) を返す
 ```
 
-**トランザクション**：`@Transactional(readOnly = true)`。**DB アクセス**：`ApprovalRuleMapper.selectAll`（SELECT。`approval_rules.*`、`idx_approval_rules_is_active_effective_from_date`）。**例外**：権限不足 `E0002` / 403。
+**トランザクション**：`@Transactional(readOnly = true)`。**DB アクセス**：`ApprovalRuleMapper.selectAll`（SELECT。`approval_rules.*`、`idx_apr_rules_active_eff_from`）。**例外**：権限不足 `E0002` / 403。
 
 #### 1.2.5 `createApprovalRule` 承認ルール登録（`POST /api/v1/approval-rules`）
 
@@ -380,10 +380,10 @@ sequenceDiagram
 | `minAmount` | 必須・0 以上・整数部 13 桁以内・小数 2 桁以内（`numeric(15,2)`） | `E0008` | 400 |
 | `maxAmount` | 任意（null は上限なし）。桁数は同上（Bean Validation）。指定時は `minAmount` 以上（DB は `chk_approval_rules_max_amount`）。逆転は Service で `InvalidRequestException` | `E0008` | 400 |
 | `approvalStep` | 必須。1 のみ許可（BR-APR-001）。1 以外は Service で `InvalidRequestException` | `E0008` | 400 |
-| `approverRole` | 必須。ADMIN のみ許可（BR-APR-001。DB は `chk_approval_rules_approver_role`）。EMPLOYEE・CUSTOMER は Service で `InvalidRequestException`。列挙として不正な値（未知の値）は要求形式不正として 400 `E0008` | `E0008` | 400 |
+| `approverRole` | 必須。ADMIN のみ許可（BR-APR-001。DB は `chk_apr_rules_approver_role`）。EMPLOYEE・CUSTOMER は Service で `InvalidRequestException`。列挙として不正な値（未知の値）は要求形式不正として 400 `E0008` | `E0008` | 400 |
 | `isActive` | 必須 | `E0008` | 400 |
 | `effectiveFromDate` | 必須・date 形式 | `E0008` | 400 |
-| `effectiveToDate` | 任意。date 形式（Bean Validation）。指定時は `effectiveFromDate` 以降（DB は `chk_approval_rules_effective_to_date`）。逆転は Service で `InvalidRequestException` | `E0008` | 400 |
+| `effectiveToDate` | 任意。date 形式（Bean Validation）。指定時は `effectiveFromDate` 以降（DB は `chk_apr_rules_eff_to_date`）。逆転は Service で `InvalidRequestException` | `E0008` | 400 |
 | 金額帯・期間の重複 | 重複を禁止するか優先順で扱うかが未決（TBD-APR-03 / 画面設計の TBD-A3）。決定までは検証しない | （未定） | （未定） |
 
 **処理ロジック**
@@ -477,7 +477,7 @@ sequenceDiagram
 4. PageResult.of を Result.ok で返す。メール本文は保持しないため返さない（宛先メールは返す）
 ```
 
-**トランザクション**：`@Transactional(readOnly = true)`。**DB アクセス**：`NotificationLogMapper.search`（SELECT。`notification_logs.*`。`idx_notification_logs_status_created_at`）。
+**トランザクション**：`@Transactional(readOnly = true)`。**DB アクセス**：`NotificationLogMapper.search`（SELECT。`notification_logs.*`。`idx_ntf_logs_status_created`）。
 
 **例外**：要求形式不正（不正な `status`・`notificationEvent`、日付形式、型不一致。`MethodArgumentTypeMismatchException` 等）`E0008` / 400、検証失敗 `E0008` / 400（Bean Validation は `MethodArgumentNotValidException`／`ConstraintViolationException`、日付区間の逆転は `InvalidRequestException`）、権限不足 `E0002` / 403。**正常レスポンス**：`Result<PageResult<NotificationLogVO>>`（messageId なし）。
 
@@ -950,7 +950,7 @@ NotificationSendJob.run()（トランザクションなし）
 | UT-APR-027 | L1 | `createApprovalRule` | 検証 | ADMIN | `approverRole=EMPLOYEE`（又は CUSTOMER） | `InvalidRequestException`（400 `E0008`）、ルールは作られない | BR-APR-001 |
 | UT-APR-028 | L1 | `createApprovalRule` | 検証 | ADMIN | `approvalStep=2` | `InvalidRequestException`（400 `E0008`） | BR-APR-001 |
 | UT-APR-029 | L2 | `createApprovalRule` | 検証 | ADMIN | `maxAmount` < `minAmount`、`minAmount` が負 | 400 `E0008`（`maxAmount` < `minAmount` は Service の `InvalidRequestException`、`minAmount` が負は Bean Validation。DB は `chk_approval_rules_max_amount`） | §1.2.5 入力検証 |
-| UT-APR-030 | L2 | `createApprovalRule` | 検証・境界 | ADMIN | `effectiveToDate` < `effectiveFromDate`（同日は正常、`maxAmount` 空は上限なしで正常） | 前者は `InvalidRequestException`（400 `E0008`）、境界の同日・上限なしは 200 `I0010` | `chk_approval_rules_effective_to_date` |
+| UT-APR-030 | L2 | `createApprovalRule` | 検証・境界 | ADMIN | `effectiveToDate` < `effectiveFromDate`（同日は正常、`maxAmount` 空は上限なしで正常） | 前者は `InvalidRequestException`（400 `E0008`）、境界の同日・上限なしは 200 `I0010` | `chk_apr_rules_eff_to_date` |
 | UT-APR-031 | L1 | `updateApprovalRule` / `ApprovalRuleServiceImpl.updateRule` | 正常 | ADMIN、既存ルール | 正しい `updatedAt` と変更値 | 200 `I0011`、`updated_at` 更新、`APPROVAL_RULE_UPDATE` 監査 | F-APR-03 / §1.2.6 手順 3〜5 |
 | UT-APR-032 | L1 | `updateApprovalRule` | 異常 | 取得後に別更新済み | 古い `updatedAt` | 409 `E0051` | BR-ORD-006 / 手順 3 |
 | UT-APR-033 | L1 | `updateApprovalRule` | 異常 | ADMIN | 存在しない `approvalRuleId` | 404 `E0005` | 手順 1 |

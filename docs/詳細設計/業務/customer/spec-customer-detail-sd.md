@@ -296,7 +296,7 @@ sequenceDiagram
 | `CustomerMapper.existsByCustomerCode` | SELECT | `customers.customer_code` | `customer_code = #{customerCode} AND deleted_at IS NULL` |
 | `CustomerMapper.insert` | INSERT | `customers`（`customer_code/customer_name/email/phone_number/status`） | `uq_customers_customer_code` |
 | `CustomerContactMapper.insert` | INSERT | `customer_contacts`（`customer_id/contact_name/email/is_notification_recipient/is_active`） | — |
-| `CustomerAssignmentMapper.insert` | INSERT | `customer_assignments`（`customer_id/user_id/is_active/assigned_date`） | `uq_customer_assignments_customer_id_user_id` |
+| `CustomerAssignmentMapper.insert` | INSERT | `customer_assignments`（`customer_id/user_id/is_active/assigned_date`） | `uq_cus_asg_cus_id_user_id` |
 | `AuditLogPort.record` | INSERT | `audit_logs` | — |
 
 **利用する共通コンポーネント**
@@ -377,7 +377,7 @@ sequenceDiagram
    c. 既存の未削除行のうち要求に含まれないもの：論理削除（UPDATE … SET deleted_at = now()。物理 DELETE はしない）
 6. 担当割当の全件置換（BR-CUS-003）。要求の社員 ID 集合を R、現在の customer_assignments（deleted_at IS NULL）の行を E とする：
    a. R に含まれ、E に行がない社員：INSERT（is_active=TRUE、assigned_date=当日）
-   b. R に含まれ、E の行が is_active=FALSE の社員：同じ行を is_active=TRUE、assigned_date=当日に UPDATE（新しい行は作らない。uq_customer_assignments_customer_id_user_id と衝突させない）
+   b. R に含まれ、E の行が is_active=FALSE の社員：同じ行を is_active=TRUE、assigned_date=当日に UPDATE（新しい行は作らない。uq_cus_asg_cus_id_user_id と衝突させない）
    c. R に含まれ、E の行が既に is_active=TRUE の社員：変更しない（assigned_date も維持。TBD-CUS-07）
    d. R に含まれず、E の行が is_active=TRUE の社員：is_active=FALSE に UPDATE（論理削除・物理削除はしない）
 7. AuditLogPort.record("CUSTOMER_UPDATE", "CUSTOMER", customerId, null)
@@ -668,7 +668,7 @@ CustomerEditPage (src/pages/customer/customer-edit-page.tsx)
 | 権限実装 | `pageCustomers`＝`hasAnyRole('ADMIN','EMPLOYEE')`、`getCustomer`＝`hasAnyRole('ADMIN','EMPLOYEE','CUSTOMER')`、`createCustomer`・`updateCustomer`・`activateCustomer`・`deactivateCustomer`＝`hasRole('ADMIN')`。データ範囲：ADMIN 全件／EMPLOYEE 有効な担当割当の顧客／CUSTOMER 自社（`users.customer_id`）。範囲外 1 件は 404 `E0005`、一覧は自動除外（BR-AUTH-003 / 006）。範囲判定は `DataScopePort.currentScope()`（本機能の `DataScopeServiceImpl`）で解決し、Service で強制する。フロントエンドに依存しない |
 | 暗号化・マスキング | 暗号化カラムなし。`assignedEmployees` は CUSTOMER に対し取得自体を行わない（spec-03 §3）。`MaskingService.maskByRole` は基盤の既定実装（no-op）を呼ぶだけで、本機能のマスク対象項目はない |
 | トランザクション・整合性 | 顧客登録＝customers＋customer_contacts＋customer_assignments＋audit_logs を同一トランザクション。顧客更新＝customers の楽観ロック付き UPDATE と連絡先・担当割当の全件置換＋audit_logs を同一トランザクション（競合 `E0051` 時は全体ロールバック）。連絡先の削除は論理削除、担当割当の解除は `is_active=FALSE`（行を削除しない。BR-CUS-003）。無効化では関連データを削除しない |
-| 同時実行・ロック | `customers.updated_at` による楽観ロック（`updateCustomer`。不一致 `E0051`。BR-ORD-006）。`activateCustomer` / `deactivateCustomer` は行ロック（`SELECT … FOR UPDATE`）で直列化。顧客コードの同時登録は `uq_customers_customer_code` の衝突を `E0007` へ変換して防ぐ。担当割当は部分ユニーク索引 `uq_customer_assignments_customer_id_user_id` に衝突しないよう、再割当は既存行を戻す |
+| 同時実行・ロック | `customers.updated_at` による楽観ロック（`updateCustomer`。不一致 `E0051`。BR-ORD-006）。`activateCustomer` / `deactivateCustomer` は行ロック（`SELECT … FOR UPDATE`）で直列化。顧客コードの同時登録は `uq_customers_customer_code` の衝突を `E0007` へ変換して防ぐ。担当割当は部分ユニーク索引 `uq_cus_asg_cus_id_user_id` に衝突しないよう、再割当は既存行を戻す |
 | 監査 | `CUSTOMER_CREATE`／`CUSTOMER_UPDATE`／`CUSTOMER_ACTIVATE`／`CUSTOMER_DEACTIVATE`（`target_type=CUSTOMER`、`target_id`＝顧客 ID。BR-AUD-001）を業務更新と同一トランザクションで記録する。`audit_detail` は設定しない。記録は `AuditLogPort.record` 経由。楽観ロック競合は記録しない。範囲外 404（`getCustomer`）の `PERMISSION_DENIED` は `AuditLogPort.recordDenied`（`REQUIRES_NEW`）を `E0005` の直前に呼んで記録する（403 は `PermissionDeniedAuditListener`。決定済み）。一覧の自動除外は記録しない |
 | 無効顧客の影響範囲 | 顧客の無効化は新規注文の作成・既存 DRAFT / RETURNED の申請を止める（order 機能が `E0054` で判定。BR-CUS-002）。PENDING_APPROVAL の注文は承認・差戻しできる。履歴は物理削除しない |
 
@@ -740,7 +740,7 @@ CustomerEditPage (src/pages/customer/customer-edit-page.tsx)
 | UT-CUS-025 | L2 | `updateCustomer` | 検証 | ADMIN の JWT | `updatedAt` 欠落、`customerName` が空 | 400 `E0008` | 入力検証 |
 | UT-CUS-026 | L1 | `updateCustomer` | 異常 | 無効（INACTIVE）の顧客 | 担当社員を新規追加 | 409 `E0006` | 手順 3（簡易版 V0.1 / TBD-CUS-06） |
 | UT-CUS-027 | L1 | `updateCustomer` | 異常 | 担当社員が有効な EMPLOYEE でない | `assignedEmployeeUserIds` に停用中の社員・ADMIN の ID | 400 `E0008`（`InvalidRequestException`） | BR-CUS-003 / 手順 2 |
-| UT-CUS-028 | L3 | `updateCustomer` | 正常 | 実 DB、担当が解除済みの社員が存在 | 同じ社員を再割当 | `uq_customer_assignments_customer_id_user_id` に衝突せず成功し、行数は増えない（`is_active=TRUE`、`assigned_date=当日`） | BR-CUS-003 |
+| UT-CUS-028 | L3 | `updateCustomer` | 正常 | 実 DB、担当が解除済みの社員が存在 | 同じ社員を再割当 | `uq_cus_asg_cus_id_user_id` に衝突せず成功し、行数は増えない（`is_active=TRUE`、`assigned_date=当日`） | BR-CUS-003 |
 | UT-CUS-029 | L1 | `activateCustomer` / `CustomerServiceImpl.activateCustomer` | 正常 | ADMIN、無効（INACTIVE）の顧客 | 顧客 ID | 200 `I0034`、`status=ACTIVE`、`CUSTOMER_ACTIVATE` を記録 | F-CUS-05 / 手順 2・4 |
 | UT-CUS-030 | L1 | `deactivateCustomer` / `CustomerServiceImpl.deactivateCustomer` | 正常 | ADMIN、有効な顧客（連絡先・担当割当・注文あり） | 顧客 ID | 200 `I0035`、`status=INACTIVE`、`CUSTOMER_DEACTIVATE` を記録。連絡先・担当割当・注文は変更・削除されない | BR-CUS-002 / 手順 3 |
 | UT-CUS-031 | L2 | `activateCustomer`／`deactivateCustomer` | 権限 | EMPLOYEE／CUSTOMER の JWT | — | 403 `E0002`（両 API） | spec-03 §2 |

@@ -166,7 +166,7 @@ stateDiagram-v2
 
 | Mapper メソッド | 操作 | 対象テーブル.カラム | 主要条件 |
 |------------|------|----------|---------|
-| `OrderAttachmentMapper.selectByOrderId` | SELECT | `order_attachments.id/original_file_name/content_type/file_size/visibility/scan_status/created_by/created_at`、`users.user_name` | `order_id = #{orderId} AND deleted_at IS NULL`（CUSTOMER は `AND visibility = 2 AND scan_status = 2`。`idx_order_attachments_order_id_visibility_scan_status`） |
+| `OrderAttachmentMapper.selectByOrderId` | SELECT | `order_attachments.id/original_file_name/content_type/file_size/visibility/scan_status/created_by/created_at`、`users.user_name` | `order_id = #{orderId} AND deleted_at IS NULL`（CUSTOMER は `AND visibility = 2 AND scan_status = 2`。`idx_ord_atts_order_vis_scan`） |
 
 **利用する共通コンポーネント**：`UserContext`（ロール・ユーザー ID）、`OrderAccessPort.requireVisible`（order 詳細設計 §1.1.1）、`MaskingService`（マスク対象項目なし）。
 
@@ -223,7 +223,7 @@ sequenceDiagram
 | `visibility` | 必須・INTERNAL／CUSTOMER。欠落は `MissingServletRequestParameterException`、不正な列挙値は `MethodArgumentTypeMismatchException`（いずれも `RequestBinding`） | `E0008` | 400 |
 | 拡張子と検出 MIME | 許可組合せ（下表）。表にない拡張子・検出 MIME が表の集合に含まれない場合は不可 | `E0009` | 409 |
 | サイズ（空） | 0 バイトは不可（BR-FIL-002）。Bean Validation で表せないため Service が `InvalidRequestException("E0053", "file", 理由)` を送出する | `E0053` | 400 |
-| サイズ（1 ファイル） | 10 MiB（10,485,760 バイト）超は不可。ちょうど 10 MiB は可。DB は `chk_order_attachments_file_size`（1〜10485760） | `E0010` | 413 |
+| サイズ（1 ファイル） | 10 MiB（10,485,760 バイト）超は不可。ちょうど 10 MiB は可。DB は `chk_ord_atts_file_size`（1〜10485760） | `E0010` | 413 |
 | サイズ（注文合計） | 既存の合計 + 今回が 50 MiB（52,428,800 バイト）を超える場合は不可。ちょうど 50 MiB は可（BR-FIL-005） | `E0052` | 413 |
 
 **許可する拡張子と検出 MIME の組合せ**（BR-FIL-002 の形式から導出。MIME は Apache Tika `tika-core`（2.9.2。`spec-project-structure.yaml` の `tika.version`）の `new Tika().detect(InputStream, 元のファイル名)` で内容から検出する。クライアントが送る `Content-Type` は信用しない）
@@ -270,7 +270,7 @@ sequenceDiagram
 |------------|------|----------|---------|
 | （`OrderAccessPort.lockForUpdate` の内部。order 側の Mapper。本機能の Mapper ではない） | SELECT ... FOR UPDATE | `orders.id/customer_id/sales_user_id/status` | `id = #{orderId} AND deleted_at IS NULL` ＋データ範囲 |
 | `OrderAttachmentMapper.sumActiveSize` | SELECT | `SUM(order_attachments.file_size)` | `order_id = #{orderId} AND deleted_at IS NULL AND scan_status <> 3` |
-| `OrderAttachmentMapper.insert` | INSERT | `order_attachments`（`uq_order_attachments_storage_path`） | — |
+| `OrderAttachmentMapper.insert` | INSERT | `order_attachments`（`uq_ord_atts_storage_path`） | — |
 | （`AuditLogPort.record` の内部。user 側の実装） | INSERT | `audit_logs` | — |
 
 **利用する共通コンポーネント**
@@ -707,7 +707,7 @@ OrderDetailPage (src/pages/order/order-detail-page.tsx)   ← order 機能。「
 | ゲート | 結果 | 備考 |
 |------|:----:|------|
 | D1 §0 完全性 | 合格 | 機能・画面（SCR-13 の添付パネル／DLG-4）・API・バッチ・テーブル・BR・外部 IF を列挙 |
-| D2 表・主キー | 合格 | `order_attachments`（AT+8 桁）。外部キー `order_id` は `orders.id`（`varchar(10)`）。`spec-06-db-physical.yaml` と照合要（`chk_order_attachments_file_size`＝1〜10485760） |
+| D2 表・主キー | 合格 | `order_attachments`（AT+8 桁）。外部キー `order_id` は `orders.id`（`varchar(10)`）。`spec-06-db-physical.yaml` と照合要（`chk_ord_atts_file_size`＝1〜10485760） |
 | D3 API | 合格 | 4 operationId を `spec-07-api-list.yaml` と照合済み。`downloadAttachment` は `Result` で包まない。400 `E0053` は `InvalidRequestException`、`file` 欠落等は `RequestBinding` の 400 `E0008`（いずれも決定済み） |
 | D4 メッセージ | 合格 | 使用する messageId はすべて `spec-09-message-list.yaml` に存在（`I0012`・`I0024`・`W0010`・`E0001`・`E0002`・`E0005`・`E0006`・`E0008`・`E0009`・`E0010`・`E0012`・`E0030`・`E0032`・`E0052`・`E0053`） |
 | D5 命名・モジュール | 合格 | business-service-core、`com.example.ddmsaa.core.attachment`。バッチは `…core.attachment.batch`、スケジューラ有効化は `SchedulingConfig` |

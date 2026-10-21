@@ -34,7 +34,7 @@ user_role_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_user_role_codes_user_role_name"
+    - name: "uq_user_role_codes_name"
       columns: ["user_role_name"]
       type: "UNIQUE"
   seed:   # T07-1
@@ -60,7 +60,7 @@ user_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_user_status_codes_user_status_name"
+    - name: "uq_user_sts_codes_name"
       columns: ["user_status_name"]
       type: "UNIQUE"
   seed:   # T07-2
@@ -85,7 +85,7 @@ customer_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_customer_status_codes_customer_status_name"
+    - name: "uq_cus_sts_codes_name"
       columns: ["customer_status_name"]
       type: "UNIQUE"
   seed:   # T07-3
@@ -110,7 +110,7 @@ product_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_product_status_codes_product_status_name"
+    - name: "uq_prd_sts_codes_name"
       columns: ["product_status_name"]
       type: "UNIQUE"
   seed:   # T07-4
@@ -135,7 +135,7 @@ tax_category_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_tax_category_codes_tax_category_name"
+    - name: "uq_tax_cat_codes_name"
       columns: ["tax_category_name"]
       type: "UNIQUE"
   seed:   # T07-5
@@ -161,7 +161,7 @@ order_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_order_status_codes_order_status_name"
+    - name: "uq_ord_sts_codes_name"
       columns: ["order_status_name"]
       type: "UNIQUE"
   seed:   # T07-6
@@ -189,7 +189,7 @@ approval_request_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_approval_request_status_codes_approval_request_status_name"
+    - name: "uq_apr_req_sts_codes_name"
       columns: ["approval_request_status_name"]
       type: "UNIQUE"
   seed:   # T07-7
@@ -215,7 +215,7 @@ approval_action_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_approval_action_codes_approval_action_name"
+    - name: "uq_apr_action_codes_name"
       columns: ["approval_action_name"]
       type: "UNIQUE"
   seed:   # T07-8
@@ -240,7 +240,7 @@ attachment_visibility_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_attachment_visibility_codes_attachment_visibility_name"
+    - name: "uq_att_vis_codes_name"
       columns: ["attachment_visibility_name"]
       type: "UNIQUE"
   seed:   # T07-9
@@ -265,7 +265,7 @@ scan_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_scan_status_codes_scan_status_name"
+    - name: "uq_scan_sts_codes_name"
       columns: ["scan_status_name"]
       type: "UNIQUE"
   seed:   # T07-10
@@ -291,7 +291,7 @@ notification_event_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_notification_event_codes_notification_event_name"
+    - name: "uq_ntf_evt_codes_name"
       columns: ["notification_event_name"]
       type: "UNIQUE"
   seed:   # T07-11
@@ -319,7 +319,7 @@ notification_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_notification_status_codes_notification_status_name"
+    - name: "uq_ntf_sts_codes_name"
       columns: ["notification_status_name"]
       type: "UNIQUE"
   seed:   # T07-12
@@ -346,7 +346,7 @@ export_status_codes:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "uq_export_status_codes_export_status_name"
+    - name: "uq_exp_sts_codes_name"
       columns: ["export_status_name"]
       type: "UNIQUE"
   seed:   # T07-13
@@ -400,7 +400,7 @@ customers:
       columns: ["status"]
       type: "BTREE"
   foreign_keys:
-    - name: "fk_customers_customer_status_codes"
+    - name: "fk_customers_cus_sts_codes"
       column: "status"
       references: "customer_status_codes(customer_status_code)"
 
@@ -548,7 +548,7 @@ customer_contacts:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "idx_customer_contacts_customer_id_is_active"
+    - name: "idx_cus_cnt_cus_id_is_active"
       columns: ["customer_id", "is_active"]
       type: "BTREE"
   foreign_keys:
@@ -590,15 +590,15 @@ customer_assignments:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "uq_customer_assignments_customer_id_user_id"
+    - name: "uq_cus_asg_cus_id_user_id"
       columns: ["customer_id", "user_id"]
       type: "UNIQUE"
       where: "deleted_at IS NULL"
-    - name: "idx_customer_assignments_user_id_is_active"
+    - name: "idx_cus_asg_user_id_is_active"
       columns: ["user_id", "is_active"]
       type: "BTREE"
   foreign_keys:
-    - name: "fk_customer_assignments_customers"
+    - name: "fk_cus_asg_customers"
       column: "customer_id"
       references: "customers(id)"
     - name: "fk_customer_assignments_users"
@@ -631,7 +631,7 @@ products:
       type: NUMERIC(15,2)
       nullable: false
       default: "0"
-      comment: "標準単価（0 以上（chk_products_standard_unit_price））"
+      comment: "標準単価（0 以上（chk_products_std_unit_price））"
     tax_category:
       type: INT
       nullable: false
@@ -660,11 +660,11 @@ products:
     - name: "fk_products_tax_category_codes"
       column: "tax_category"
       references: "tax_category_codes(tax_category_code)"
-    - name: "fk_products_product_status_codes"
+    - name: "fk_products_prd_sts_codes"
       column: "status"
       references: "product_status_codes(product_status_code)"
   checks:
-    - name: "chk_products_standard_unit_price"
+    - name: "chk_products_std_unit_price"
       expression: "standard_unit_price >= 0"
 
 # ============================================= 税率
@@ -686,7 +686,7 @@ tax_rates:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   foreign_keys:
-    - name: "fk_tax_rates_tax_category_codes"
+    - name: "fk_tax_rates_tax_cat_codes"
       column: "tax_category"
       references: "tax_category_codes(tax_category_code)"
   checks:
@@ -752,16 +752,16 @@ orders:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "idx_orders_customer_id_order_date"
+    - name: "idx_orders_cus_id_order_date"
       columns: ["customer_id", "order_date"]
       type: "BTREE"
-    - name: "idx_orders_sales_user_id_status"
+    - name: "idx_orders_sales_user_status"
       columns: ["sales_user_id", "status"]
       type: "BTREE"
     - name: "idx_orders_status_order_date"
       columns: ["status", "order_date"]
       type: "BTREE"
-    - name: "uq_orders_revised_from_order_id"
+    - name: "uq_orders_revised_from"
       columns: ["revised_from_order_id"]
       type: "UNIQUE"
       where: "revised_from_order_id IS NOT NULL AND deleted_at IS NULL"
@@ -848,7 +848,7 @@ order_items:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "uq_order_items_order_id_line_number"
+    - name: "uq_order_items_order_line_no"
       columns: ["order_id", "line_number"]
       type: "UNIQUE"
       where: "deleted_at IS NULL"
@@ -865,7 +865,7 @@ order_items:
     - name: "fk_order_items_products"
       column: "product_id"
       references: "products(id)"
-    - name: "fk_order_items_tax_category_codes"
+    - name: "fk_order_items_tax_cat_codes"
       column: "tax_category"
       references: "tax_category_codes(tax_category_code)"
   checks:
@@ -906,23 +906,23 @@ order_status_histories:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "idx_order_status_histories_order_id_created_at"
+    - name: "idx_ord_sts_hist_order_created"
       columns: ["order_id", "created_at"]
       type: "BTREE"
-    - name: "idx_order_status_histories_from_status"
+    - name: "idx_ord_sts_hist_from_status"
       columns: ["from_status"]
       type: "BTREE"
-    - name: "idx_order_status_histories_to_status"
+    - name: "idx_ord_sts_hist_to_status"
       columns: ["to_status"]
       type: "BTREE"
   foreign_keys:
-    - name: "fk_order_status_histories_orders"
+    - name: "fk_ord_sts_hist_orders"
       column: "order_id"
       references: "orders(id)"
-    - name: "fk_order_status_histories_from_status"
+    - name: "fk_ord_sts_hist_from_status"
       column: "from_status"
       references: "order_status_codes(order_status_code)"
-    - name: "fk_order_status_histories_to_status"
+    - name: "fk_ord_sts_hist_to_status"
       column: "to_status"
       references: "order_status_codes(order_status_code)"
 
@@ -953,7 +953,7 @@ approval_rules:
     approver_role:
       type: INT
       nullable: false
-      comment: "承認者ロール（参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。初版は 1=ADMIN 固定（chk_approval_rules_approver_role）） FK→user_role_codes.user_role_code"
+      comment: "承認者ロール（参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。初版は 1=ADMIN 固定（chk_apr_rules_approver_role）） FK→user_role_codes.user_role_code"
     is_active:
       type: BOOLEAN
       nullable: false
@@ -973,22 +973,22 @@ approval_rules:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "idx_approval_rules_is_active_effective_from_date"
+    - name: "idx_apr_rules_active_eff_from"
       columns: ["is_active", "effective_from_date"]
       type: "BTREE"
-    - name: "idx_approval_rules_approver_role"
+    - name: "idx_apr_rules_approver_role"
       columns: ["approver_role"]
       type: "BTREE"
   foreign_keys:
-    - name: "fk_approval_rules_user_role_codes"
+    - name: "fk_apr_rules_user_role_codes"
       column: "approver_role"
       references: "user_role_codes(user_role_code)"
   checks:
-    - name: "chk_approval_rules_approver_role"
+    - name: "chk_apr_rules_approver_role"
       expression: "approver_role = 1"
     - name: "chk_approval_rules_max_amount"
       expression: "max_amount IS NULL OR max_amount >= min_amount"
-    - name: "chk_approval_rules_effective_to_date"
+    - name: "chk_apr_rules_eff_to_date"
       expression: "effective_to_date IS NULL OR effective_to_date >= effective_from_date"
   seed:
     - { min_amount: 0, max_amount: null, approval_step: 1, approver_role: 1, is_active: true, effective_from_date: "2026-01-01" }
@@ -1034,10 +1034,10 @@ approval_requests:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "idx_approval_requests_order_id_status"
+    - name: "idx_apr_req_order_id_status"
       columns: ["order_id", "status"]
       type: "BTREE"
-    - name: "idx_approval_requests_approver_user_id_status"
+    - name: "idx_apr_req_approver_status"
       columns: ["approver_user_id", "status"]
       type: "BTREE"
     - name: "idx_approval_requests_status"
@@ -1050,7 +1050,7 @@ approval_requests:
     - name: "fk_approval_requests_users"
       column: "approver_user_id"
       references: "users(user_id)"
-    - name: "fk_approval_requests_approval_request_status_codes"
+    - name: "fk_apr_req_apr_req_sts_codes"
       column: "status"
       references: "approval_request_status_codes(approval_request_status_code)"
 
@@ -1082,17 +1082,17 @@ approval_histories:
     updated_at: { type: TIMESTAMPTZ, nullable: false, default: "CURRENT_TIMESTAMP", comment: "更新日時（トリガーで更新。楽観ロックの照合に使用。API ではマイクロ秒 6 桁）" }
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
   indexes:
-    - name: "idx_approval_histories_approval_request_id"
+    - name: "idx_apr_hist_apr_request_id"
       columns: ["approval_request_id"]
       type: "BTREE"
-    - name: "idx_approval_histories_approval_action"
+    - name: "idx_apr_hist_apr_action"
       columns: ["approval_action"]
       type: "BTREE"
   foreign_keys:
-    - name: "fk_approval_histories_approval_requests"
+    - name: "fk_apr_hist_apr_requests"
       column: "approval_request_id"
       references: "approval_requests(id)"
-    - name: "fk_approval_histories_approval_action_codes"
+    - name: "fk_apr_hist_apr_action_codes"
       column: "approval_action"
       references: "approval_action_codes(approval_action_code)"
   checks:
@@ -1129,7 +1129,7 @@ order_attachments:
       type: NUMERIC
       nullable: false
       default: "0"
-      comment: "ファイルサイズ（バイト。1〜10485760（chk_order_attachments_file_size））"
+      comment: "ファイルサイズ（バイト。1〜10485760（chk_ord_atts_file_size））"
     visibility:
       type: INT
       nullable: false
@@ -1148,31 +1148,31 @@ order_attachments:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "uq_order_attachments_storage_path"
+    - name: "uq_ord_atts_storage_path"
       columns: ["storage_path"]
       type: "UNIQUE"
       where: "deleted_at IS NULL"
-    - name: "idx_order_attachments_order_id_visibility_scan_status"
+    - name: "idx_ord_atts_order_vis_scan"
       columns: ["order_id", "visibility", "scan_status"]
       type: "BTREE"
-    - name: "idx_order_attachments_visibility"
+    - name: "idx_ord_atts_visibility"
       columns: ["visibility"]
       type: "BTREE"
-    - name: "idx_order_attachments_scan_status"
+    - name: "idx_ord_atts_scan_status"
       columns: ["scan_status"]
       type: "BTREE"
   foreign_keys:
     - name: "fk_order_attachments_orders"
       column: "order_id"
       references: "orders(id)"
-    - name: "fk_order_attachments_attachment_visibility_codes"
+    - name: "fk_ord_atts_att_vis_codes"
       column: "visibility"
       references: "attachment_visibility_codes(attachment_visibility_code)"
-    - name: "fk_order_attachments_scan_status_codes"
+    - name: "fk_ord_atts_scan_sts_codes"
       column: "scan_status"
       references: "scan_status_codes(scan_status_code)"
   checks:
-    - name: "chk_order_attachments_file_size"
+    - name: "chk_ord_atts_file_size"
       expression: "file_size > 0 AND file_size <= 10485760"
 
 # ============================================= CSV 出力ジョブ
@@ -1224,14 +1224,14 @@ export_jobs:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "idx_export_jobs_created_by_status"
+    - name: "idx_export_jobs_creator_status"
       columns: ["created_by", "status"]
       type: "BTREE"
     - name: "idx_export_jobs_status"
       columns: ["status"]
       type: "BTREE"
   foreign_keys:
-    - name: "fk_export_jobs_export_status_codes"
+    - name: "fk_export_jobs_exp_sts_codes"
       column: "status"
       references: "export_status_codes(export_status_code)"
 
@@ -1288,32 +1288,32 @@ notification_logs:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "idx_notification_logs_status_created_at"
+    - name: "idx_ntf_logs_status_created"
       columns: ["status", "created_at"]
       type: "BTREE"
-    - name: "idx_notification_logs_status_next_attempt_at"
+    - name: "idx_ntf_logs_status_next_try"
       columns: ["status", "next_attempt_at"]
       type: "BTREE"
-    - name: "idx_notification_logs_export_job_id"
+    - name: "idx_ntf_logs_export_job_id"
       columns: ["export_job_id"]
       type: "BTREE"
     - name: "idx_notification_logs_order_id"
       columns: ["order_id"]
       type: "BTREE"
-    - name: "idx_notification_logs_notification_event"
+    - name: "idx_ntf_logs_ntf_event"
       columns: ["notification_event"]
       type: "BTREE"
   foreign_keys:
-    - name: "fk_notification_logs_notification_event_codes"
+    - name: "fk_ntf_logs_ntf_evt_codes"
       column: "notification_event"
       references: "notification_event_codes(notification_event_code)"
     - name: "fk_notification_logs_orders"
       column: "order_id"
       references: "orders(id)"
-    - name: "fk_notification_logs_export_jobs"
+    - name: "fk_ntf_logs_export_jobs"
       column: "export_job_id"
       references: "export_jobs(id)"
-    - name: "fk_notification_logs_notification_status_codes"
+    - name: "fk_ntf_logs_ntf_sts_codes"
       column: "status"
       references: "notification_status_codes(notification_status_code)"
 
@@ -1361,10 +1361,10 @@ audit_logs:
     updated_by: { type: VARCHAR(10), nullable: false, default: "'SYSTEM'", comment: "更新者" }
     deleted_at: { type: TIMESTAMPTZ, nullable: true, comment: "削除日時（論理削除（NULL=有効））" }
   indexes:
-    - name: "idx_audit_logs_actor_user_id_created_at"
+    - name: "idx_audit_logs_actor_created"
       columns: ["actor_user_id", "created_at"]
       type: "BTREE"
-    - name: "idx_audit_logs_target_type_target_id"
+    - name: "idx_audit_logs_tgt_type_id"
       columns: ["target_type", "target_id"]
       type: "BTREE"
   foreign_keys:

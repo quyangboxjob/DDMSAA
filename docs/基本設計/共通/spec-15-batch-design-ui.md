@@ -70,7 +70,7 @@ flowchart LR
 |------|------|
 | 目的 | 業務通知（申請・承認・差戻し・取消し・出力完了）をメール送信する（BR-NTF-001〜003） |
 | 処理概要 | 1. `status=QUEUED AND next_attempt_at <= 現在` を古い順に最大 100 件取得 → 2. SENDING に更新 → 3. IF-01 で送信 → 4. 成功は SENT・`sent_at` 設定、失敗は `attempt_count` を加算し、4 回未満なら QUEUED・`next_attempt_at`=1 分／5 分／15 分後、4 回目なら FAILED |
-| 入力 | `TBL-notification-logs`（`idx_notification_logs_status_next_attempt_at`） |
+| 入力 | `TBL-notification-logs`（`idx_ntf_logs_status_next_try`） |
 | 出力 | `TBL-notification-logs`（U）、メール |
 | 異常時の影響 | 通知が遅れる。業務データ（注文状態）には影響しない |
 | 異常時の対応 | FAILED は ADMIN が SCR-18 で確認し、原因対処後に `retryNotification` で再送する |
