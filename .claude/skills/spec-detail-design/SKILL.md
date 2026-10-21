@@ -24,8 +24,7 @@ description: 将 DDMSAA 某个 feature 的业务基本设计落成可实现、�
 ## 模板与更新模式
 
 - 结构以 `docs/詳細設計/spec-detail-temp.md` 为准（§0 / §0.1 / §0.2 / §1.1 / §1.2 / §5.1 / §6.1 等；先读该模板）。
-- 现有 7 份 `detail-sd` 只有简版（约 40–80 行，测试表在 `## 6. テスト`）。已存在时走更新模式：补全模板缺少的章节，保留已有内容和 BR 编号，把测试表整理到模板的 §5.1 并保持原有 `UT-<MOD>-NN` 编号；整理前后的差异在完成时报告。
-- 与 `spec-test-rule.md` 的 `UT-<FEATURE>-NNN`（3 位）编号规则不一致：不擅自改编号，列入待确认。
+- 7 份 `detail-sd` 已于 2026-10-21 按模板补全（约 650–1140 行）。再次调用时走更新模式：只修改受上游变化影响的章节，保留已有内容、TBD 和 BR 编号；测试表在 §5.1，编号保持 `UT-<FEATURE>-NNN`（3 位，`<FEATURE>` 用 `spec-test-rule.md` §5 的缩写：USR/CUS/PRD/ORD/APR/FIL/RPT），并补全 §5 追踪矩阵的 UT-ID 列；变更前后的差异在完成时报告。
 - 代码尚不存在时，共通类和包路径以 `基盤/インタフェース仕様/*.yaml`（`spec-project-structure.yaml`、`spec-10-business-core.yaml`、`spec-07-infrastructure.yaml`）为准。
 
 ## 产物内容

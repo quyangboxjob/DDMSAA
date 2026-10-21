@@ -35,7 +35,7 @@ description: 根据 DDMSAA feature 详细设计生成 Spring Boot/MyBatis 后端
 
 ## 质量门
 
-- 路径与包：业务代码在 `com.example.ddmsaa.core.<feature>`（`spec-codegen-map-rule.md` §3 写的 `service/core` 路径是已知错误，勿用）。
+- 路径与包：业务代码在 `com.example.ddmsaa.core.<feature>`。
 - 无手写 Converter 实现类；Mapper XML 无 `${}`、所有查询带 `deleted_at IS NULL`（无该列的表除外）；Service 中没有设置 `createdBy/updatedBy`。
 - Javadoc 随代码一起生成（coding-rule §11.1）；换行与编码遵循 `spec-generation-rule.md` §2。
 

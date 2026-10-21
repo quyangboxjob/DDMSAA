@@ -5,6 +5,8 @@ description: 为 DDMSAA 已落地的后端模块创建或维护应用容器化�
 
 # DDMSAA 应用部署脚手架
 
+> **暂缓（2026-10-21 决定）**：DDMSAA 目前不做应用容器化部署。调用本技能时先说明已暂缓并停止，除非用户明确要求恢复。
+
 > 开始前必须阅读 [DDMSAA-PROJECT-CONTEXT.md](../DDMSAA-PROJECT-CONTEXT.md)。
 
 ## 范围

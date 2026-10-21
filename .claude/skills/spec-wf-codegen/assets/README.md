@@ -64,9 +64,7 @@ enum → entity → mapper.interface → mapper.xml → dto.input-record → dto
 
 模板里的示例统一用 **Order（注文）**：表 `orders`（主键 `id` = OD+8 位）、枚举 `OrderStatus`（`order_status_codes`）、operationId `getOrder` / `updateOrder`。仅为说明形状；实际名称一律由当前 feature 的详细设计、`spec-06-db-physical.yaml`、`spec-07-api-list.yaml` 解析，不得照抄示例。
 
-## 已知的 DDMSAA 文档不一致（出码时按右列处理并报告）
+## 已决定事项（2026-10-21）
 
-| 不一致 | 处理 |
-|---|---|
-| `spec-codegen-map-rule.md` §3 把业务代码路径写成 `…/ddmsaa/service/core/<feature>` | 以 `spec-project-structure.yaml` / coding-rule §1、§12 的 `com.example.ddmsaa.core.<feature>` 为准 |
-| `spec-codegen-map-rule.md` §3 把 Mapper 写成 "resultType+underscore"，coding-rule §6 写 "resultMap 优先" | 本模板按 coding-rule §6（resultMap 优先，同时开启 underscore 映射）；若要改为 resultType，先改规约 |
+- Mapper：resultMap 优先（同时开启 underscore 映射）；`spec-codegen-map-rule.md` §3 已同步修改。
+- 业务代码路径 `com.example.ddmsaa.core.<feature>`；`spec-codegen-map-rule.md` 已同步修改。

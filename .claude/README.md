@@ -45,13 +45,13 @@ docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md
 | 命令 | 阶段 | 主要输入 | 主要输出 | 当前状态（DDMSAA） |
 |---|---|---|---|---|
 | `/spec-basic-design` | ① 基本设计 | requirements.md + 06/07/08/09 等 SSOT | `docs/基本設計/…`（更新模式） | ✅ 可用（文档已存在，主要用于更新与一致性检查） |
-| `/spec-detail-design` | ② 详细设计 | 业务/画面设计 + `spec-detail-temp.md` | `docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md` | ✅ 可用（需先补全 7 份简版） |
+| `/spec-detail-design` | ② 详细设计 | 业务/画面设计 + `spec-detail-temp.md` | `docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md` | ✅ 可用（7 份已补全，后续为更新模式） |
 | `/spec-wf-flowchart` | ②' 流程图 | 要件 + 基本设计 + 详细设计 + BR | `spec-<feature>-flow.md`、`spec-business-issue.md`、`spec-<feature>-filelist.md` | ✅ 可用 |
 | `/spec-scaffold-db` | ⓪ DB/Docker | 06 yaml、spec-db-connection、spec-01 | `docs/基本設計/データベース/setup/*.sql`、Compose 等 | ⚠ spec-01 §3 拓扑仍是占位，需先确认 |
 | `/spec-scaffold-backend` | ⓪ 后端基盘 | `基盤/インタフェース仕様/*.yaml`、spec-01 §2.2 | `ddmsaa-backend/` 多模块骨架 | ✅ 可用（版本和接口规格已定） |
 | `/spec-scaffold-frontend` | ⓪ 前端骨架 | spec-01 §2.1、frontend 规约、07/09 | `frontend/` 骨架 | ✅ 可用 |
 | `/spec-scaffold-test` | ⓪ 测试基盘 | 真实后端框架、spec-test-rule | 测试基类、测试 profile、JWT 测试工具 | ⛔ 需先有 `ddmsaa-backend` 与建库 SQL |
-| `/spec-scaffold-deploy` | ⓪' 容器化 | 后端模块、Compose | Dockerfile、app profile | ⛔ 需先有后端代码与 Compose；spec-01 §3 占位 |
+| `/spec-scaffold-deploy` | ⓪' 容器化 | 后端模块、Compose | Dockerfile、app profile | ⏸ 暂缓（2026-10-21 决定先不做容器化部署） |
 | `/spec-db-migration` | DB 增量 | 06 yaml、迁移规约 | `db/migration/V*`、`R__*` | ⛔ 需先有迁移目录和 setup SQL；初始数据依据 spec-17（模板） |
 | `/spec-sql-lint` | DB 检查 | SQL + lint 规约 | lint 报告、`.sqlfluff` | ⚠ 目前没有 SQL 可检查（可先做 init） |
 | `/spec-wf-codegen` | ③ 后端代码 | 详细设计 + SSOT + `assets/` 模板 | `ddmsaa-backend/…/core/<feature>/` | ⛔ 需先有后端骨架；详细设计需补全 |
@@ -99,11 +99,11 @@ docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md
 缺口：
 - 没有任何代码；没有 `docs/基本設計/データベース/setup/*.sql`、`db/migration/`、Compose/Dockerfile。
 - `spec-01` §3–§6 仍有占位；`spec-14/17/18/04` 多为模板。
-- 7 份详细设计较 `spec-detail-temp.md` 简略（缺 §0、§0.1、§1.1、§5.1 等）。
-- 文档自身的不一致（已记入 `DDMSAA-PROJECT-CONTEXT.md` 末尾，按权威顺序处理）：UT 清单位置/编号（§5.1 与 §6、`UT-<FEATURE>-NNN` 与 `UT-ORD-01`）；`spec-codegen-map-rule.md` 的包路径和 Mapper 写法；Flyway 文档残留"14 表"及 §4.1-SEQ 的执行顺序；`devtool.config.yaml` 路径；`spec-project-structure.yaml` 缺 surefire/failsafe。
+- 7 份详细设计已于 2026-10-21 补全并统一（8 个跨模块接口、InvalidRequestException、枚举位置、BAT-05 扫描等已决定），各自 §4 还有少量业务细节的待确认项，D7/D11 门标为“要确认”；`spec-04-business-flow-ui.md` 仍是空模板。无旧系统数据迁移；部署环境、域名、TLS、日志保存期限上线前确认。
+- 2026-10-21 已决定：UT 用例放 §5.1、编号 `UT-<FEATURE>-NNN`（3 位）；Mapper 用 resultMap 优先；文件存储默认 local；前端测试用 jsdom；容器化部署（`spec-scaffold-deploy`）暂缓。对应的文档已同步。
 
 建议顺序：
-1. 补全 spec-01 §3、各详细设计，统一 UT 清单位置与编号规则（先改文档，再让 skill 照做）。
+1. 处理详细设计里的待确认项（TBD），补 spec-01 §3 的部署信息（先改文档，再让 skill 照做）。
 2. `/spec-scaffold-backend` → `/spec-scaffold-db` → `/spec-sql-lint` → `/spec-scaffold-frontend` → `/spec-scaffold-test`。
 3. 按 §3 的顺序逐个 feature：`/spec-detail-design` → `/spec-wf-codegen` → `/spec-wf-testgen`，前端对应 `/spec-frontend-codegen`。
 4. 系统可运行后：`/spec-it-api`、`/spec-it-frontend`；上线后的结构变更走 `/spec-db-migration`。

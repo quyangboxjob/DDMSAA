@@ -9,7 +9,7 @@ description: 根据 DDMSAA feature 详细设计中的测试用例清单，为已
 
 ## 前置条件
 
-- 读取 `docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md` 的测试用例清单：按 `spec-detail-temp.md` 在 §5.1；当前简版文件在 `## 6. テスト`。哪一节存在就读哪一节，沿用文件里的 UT-ID（如 `UT-ORD-01`），不要改写编号；两种位置/编号规则不一致属已知问题，在报告中列出（见 `DDMSAA-PROJECT-CONTEXT.md`）。
+- 读取 `docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md` 的测试用例清单：决定位置为 §5.1，UT-ID 为 `UT-<FEATURE>-NNN`（3 位，缩写见 `spec-test-rule.md` §5，如 `UT-ORD-001`）。7 份详细设计均已按此重排；若发现测试表不在 §5.1，报告并停止，不自行寻找。§5.1 的用例不含 TBD 时才可生成，含“要确认”的 D7/D11 项要先在报告中列出。
 - 读取 `docs/詳細設計/業務/<feature>/spec-<feature>-filelist.md`，并确认被测代码真实存在。
 - 共通测试 harness、API、消息、认证与 schema SSOT 均可用；缺失时停止并报告，不编造用例、身份或数据。
 

@@ -9,7 +9,7 @@ Mapper 接口对应的 SQL，落 `ddmsaa-backend/business-service-core/src/main/
 - 列名/类型：`docs/基本設計/共通/spec-06-db-physical.yaml` 本表段
 - 审计列由 `MetaObjectHandler` 写入 Entity 字段：`spec-07-infrastructure.yaml`
 
-> 已知文档不一致：`spec-codegen-map-rule.md` §3 写 "resultType+underscore"，coding-rule §6 写 "resultMap 优先"。本模板按 coding-rule §6。简单单表查询允许省略 resultMap 用自动映射，但 JOIN 派生列、枚举等必须 `resultMap`。
+> 已决定（2026-10-21）：resultMap 优先，`spec-codegen-map-rule.md` §3 已同步。简单单表查询允许省略 resultMap 用自动映射，但 JOIN 派生列、枚举等必须 `resultMap`。
 
 ## 3. 骨架（带占位符）
 ```xml

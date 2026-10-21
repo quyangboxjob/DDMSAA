@@ -61,6 +61,9 @@ If a lower source contradicts a higher one, report it and follow the higher one.
 - Roles: `ADMIN`(1), `EMPLOYEE`(2), `CUSTOMER`(3). Authorization and data scope per operation come from `x-roles` in 07 and `spec-03-auth-ui.md`. Out-of-scope single resources return 404 (BR-AUTH-006).
 - Protected APIs use `Authorization: Bearer <JWT>`. Ports: gateway `8080`, auth `8081`, business `8082`, frontend `3000`, host PostgreSQL `5434`.
 - Data conventions: PK `VARCHAR(10)` (2-letter prefix + 8 digits via `next_business_id`; `users` use A/E/C + 4 digits); enums are INT + `*_codes` FK (T07), not CHECK; optimistic lock on `updated_at` (microsecond precision, conflict `E0051`, wrong state `E0006`); success is HTTP 200 + `Result`.
+- **Cross-feature calls** go through 8 ports in `com.example.ddmsaa.core.shared.port` (formal definition: `docs/詳細設計/業務/order/spec-order-detail-sd.md` §1.1.1): `ApprovalRequestPort` (approval), `OrderStatePort` (order), `NotificationPort` (approval), `AuditLogPort` (user; `record` and `recordDenied`), `OrderAccessPort` (order), `DataScopePort` (customer), `CustomerLookupPort` (customer), `ProductLookupPort` (product). A feature never references another feature's Service or Mapper. Enums: `Role` in `common.enums`, all other T07 enums in `core.shared.enums`.
+- **Errors**: service-layer 400 is `InvalidRequestException` (default `E0008`); `BusinessException` is always 409; malformed requests (bad enum, bad JSON, missing param/part) are 400 `E0008`; 413 is `PayloadTooLargeException`. `PERMISSION_DENIED` is recorded by `PermissionDeniedAuditListener` (403) and by the range check before it throws 404 (`AuditLogPort.recordDenied`, new transaction).
+- **Batches** (spec-15): BAT-01 notification send, BAT-02 CSV, BAT-03 export expiry, BAT-04 attachment retention, BAT-05 attachment virus scan (a 1-minute poller; upload only stores `PENDING`). `SchedulingConfig` (`core.shared.config`) enables scheduling once. Scanner: `VirusScanService` (`ClamdVirusScanService`; `app.scan.type=none` in dev). CSV export expiry is `app.export.file-expiry-hours` (24). PDF: Apache PDFBox 3.0.3 + embedded IPAex Gothic. MIME detection: Tika `tika-core`.
 - Audit columns (`created_*`/`updated_*`) are filled by the `MetaObjectHandler` MyBatis interceptor; services do not set them. Shared code: `UserContext.getUserId()`, `Result`/`PageResult`, `BusinessException`.
 - File storage is Local (default) and S3 (`LocalFileStorageService` / `S3FileStorageService`); there is no MinIO-specific class.
 - There are no encrypted business columns, no SMS, no department/employee tables.
@@ -68,25 +71,30 @@ If a lower source contradicts a higher one, report it and follow the higher one.
 
 ## Test conventions
 
-- Detailed designs currently hold their test table in `## 6. テスト` with ids like `UT-ORD-01` (feature abbreviations: USR, CUS, PRD, ORD, APR, FIL, RPT). `spec-test-rule.md` and `spec-detail-temp.md` expect the list in `§5.1` with ids `UT-<FEATURE>-NNN`. Until this is unified (see below), skills read the list from whichever of §5.1 / §6 exists, keep the existing id format, and report the mismatch.
+- **Decision (2026-10-21):** UT case lists live in the detailed design's `§5.1` and ids are `UT-<FEATURE>-NNN` (3 digits). `<FEATURE>` is the abbreviation in `spec-test-rule.md` §5: user=USR, customer=CUS, product=PRD, order=ORD, approval=APR, attachment=FIL, report=RPT (e.g. `UT-ORD-001`). All 7 detailed designs now follow this (lists in §5.1, ids `UT-USR/CUS/PRD/ORD/APR/FIL/RPT-NNN`).
+- **Decision:** Mapper XML uses `resultMap` first (underscore mapping stays enabled). **Decision:** file storage defaults to `local` (`FILE_STORAGE_TYPE`, `S3_*` only when `s3`). **Decision:** frontend tests run on `jsdom` (pin the version). Containerized deployment (`spec-scaffold-deploy`) is on hold.
 - Review status values in IT specs: 草案 / レビュー中 / 承認済み (from the DDMSAA templates).
-- Test reports read JUnit XML (`spec-test-rule.md` §7). The frontend test environment (jsdom vs happy-dom) is an open decision in `spec-test-rule.md`; ask before choosing.
+- Test reports read JUnit XML (`spec-test-rule.md` §7).
 
 ## Current gaps — check before acting; if a prerequisite is missing, stop and say what to run first
 
 - No `ddmsaa-backend/` or `frontend/` code exists yet (`src/` only has `.gitkeep`).
 - No `docs/基本設計/データベース/setup/*.sql` and no `db/migration/` yet; Docker/compose files do not exist.
 - `spec-01-system-architecture-ui.md` §3–§6 still contain placeholders; `spec-14`, `spec-17`, `spec-18`, `spec-04` are mostly templates.
-- The 7 `detail-sd` files are shorter than `spec-detail-temp.md` (missing §0, §0.1, §1.1, §5.1 …).
+- The 7 `detail-sd` files were expanded to `spec-detail-temp.md` and aligned on 2026-10-21 (UT counts: USR 54, CUS 45, PRD 38, ORD 103, APR 71, FIL 53, RPT 91). Each still carries a few open `TBD-<ABBR>-NN` items in its §4 (business details such as CSV format, status-visibility edge cases, Tika sample verification); the D7/D11 gates that mention them are "要確認". Read the TBD table of the feature before generating code and stop on any item that affects the code you are about to write.
+- No legacy-data migration (`spec-17`). Deployment environment, domain, TLS and log retention are decided before go-live (`spec-01` TBD-ARCH-01/02); local development is unaffected.
+- `docs/基本設計/共通/spec-04-business-flow-ui.md` (cited by the template as the source of state transitions) is still an empty template; state transitions come from `spec-10` §1, the business designs and the BR list.
 
 ## Known documentation conflicts (follow the authority order; report, do not silently pick)
 
 | Conflict | Follow |
 |---|---|
-| `spec-codegen-map-rule.md` §3 writes business code under `…/ddmsaa/service/core/<feature>` | `com.example.ddmsaa.core.<feature>` (`spec-project-structure.yaml`, coding-rule §1/§12) |
-| `spec-codegen-map-rule.md` §3 says Mapper = "resultType + underscore"; coding-rule §6 says `resultMap` preferred | coding-rule §6 (resultMap first; underscore mapping stays enabled) |
-| UT list location/id: §5.1 + `UT-<FEATURE>-NNN` (rule/template) vs §6 + `UT-ORD-01` (current files) | keep what the file has, report |
-| `spec-database-rule.md` §4.1-SEQ ("Flyway runs init_functions → sequences → tables") vs Docker creating the initial schema | Docker init creates the schema; Flyway is increments only — report |
-| `spec-flyway-migration-rule.md` and `spec-db-migration-ui.md` still say "14 tables" | 31 tables per `spec-06-db-physical.yaml` |
-| `devtool.config.yaml` `paths` differ from `ddmsaa-backend/` / `frontend/` | the coding rules |
-| `spec-project-structure.yaml` `build_plugins` lacks surefire/failsafe required by `spec-test-rule.md` §7 | add to the structure spec first, then scaffold |
+Resolved on 2026-10-21 (docs fixed, keep following the rules): package path `com.example.ddmsaa.core.<feature>`; Mapper = resultMap first; Docker creates the initial schema and Flyway is increments only; 31 tables; surefire/failsafe are in `spec-project-structure.yaml`; `PayloadTooLargeException` is in `spec-03-exception-handler.yaml`.
+
+Still open:
+
+| Conflict | Follow |
+|---|---|
+| `spec-04-business-flow-ui.md` is an empty template | see "Current gaps" |
+| `devtool.config.yaml` `paths.backend` is `.` and `frontendComponents` is `src/components` (the coding rules say `ddmsaa-backend/` and `frontend/src/components`) | the coding rules; the file is tool configuration, ask before changing |
+| `app.auth.login-lockout-seconds` / `max-login-failure-count` remain in the generic AuthStateStore specs although DDMSAA does not use failure lockout (BR-AUTH-005) | do not call the failure-count API from auth-service |
