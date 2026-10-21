@@ -38,7 +38,7 @@
 |------|---------|------|--------|
 | 列挙 | §2 + 07 enum↔06 INT | `enum.java.tmpl` | 06/07.yaml |
 | Entity | §2(POJO・camelCase↔snake_case) + §5(主キー・外部キー) + §11(単数 PascalCase) | `entity.java.tmpl` | 06.yaml |
-| Mapper(インタフェース+XML) | §6(論理削除/**resultType+underscore**/PageHelper/文字列連結禁止) + `@Mapper` | `mapper.interface.tmpl`・`mapper.xml.tmpl` | 06.yaml |
+| Mapper(インタフェース+XML) | §6(論理削除/**resultMap 優先（underscore マッピングは有効のまま）**/PageHelper/文字列連結禁止) + `@Mapper` | `mapper.interface.tmpl`・`mapper.xml.tmpl` | 06.yaml |
 | DTO | §2(schema に整合・Entity の公開禁止。入力は record／マスキング出力は可変クラス) | `dto.input-record.tmpl`・`dto.detail-class.tmpl` | 07.yaml |
 | Converter | §2(**MapStruct `@Mapper`**・列挙マッピング) | `converter.java.tmpl` | — |
 | ServiceImpl | §2 + §7(トランザクションはここのみ・複数テーブルのアトミック性・副作用はコミット後) + §4(BusinessException をスロー) + §9(マスキングはここで実施・DataMaskUtil) | `service.interface.tmpl`・`service-impl.java.tmpl` | — |
@@ -50,7 +50,7 @@
 
 - **生成順序**（§12）：`Entity → Mapper → DTO → Converter → [採番/ドメインサービス] → ServiceImpl → Controller → Batch`
 - **生成後の検証ゲート**（§13）：G-列 / G-API / G-msg / G-命名 / G-アーキテクチャ / G-秘密鍵 / G-改行 / G-javadoc
-- ⚠ **出力先（本プロジェクトのマルチモジュール `ddmsaa-backend/`）**：業務ドメインのコードは `ddmsaa-backend/business-service-core/src/main/java/com/example/ddmsaa/service/core/<feature>/` に配置する。XML→`business-service-core/.../resources/mapper/`、DDL→`データベース` の Flyway `V<n>__*.sql`（スクリプトの正本は 02 に帰属）
+- ⚠ **出力先（本プロジェクトのマルチモジュール `ddmsaa-backend/`）**：業務ドメインのコードは `ddmsaa-backend/business-service-core/src/main/java/com/example/ddmsaa/core/<feature>/` に配置する。XML→`business-service-core/.../resources/mapper/`、DDL→`データベース` の Flyway `V<n>__*.sql`（スクリプトの正本は 02 に帰属）
 
 <!-- devtool:endblock -->
 <!-- devtool:block id="rules.codegen-map-rule.s05" -->

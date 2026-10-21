@@ -170,7 +170,7 @@
       END;
       $$ LANGUAGE plpgsql;
 ```
-- **Flyway 実行順序**：`init_functions.sql`(`next_business_id` 関数の作成) → 各 prefix のシーケンス(`CREATE SEQUENCE`) → テーブル作成スクリプト。
+- **初期化の実行順序**：`init_functions.sql`(`next_business_id` 関数の作成) → 各 prefix のシーケンス(`CREATE SEQUENCE`) → テーブル作成スクリプト。DDMSAA ではこれらは Docker 初期化（機構A。`setup/10_schema.sql`、`基本設計/データベース/spec-db-migration-ui.md`）の中で実行し、Flyway は baseline 0 以降の増分だけを扱う（Flyway のバージョンには含めない）。
 
 **prefix 割当表**(「自前の主キーを持つ」エンティティのみ。1:1 / 0..1 の子テーブルは §4.1-SHARED を参照、採番しない)：
 

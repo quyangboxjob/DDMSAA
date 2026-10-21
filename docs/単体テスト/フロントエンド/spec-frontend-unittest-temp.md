@@ -137,7 +137,7 @@
 | JUnit XML | Vitest の junit reporter 出力を結果レポートのデータ源とする |
 | 結果レポート | `単体テスト/フロントエンド/report/spec-ut-fe-testreport-<date>.md`（直近 1 回分を上書き。失敗・スキップも事実のまま記載） |
 | JUnit XML 配置 | `単体テスト/フロントエンド/report/junit-<対象>-<date>.xml` |
-| 実行環境 | `happy-dom`／`jsdom` の既定はプロジェクトの実設定に従う（`spec-test-rule.md` §11 未決） |
+| 実行環境 | `jsdom`（`spec-test-rule.md` §7。バージョンは固定） |
 | 実行不可時 | 結果を作らず「実行待ち（NOT RUN）」と明記し、起動方法を示す |
 
 ---

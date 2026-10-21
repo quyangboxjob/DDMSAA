@@ -39,7 +39,7 @@
 - **BR-ORD-003 金額再計算**: サーバーは明細ごとに `quantity * unit_price` を計算し、画面から送られた単価・小計・税額・合計を信用しない。
 - **BR-ORD-004 税計算**: 税区分は STANDARD 10%、REDUCED 8%、EXEMPT 0% とし、明細税額は `HALF_UP(line_amount * tax_rate / 100)` で計算する。
 - **BR-ORD-005 訂正方法**: APPROVED 注文は直接更新しない。取消し後に新規注文を作成し、訂正なら `revised_from_order_id` を記録する（BR-ORD-009）。
-- **BR-ORD-006 楽観ロック**: 更新・申請・取消し・承認・差戻し・マスタ更新は `updated_at` を照合し、不一致時は 409（`E0051`）を返す。`updatedAt` は API でマイクロ秒 6 桁の文字列として返し、クライアントはそのまま返送する（`spec-07-api-list-ui.md` §1）。
+- **BR-ORD-006 楽観ロック**: 更新・申請・取消し・マスタ更新は `updated_at` を照合し、不一致時は 409（`E0051`）を返す。承認・差戻しは API が `updatedAt` を受け取らないため、承認依頼と注文の行ロックと状態確認で直列化し、先に処理済みなら 409（`E0006`。BR-APR-005）とする。`updatedAt` は API でマイクロ秒 6 桁の文字列として返し、クライアントはそのまま返送する（`spec-07-api-list-ui.md` §1）。
 - **BR-ORD-007 取消し**: DRAFT / RETURNED の取消しは ADMIN 又は担当 EMPLOYEE、APPROVED の取消しは ADMIN だけが行える（EMPLOYEE は 403 `E0002`）。PENDING_APPROVAL と CANCELLED は取り消せない（409 `E0006`）。取消し理由（1〜500 文字）を必須とする。
 - **BR-ORD-008 担当者**: EMPLOYEE が作成した注文の担当者（`sales_user_id`）は作成者本人とする。ADMIN が作成する場合は、注文顧客の有効な担当 EMPLOYEE を指定する（未指定・担当外は 400 `E0008`）。担当者の変更は DRAFT / RETURNED のときに ADMIN だけが行える。EMPLOYEE のデータ範囲は担当者ではなく担当割当（BR-AUTH-003）で判定する。
 - **BR-ORD-009 訂正元注文**: `revised_from_order_id` は新規作成時だけ指定でき、更新では変更できない。訂正元は CANCELLED かつ同一顧客の注文とし、1 注文につき訂正は 1 回とする（違反は 409 `E0006`、`uq_orders_revised_from_order_id`）。訂正の作成は新規作成のため、元注文の明細に無効商品が含まれていれば保存時に 409（`E0054`）となる（BR-PRD-003）。画面は無効商品を示し、除外してから保存させる。
@@ -82,10 +82,10 @@
   | 区分 | `audit_action` | `target_type` / `target_id` |
   |---|---|---|
   | ログイン | `LOGIN_REQUESTED`（loginInit）、`LOGIN_SUCCEEDED`（verify 成功）、`LOGIN_FAILED`（Magic Link 無効・期限切れ・ログイン不可） | `USER` / 入力されたユーザー ID（10 文字に切り詰め。存在しない ID も記録し、`actor_user_id` は NULL） |
-  | 権限拒否 | `PERMISSION_DENIED`（403、及び BR-AUTH-006 の範囲外 1 件アクセスによる 404） | 対象リソースの種別 / ID |
+  | 権限拒否 | `PERMISSION_DENIED`（403、及び BR-AUTH-006 の範囲外 1 件アクセスによる 404） | 範囲外の 1 件アクセスは対象リソースの種別 / ID（例：`ORDER` / `OD00000001`）。ロール不足の 403（対象リソースが特定できない）は `API` / 「メソッド + パス」（例：`POST /users`。100 文字に切り詰め） |
   | 利用者 | `USER_CREATE`、`USER_UPDATE`、`USER_DISABLE`、`USER_ENABLE`、`USER_LOCK`、`USER_UNLOCK` | `USER` / ユーザー ID |
   | 顧客・商品・承認ルール | `CUSTOMER_CREATE`、`CUSTOMER_UPDATE`、`CUSTOMER_ACTIVATE`、`CUSTOMER_DEACTIVATE`、`PRODUCT_CREATE`、`PRODUCT_UPDATE`、`PRODUCT_ACTIVATE`、`PRODUCT_DEACTIVATE`、`APPROVAL_RULE_CREATE`、`APPROVAL_RULE_UPDATE` | `CUSTOMER` / `PRODUCT` / `APPROVAL_RULE` と各 ID |
   | 注文・承認 | `ORDER_CREATE`、`ORDER_UPDATE`、`ORDER_SUBMIT`、`ORDER_APPROVE`、`ORDER_RETURN`、`ORDER_CANCEL` | `ORDER` / 注文 ID |
-  | 添付・帳票・出力・通知 | `ATTACHMENT_UPLOAD`、`ATTACHMENT_DOWNLOAD`、`ATTACHMENT_DELETE`、`ORDER_PDF_DOWNLOAD`、`EXPORT_CREATE`、`EXPORT_DOWNLOAD`、`NOTIFICATION_RETRY` | `ATTACHMENT` / `ORDER` / `EXPORT_JOB` / `NOTIFICATION` と各 ID |
+  | 添付・帳票・出力・通知 | `ATTACHMENT_UPLOAD`、`ATTACHMENT_DOWNLOAD`、`ATTACHMENT_DELETE`、`ATTACHMENT_SCAN_REJECTED`（BAT-05 がウイルスを検出したとき。操作者は NULL）、`ORDER_PDF_DOWNLOAD`、`EXPORT_CREATE`、`EXPORT_DOWNLOAD`、`NOTIFICATION_RETRY` | `ATTACHMENT` / `ORDER` / `EXPORT_JOB` / `NOTIFICATION` と各 ID |
 
   ログアウトはクライアント側のトークン破棄だけで API がないため記録しない。一覧の範囲外自動除外（BR-AUTH-006）は権限拒否として記録しない。

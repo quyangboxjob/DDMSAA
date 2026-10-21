@@ -28,6 +28,8 @@ dependency_versions:
   mapstruct.version: "1.6.3"         # org.mapstruct mapstruct + mapstruct-processor
   aws-sdk.version: "2.x"             # software.amazon.awssdk:bom（AWS SDK for Java v2。s3 は BOM 管理で版数を子に書かない）
   poi.version: "5.4.1"               # org.apache.poi poi-ooxml（BOM 外＝要 pin）。xlsx 帳票出力用
+  pdfbox.version: "3.0.3"            # org.apache.pdfbox pdfbox（BOM 外＝要 pin）。注文書 PDF（日本語は IPAex ゴシックを埋め込む）
+  tika.version: "2.9.2"              # org.apache.tika tika-core（BOM 外＝要 pin）。添付ファイルの MIME 検出
   # flyway は Spring Boot BOM 管理＝明示 pin しない（flyway-core / flyway-database-postgresql）
   # postgresql は BOM 管理（runtime）＝明示 pin しない
   # 注: Spotless / Eclipse JDT formatter の版数は「生成時ツール」の pin であり納品 pom の property ではない。
@@ -48,6 +50,8 @@ dependency_management:
     - "io.jsonwebtoken : jjwt-api / jjwt-impl / jjwt-jackson : ${jjwt.version}"
     - "org.mapstruct : mapstruct / mapstruct-processor : ${mapstruct.version}"
     - "org.apache.poi : poi-ooxml : ${poi.version}"
+    - "org.apache.pdfbox : pdfbox : ${pdfbox.version}"
+    - "org.apache.tika : tika-core : ${tika.version}"
     - "com.github.pagehelper : pagehelper-spring-boot-starter : ${pagehelper.version}"
     - "org.mybatis.spring.boot : mybatis-spring-boot-starter : ${mybatis-starter.version}"
 
@@ -217,6 +221,8 @@ dependencies:
     - { artifact: "s3" }   # software.amazon.awssdk:s3（版数は AWS SDK BOM）
     - { artifact: "spring-boot-starter-mail" }
     - { artifact: "poi-ooxml" }
+    - { artifact: "pdfbox" }       # 注文書 PDF（org.apache.pdfbox:pdfbox。版数は pdfbox.version）
+    - { artifact: "tika-core" }    # 添付の MIME 検出（org.apache.tika:tika-core。版数は tika.version）
     - { artifact: "spring-boot-starter-test",   scope: test }
     - { artifact: "spring-security-test",        scope: test }
 
@@ -346,8 +352,8 @@ resources:
         - "app.auth.magic-link.ttl-seconds: 3600"
         - "app.auth.magic-link.base-url: http://localhost:3000/auth/verify"
         - "app.auth.mail-from: no-reply@ddmsaa.local"
-        - "app.auth.login-lockout-seconds: 1800"
-        - "app.auth.max-login-failure-count: 5"
+        - "app.auth.login-lockout-seconds: 1800（汎用 AuthStateStore の予約値。DDMSAA の auth-service は失敗ロックを使用しない）"
+        - "app.auth.max-login-failure-count: 5（同上）"
         - "spring.datasource.*"
         - "spring.data.redis.*"
         - "spring.mail.*"
@@ -359,8 +365,11 @@ resources:
       key_settings:
         - "app.jwt.secret / app.jwt.issuer"
         - "app.crypto.aes-key"
-        - "app.file.storage-type: s3"
+        - "app.file.storage-type: ${FILE_STORAGE_TYPE:local}（既定 local。s3 は S3_* を併せて設定したときだけ）"
         - "app.file.s3.region / bucket / prefix / endpoint / path-style / presign-ttl-seconds（資格情報は既定資格情報チェーン）"
+        - "app.scan.type: ${SCAN_TYPE:none}（none / clamd。clamd のとき app.scan.clamd.host / port / timeout-seconds）"
+        - "app.mail.from: ${MAIL_FROM:no-reply@ddmsaa.local} と spring.mail.*（業務通知 BAT-01 用。auth-service と同じ MAIL_* を使う）"
+        - "app.export.file-expiry-hours: 24（CSV 出力ファイルの有効期限。BR-RPT-002）"
         - "spring.datasource.*"
 
 # ============================================================
@@ -372,11 +381,16 @@ build_plugins:
   - module: api-gateway
     plugin: spring-boot-maven-plugin
   - module: auth-service
-    plugin: spring-boot-maven-plugin
+    plugins:
+      - spring-boot-maven-plugin
+      - "maven-surefire-plugin（*Test。statelessTestsetReporter=JUnit5Xml30StatelessReporter、usePhrasedTestCaseMethodName=true。開発規約/spec-test-rule.md §7）"
+      - "maven-failsafe-plugin（*IT。同上の reporter 設定。integration-test / verify フェーズ）"
   - module: business-service-core
     plugins:
       - spring-boot-maven-plugin
       - "maven-compiler-plugin (annotationProcessorPaths: mapstruct-processor)"
+      - "maven-surefire-plugin（*Test。statelessTestsetReporter=JUnit5Xml30StatelessReporter、usePhrasedTestCaseMethodName=true。開発規約/spec-test-rule.md §7）"
+      - "maven-failsafe-plugin（*IT。同上の reporter 設定。integration-test / verify フェーズ）"
   - module: infrastructure
     plugin: flyway-maven-plugin
     plugin_note: "独立実行用: mvn -pl infrastructure flyway:migrate。url/user/password は pom properties または -D で注入"

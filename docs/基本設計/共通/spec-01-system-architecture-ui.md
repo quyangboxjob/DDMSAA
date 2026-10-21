@@ -128,10 +128,12 @@ flowchart TB
 
 | 項目 | 内容 |
 |------|------|
-| 配置方式 | 〇〇（コンテナ/VM/クラウド） |
-| ドメイン・ポート | 〇〇 |
-| 通信暗号化 | 全区間 HTTPS / TLS〇 |
-| ファイアウォール・セグメント | 〇〇 |
+| 配置方式 | ローカル開発：Docker で PostgreSQL・Redis・pgAdmin・Nginx を起動し、バックエンド（`mvn spring-boot:run`）とフロントエンド（`pnpm dev`）はホストで実行する。本番の配置方式（コンテナ/VM/クラウド）は未定（TBD-ARCH-01。アプリケーションのコンテナ化は 2026-10-21 時点で保留） |
+| ポート | api-gateway `8080`、auth-service `8081`、business-service-core `8082`、フロントエンド（Vite）`3000`、ホストから見た PostgreSQL `5434`。API の basePath は `/api/v1`（Nginx／Vite proxy で `/api` を gateway へ中継） |
+| 通信暗号化 | 本番は全区間 HTTPS（`要件定義/requirements.md` §6）。TLS のバージョン・証明書の運用は未定（TBD-ARCH-01） |
+| ファイアウォール・セグメント | 未定（TBD-ARCH-01） |
+
+> サービス構成（api-gateway / auth-service / business-service-core）と接続は `基盤/spec-00-architecture-ui.md`、接続先・環境変数は `基盤/インタフェース仕様/spec-project-structure.yaml` を正とする。
 
 <!-- devtool:endblock -->
 <!-- devtool:block id="basic.common.01-system-architecture-ui.s04" -->
@@ -139,9 +141,9 @@ flowchart TB
 
 | 環境 | 用途 | ドメイン/アドレス | DB | 備考 |
 |------|------|----------|----|------|
-| 開発 | 開発・結合確認 | 〇〇 | 〇〇 | |
-| テスト | テスト・UAT | 〇〇 | 〇〇 | |
-| 本番 | 正式運用 | 〇〇 | 〇〇 | |
+| 開発 | 開発・結合確認 | `localhost`（フロントエンド `:3000`、gateway `:8080`） | Docker の PostgreSQL（ホスト `:5434`、DB 名 `ddmsaa`） | 初期 schema は Docker 初期化、増分は Flyway（`データベース/spec-db-migration-ui.md`） |
+| テスト | テスト・UAT | 未定（TBD-ARCH-01） | 未定 | |
+| 本番 | 正式運用 | 未定（TBD-ARCH-01） | 未定 | 日次バックアップ・四半期ごとの復元試験（`要件定義/requirements.md` §6） |
 
 <!-- devtool:endblock -->
 <!-- devtool:block id="basic.common.01-system-architecture-ui.s05" -->
@@ -149,9 +151,9 @@ flowchart TB
 
 | サービス | 用途 | 提供元 | インタフェース仕様書 | 関連 IF |
 |------|------|--------|---------|---------|
-| メールサービス | 通知・認証（Magic Link）・エスカレーション | 〇〇 | 〇〇 | IF-01 |
-| ファイルストレージ | 画像資料の保存 | 〇〇 | 〇〇 | IF-02 |
-| 〇〇 | | | | |
+| メールサービス | Magic Link・業務通知 | SMTP（提供元は未定） | `spec-08-external-interface-ui.md` IF-01 | IF-01 |
+| ファイルストレージ | 添付・CSV の保存 | 既定は Local（ホストのディレクトリ）。S3 互換ストレージは設定で切替 | `spec-08-external-interface-ui.md` IF-02 | IF-02 |
+| ウイルススキャン | 添付のスキャン | スキャンサービス（提供元は未定） | `spec-08-external-interface-ui.md` IF-04 | IF-04 |
 
 <!-- devtool:endblock -->
 <!-- devtool:block id="basic.common.01-system-architecture-ui.s06" -->
@@ -160,15 +162,22 @@ flowchart TB
 <!-- rule: mig.no-manual-prod-change -->
 | 項目 | 方針 |
 |------|------|
-| 認証・セッション | 〇〇（例：JWT、有効期限・リフレッシュ方針） |
+| 認証・セッション | パスワードレス Magic Link（1 回限り・60 分）→ JWT アクセストークン（60 分・リフレッシュなし・ログアウトはクライアント側で破棄）。失敗回数によるロックはなし（`基盤/spec-02-auth-service-ui.md`、`spec-03-auth-ui.md`） |
 | 認可 | ロール + データ範囲（自部門/本人）による制御。詳細は `spec-03-auth-ui.md` を参照 |
 | エラー処理 | 例外処理の統一・共通レスポンスエンベロープ（`spec-07-api-list` を参照） |
-| ログ | 操作/エラー/アクセスログの方針 |
-| ファイルストレージ | パス・命名・権限・保存期間 |
-| 暗号化 | 機密項目の暗号化方式（詳細は `spec-06-db-physical` を参照） |
+| ログ | traceId を全サービスで引き回す（`基盤/インタフェース仕様/spec-05-trace-message.yaml`）。業務操作は監査ログ（`audit_logs`、BR-AUD-001）、システムエラーは error ログ。Magic Link トークン・JWT・メール本文・ファイル本体はログに出さない。保持期間は未定（TBD-ARCH-02。`spec-11-non-functional-ui.md`） |
+| ファイルストレージ | キーはランダムに発行し、利用者に URL を返さない（`spec-08-external-interface-ui.md` IF-02）。添付は登録から 365 日、CSV は完了から 24 時間で削除（BR-FIL-006、BR-RPT-002、BAT-03／04） |
+| 暗号化 | 業務テーブルに暗号化列はない。通信は HTTPS。共通部品 `FieldEncryptor` は将来の機密項目のために用意するが、現時点では使用しない |
 | DB 変更管理 | テーブル構造はマイグレーションスクリプト（Flyway）でバージョン管理し、本番 DB の手動変更を禁止する（詳細は `spec-06-db-physical` を参照） |
 | 論理削除 | `deleted_at` に統一。業務上の一意列には部分ユニークインデックスを用いる（詳細は `spec-06-db-physical` を参照） |
-| 国際化 | あり/なし。メッセージは外部化する（`spec-09-message-list-ui.md` を参照） |
+| 国際化 | あり（ja／zh／en）。メッセージは外部化し、API は messageId だけを返す（`spec-09-message-list-ui.md` を参照） |
+
+### 確認事項（TBD）
+
+| # | 事項 |
+|---|---|
+| TBD-ARCH-01 | 本番・テスト環境の配置方式（コンテナ/VM/クラウド）、ドメイン、TLS、ネットワーク分離。**上線前に確認する**（2026-10-21 決定。ローカル開発には影響しない）。決まるまで本番のコンテナ化（`spec-scaffold-deploy`）は保留 |
+| TBD-ARCH-02 | ログの保持期間と監視・通知先（`spec-11-non-functional-ui.md` と同時に決める）。**上線前に確認する**（2026-10-21 決定） |
 
 ### 記入要領
 

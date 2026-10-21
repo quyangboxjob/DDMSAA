@@ -296,7 +296,7 @@ sequenceDiagram
 
 **UT-ID 採番規則**：`UT-<FEATURE>-NNN`
 
-- `<FEATURE>`：機能 slug（`spec-<feature>-detail-sd.md` の `<feature>`）の英大文字・ハイフン区切り表記。
+- `<FEATURE>`：機能略称（`開発規約/spec-test-rule.md` §5 の表：user=USR、customer=CUS、product=PRD、order=ORD、approval=APR、attachment=FIL、report=RPT）。
 - `NNN`：機能内の 3 桁連番（001 始まり）。UT-ID は全体で一意とし、テストメソッドの `@DisplayName("UT-<FEATURE>-NNN <条件→期待>")` の先頭に必ず付与する。
 
 | UT-ID | 推奨層 | 被テスト（operationId / メソッド） | 種別 | 前提条件 | 入力要点 | 期待結果（messageId / HTTP 状態 / 状態遷移 / マスク項目） | 追跡 |

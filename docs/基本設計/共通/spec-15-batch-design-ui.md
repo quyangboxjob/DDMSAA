@@ -19,9 +19,9 @@
 | BAT-02 | CSV 非同期出力 | QUEUED の出力ジョブ（10,001 件以上）の CSV を生成する（BR-RPT-002） | F-RPT-03 | スケジュール | 1 分ごと | 1 回 1 ジョブ | 1 ジョブ 10 分以内 | TBL-export-jobs、TBL-orders | TBL-export-jobs（U）、TBL-notification-logs（C）、IF-02 |
 | BAT-03 | 出力ファイル失効 | 有効期限を過ぎた出力ジョブを EXPIRED にし、ファイルを削除する（BR-RPT-002） | F-RPT-03 | スケジュール | 1 時間ごと | 数十件 | 5 分以内 | TBL-export-jobs | TBL-export-jobs（U）、IF-02（削除） |
 | BAT-04 | 添付保持期限 | アップロードから 365 日を過ぎた添付を論理削除し、ストレージのファイルを削除する（BR-FIL-006） | F-ATT-04 | スケジュール | 毎日 03:00 | 数百件 | 30 分以内 | TBL-order-attachments | TBL-order-attachments（U）、IF-02（削除） |
-| BAT-05 | スキャン結果反映 | ウイルススキャンの結果を受け取り、添付を SAFE / REJECTED にする（BR-FIL-003） | F-ATT-02 | イベント起動 | スキャン完了時 | 1 件ずつ | 即時 | IF-04 の結果 | TBL-order-attachments（U）、TBL-audit-logs（C） |
+| BAT-05 | 添付スキャン | PENDING の添付をウイルススキャンし、SAFE / REJECTED にする（BR-FIL-003） | F-ATT-02 | スケジュール | 1 分ごと | 1 回 20 件まで | 1 分以内 | TBL-order-attachments、IF-02、IF-04 | TBL-order-attachments（U）、TBL-audit-logs（C） |
 
-> 起動方式：スケジュール（Spring Scheduler） / イベント起動（スキャンサービスからの結果通知）。
+> 起動方式：スケジュール（Spring Scheduler）。
 > 削除済み添付（利用者の削除）のファイル削除も BAT-04 が行う（`deleted_at IS NOT NULL AND storage_purged_at IS NULL`）。
 
 <!-- devtool:endblock -->
@@ -34,8 +34,8 @@ flowchart LR
   API2[createExportJob 10,001 件以上] -->|export_jobs QUEUED| B2[BAT-02 CSV 非同期出力]
   B2 -->|READY と EXPORT_COMPLETED 通知| B1
   B2 --> B3[BAT-03 出力ファイル失効]
-  UP[添付アップロード] -->|スキャン依頼| SCAN[IF-04 スキャン]
-  SCAN --> B5[BAT-05 スキャン結果反映]
+  UP[添付アップロード PENDING] --> B5[BAT-05 添付スキャン]
+  B5 -->|ファイルを渡す| SCAN[IF-04 スキャン]
   B5 --> B4[BAT-04 添付保持期限]
   B1 -.最終失敗.-> N[通知履歴 SCR-18 で ADMIN が確認・再送]
 ```
@@ -108,15 +108,15 @@ flowchart LR
 | 異常時の影響 | 保持期限を過ぎたファイルが残る |
 | 異常時の対応 | 次回起動で再処理する |
 
-### BAT-05 スキャン結果反映
+### BAT-05 添付スキャン
 
 | 項目 | 内容 |
 |------|------|
 | 目的 | ウイルススキャン完了まで添付を配信しない（BR-FIL-003） |
-| 処理概要 | 1. スキャンサービスから結果（添付 ID・結果）を受け取る → 2. `scan_status=PENDING` の行だけを SAFE 又は REJECTED に更新（それ以外の状態は無視して冪等にする） → 3. REJECTED は監査ログに記録する |
-| 入力 | IF-04 の結果通知 |
+| 処理概要 | 1. `scan_status=PENDING AND deleted_at IS NULL` を古い順に最大 20 件、`FOR UPDATE SKIP LOCKED` で取得 → 2. IF-02 から取り出して `VirusScanService.scan` に渡す → 3. SAFE は `scan_status=SAFE`、REJECTED は `REJECTED` に更新（1 件ずつコミット）。REJECTED は監査ログ（`ATTACHMENT_SCAN_REJECTED`）に記録 → 4. スキャナ不達・タイムアウトは更新せず PENDING のまま（次回に再試行） |
+| 入力 | `TBL-order-attachments`、IF-02（ファイル本体） |
 | 出力 | `TBL-order-attachments`（U）、`TBL-audit-logs`（C） |
 | 異常時の影響 | 添付が PENDING のままダウンロードできない |
-| 異常時の対応 | 24 時間を超えて PENDING の添付は WARN ログで検知し、運用者がスキャンを再依頼する（運用設計 `spec-18-operation-design-ui.md`） |
+| 異常時の対応 | 24 時間を超えて PENDING の添付は WARN ログで検知し、運用者がスキャナの状態を確認する（`spec-18-operation-design-ui.md`）。`app.scan.type=none`（開発用）では即 SAFE になる（warn ログ） |
 
 <!-- devtool:endblock -->

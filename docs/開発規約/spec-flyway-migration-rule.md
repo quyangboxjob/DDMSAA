@@ -87,7 +87,7 @@ R__<description>.sql
 <!-- devtool:block id="rules.postgresql.flyway-migration-rule.s06" -->
 ## 4. バージョンベースライン（baseline）の取り決め
 
-- **schema（14 テーブル）は機構A = docker で構築する**（`setup/10_schema.sql`）。**Flyway のバージョンには含めない**。
+- **schema（31 テーブル）は機構A = docker で構築する**（`setup/10_schema.sql`）。**Flyway のバージョンには含めない**。
 - Flyway は `baseline-on-migrate=true` / `baseline-version=0` で設定する。既存（docker で schema 構築済み）の DB を初めて接続する際に `baseline(0)`（空のベースライン）を記録し、その後 **`V1`** から適用する。
 - したがって **`V1` = 初期移行データ**（Flyway が最初に実行するマイグレーション）とし、以降のテーブル構造変更は **`V2` 以降**とする。
 
@@ -97,7 +97,7 @@ R__<description>.sql
 
 | 区分 | `db/migration` に含めるか | 配置先 |
 |------|:--:|------|
-| schema の初期構築（14 テーブル/関数/シーケンス/トリガー） | `EXCEPTION:` 含めない | docker 初期化 `setup/10_schema.sql`（機構A、Flyway のバージョンには含めない） |
+| schema の初期構築（31 テーブル/関数/シーケンス/トリガー） | `EXCEPTION:` 含めない | docker 初期化 `setup/10_schema.sql`（機構A、Flyway のバージョンには含めない） |
 | 初期移行データ（システムの初期業務データ） | ✅ 含める（V1） | `V1__initial_data_migration.sql` |
 | テーブル構造の後続変更（カラム追加/制約変更/インデックス追加/新規テーブル） | ✅ 含める | `V2+__*.sql` |
 | ビュー/関数/参照マスタデータの upsert | ✅ 含める | `R__*.sql` |

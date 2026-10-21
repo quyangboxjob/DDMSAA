@@ -232,6 +232,7 @@ sequenceDiagram
 | キー | 値 | TTL | 特記 |
 |------|----|-----|------|
 | `auth:magic-link:{token}` | ユーザーID（`user_id`） | `app.auth.magic-link.ttl-seconds`（既定 3600s） | `GETDEL` 原子操作でワンタイム消費；再送時は旧 key を DEL して新規作成 |
+| `auth:magic-link:user:{ユーザーID}` | 最新の token（逆引き） | 同上 | 再送時に旧 token を特定して失効させるための索引。消費時に削除する（2026-10-21 追加） |
 
 - 期限切れは Redis TTL が自動クリーンアップ、バッチ処理不要。
 - `AuthStateStore` は `infrastructure` モジュールに配置（`StringRedisTemplate` / Lettuce 使用）。

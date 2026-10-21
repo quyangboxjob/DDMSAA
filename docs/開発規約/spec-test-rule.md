@@ -124,9 +124,21 @@
 <!-- rule: test.it-id-format -->
 | ID | 形式 | 採番単位 | 使用箇所 |
 |----|------|---------|---------|
-| UT-ID | `UT-<FEATURE>-NNN` | 機能（`<FEATURE>` は機能 slug の英大文字表記）内の 3 桁連番 | 詳細設計 §5.1、テストメソッドの `@DisplayName`、§5 追跡マトリクス、テスト一覧・レポート |
+| UT-ID | `UT-<FEATURE>-NNN` | 機能（`<FEATURE>` は下表の機能略称）内の 3 桁連番（001 始まり） | 詳細設計 §5.1、テストメソッドの `@DisplayName`、§5 追跡マトリクス、テスト一覧・レポート |
 | IT-ID（API） | `IT-<operationId>-NNN` | operationId 内の 3 桁連番 | 式様書のケース、`@DisplayName`、レポート |
 | IT-ID（画面） | `IT-<SCR-id>-NNN` | 画面 ID 内の 3 桁連番 | 式様書のケース、テスト名（`it(...)`）の先頭、レポート |
+
+- `<FEATURE>` の機能略称（DDMSAA の業務機能。2026-10-21 決定）：
+
+| 機能 slug | `<FEATURE>` | 例 |
+|---|---|---|
+| user | USR | `UT-USR-001` |
+| customer | CUS | `UT-CUS-001` |
+| product | PRD | `UT-PRD-001` |
+| order | ORD | `UT-ORD-001` |
+| approval | APR | `UT-APR-001` |
+| attachment | FIL | `UT-FIL-001` |
+| report | RPT | `UT-RPT-001` |
 
 - 1 ケース ＝ 1 つの ID ＝ 1 つのテストメソッド（`it(...)`）。
 <!-- rule: test.ut-cases-single-source -->
@@ -156,6 +168,7 @@
 - **ランナーの束縛**：`*Test` は surefire（`test` フェーズ）、`*IT` は failsafe（`integration-test`／`verify` フェーズ）で実行する。対象モジュールに failsafe を設定しないと `*IT` が `mvn test` で実行されず、静かに漏れる。全層の実行は `mvn verify` とする。
 - **JUnit XML に ID を載せる**：surefire・failsafe の双方で `statelessTestsetReporter`（`JUnit5Xml30StatelessReporter`）の `usePhrasedTestCaseMethodName=true` を設定し、`<testcase name>` が `@DisplayName` になるようにする。
 - **レポートのデータ源は JUnit XML**（バックエンドは `target/surefire-reports/`、`target/failsafe-reports/`。フロントエンドは vitest の junit reporter 出力）であり、コンソール出力ではない。残存した古いレポート（stale）は無視する。
+- **フロントエンド単体・結合テストの実行環境は `jsdom`**（vitest の `environment: 'jsdom'`。2026-10-21 決定）。jsdom の一部バージョンには全テストが起動不能になる既知の問題があるため、バージョンを固定し、更新時はテスト全体が起動することを確認する。
 - レポートは「元情報／総覧／層別・ファイル別結果／ID 結果マトリクス／失敗詳細／結論と上流 TODO」を含み、生成した（または対象となった）テストファイルの一覧を必ず記載する。
 - 環境が未起動で実行できない場合は結果を作らず、「実行待ち（NOT RUN）」と明記して起動方法を示す。
 
@@ -217,7 +230,6 @@
 
 - システムテスト（ST）の定義・ディレクトリ・文書名・ID 規則（参照元のテスト系 skill に ST 工程の規則が無いため未定義）。
 - フロントエンド単体テスト仕様書の項目 ID の採番規則（UT-ID はバックエンド用例にのみ規定され、フロントエンド仕様書は「実装状況」列で項目管理されている）。
-- フロントエンド単体テストの実行環境（`happy-dom`／`jsdom`）の既定値（プロジェクトの実設定に従う運用で、固定規則が無い）。
 - 結合テスト式様書名（`spec-it-<operationId>.md` の camelCase 部分）と `spec-file-naming-rule.md` §2 の「すべて小文字」規則の整合。
 - 結合テスト式様書・結果レポートの接尾辞（`-integrationtest-sd` 等）の統一方針（現行は §4 の名称で運用）。
 - 詳細設計ディレクトリの `-testlist`／`-testreport` と `単体テスト／結合テスト` 配下レポートの使い分け・重複記録の扱い。

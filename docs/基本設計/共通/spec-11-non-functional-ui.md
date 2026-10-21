@@ -48,8 +48,8 @@
 
 | 項目 | 要求 | 備考 |
 |------|------|------|
-| 現行データ移行 | あり/なし。範囲・方式 | |
-| 移行ツール | 〇〇 | 具体化は `spec-17-data-migration-ui.md` |
+| 現行データ移行 | なし（2026-10-21 確定） | 初期データ（管理者・マスタ）は Flyway で投入（`spec-17-data-migration-ui.md`） |
+| 移行ツール | Flyway（初期データのみ） | 具体化は `spec-17-data-migration-ui.md` |
 
 <!-- devtool:endblock -->
 <!-- devtool:block id="basic.common.11-non-functional-ui.s05" -->

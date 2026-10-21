@@ -307,7 +307,7 @@ app:
     core:
       base-url: ${SVC_CORE_URL:http://localhost:8082}
   file:
-    storage-type: s3
+    storage-type: ${FILE_STORAGE_TYPE:local}   # 既定 local。s3 のときは下の s3.* を設定する
     s3:
       region: ${S3_REGION:ap-northeast-1}
       bucket: ${S3_BUCKET}

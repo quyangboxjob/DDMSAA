@@ -17,7 +17,7 @@
 | IF-01 | メール送信 | 出力 | SMTP/メールサービス | Magic Link（auth-service）、業務通知（BAT-01） | F-AUTH-01、F-NTF-01、F-ORD-04、F-ORD-05、F-APR-02、F-RPT-03 |
 | IF-02 | オブジェクトストレージ | 双方向 | オブジェクトストレージ | 添付の保存・読込・削除、CSV の保存・読込・削除 | F-ATT-02〜04、F-RPT-03 |
 | IF-03 | 帳票・ファイル出力 | 出力 | ファイルダウンロード（API 応答） | 注文 PDF、CSV のダウンロード | F-RPT-01、F-RPT-03 |
-| IF-04 | ウイルススキャン | 双方向 | スキャンサービス | 添付アップロード後のスキャン依頼と結果通知（BAT-05） | F-ATT-02 |
+| IF-04 | ウイルススキャン | 双方向 | ClamAV（clamd。`app.scan.type=clamd`） | BAT-05 が PENDING の添付をスキャンに渡す | F-ATT-02 |
 
 > 方向：出力（システム→外部）/ 入力（外部→システム）/ 双方向。
 
@@ -57,10 +57,10 @@
 
 | 項目 | 内容 |
 |------|------|
-| 連携先・プロトコル | スキャンサービス（HTTPS） |
-| トリガー条件 | 添付アップロードのコミット後にスキャンを依頼。結果は BAT-05 が受け取る |
-| 同期/非同期 | 非同期 |
-| 失敗時の処理 | 結果が返らない添付は PENDING のまま配信しない。24 時間を超えた PENDING は WARN ログで検知し、運用者が再依頼する |
+| 連携先・プロトコル | ClamAV の clamd へ TCP（INSTREAM）。`infrastructure.scan.VirusScanService`（`spec-07-infrastructure.yaml`）。開発・テストは `app.scan.type=none`（スキャンせず SAFE） |
+| トリガー条件 | BAT-05（1 分ごと）が `scan_status=PENDING` の添付を取り出してスキャンに渡す。アップロード API は依頼しない（外部の結果通知 API・アウトボックス表は不要） |
+| 同期/非同期 | 非同期（アップロードとは別のバッチ） |
+| 失敗時の処理 | スキャナ不達・タイムアウトは PENDING のまま次回に再試行。24 時間を超えた PENDING は WARN ログで検知し、運用者が確認する |
 
 <!-- devtool:endblock -->
 <!-- devtool:block id="basic.common.08-external-interface-ui.s03" -->

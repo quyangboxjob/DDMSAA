@@ -23,14 +23,29 @@ types:
     methods:
       - "ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleInvalidRequest(InvalidRequestException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleRequestBinding(Exception ex, HttpServletRequest request)  // MethodArgumentTypeMismatchException / HttpMessageNotReadableException / MissingServletRequestParameterException / MissingServletRequestPartException / MissingPathVariableException を 400 E0008 に変換する（個別ハンドラに分けてもよい）"
       - "ResponseEntity<ErrorResponse> handleAuth(AuthException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handlePayloadTooLarge(PayloadTooLargeException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleDataAccessException(DataAccessException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleException(Exception ex, HttpServletRequest request)"
+
+  - fqcn: com.example.ddmsaa.common.exception.InvalidRequestException
+    kind: class
+    extends: RuntimeException
+    purpose: Service 層の業務判定で見つかった入力不整合（Bean Validation で表せないもの。例：ロールと顧客の組合せ、空ファイル）を表すカスタム例外。HTTP 400 にマッピングされる。既定の messageId は E0008（空ファイル E0053 のように別の messageId を指定できる）。項目レベルの内容は details（FieldError）に載せる。BusinessException を継承しない（継承すると 409 になるため）。ConstraintViolationException を手で組み立てて使うことはしない
+    constructors:
+      - "InvalidRequestException(String field, String reason)"
+      - "InvalidRequestException(String messageId, String field, String reason)"
+      - "InvalidRequestException(List<FieldError> details)"
+    methods:
+      - "String getMessageId()"
+      - "List<FieldError> getDetails()"
 
   - fqcn: com.example.ddmsaa.common.exception.AuthException
     kind: class
@@ -63,17 +78,39 @@ types:
       - "String getMessageId()"
       - "String[] getArgs()"
 
+  - fqcn: com.example.ddmsaa.common.exception.PayloadTooLargeException
+    kind: class
+    extends: RuntimeException
+    purpose: Service 層で判定するサイズ超過（例：注文の添付合計 50 MiB 超 E0052）を表すカスタム例外。messageId と可変長引数 args を保持し HTTP 413 にマッピングされる。BusinessException を継承しない（継承すると 409 になるため）。フレームワークが投げる MaxUploadSizeExceededException（1 ファイル超過 E0010）とは別
+    constructors:
+      - "PayloadTooLargeException(String messageId, String... args)"
+    methods:
+      - "String getMessageId()"
+      - "String[] getArgs()"
+
 # ============================================================
 # 行動契約（境界条件）
 # ============================================================
 behavior_contracts:
+
+  RequestBinding:
+    rule: >-
+      リクエストの形式不正（Bean Validation より前の段階）は 500 ではなく 400 / E0008 にする。
+      対象：MethodArgumentTypeMismatchException（クエリ・パスの型変換失敗。不正な列挙値 role=XXX を含む）、
+      HttpMessageNotReadableException（JSON 不正・ボディの列挙値不正・日付形式不正）、
+      MissingServletRequestParameterException（必須クエリ欠落）、MissingServletRequestPartException（multipart の必須パート欠落。
+      例：uploadOrderAttachment の file）、MissingPathVariableException。
+    details: >-
+      ErrorResponse.details に FieldError(field, reason) を 1 件設定する。field は引数名／JSON のプロパティ名（取れない場合は null）、
+      reason は messageId E0031「形式が正しくありません」に対応する理由。スタックトレースやパーサのメッセージ（JSON の断片など）を利用者に返さない。
+    log: "warn ログ（traceId 付き）。リクエスト本文はログに出さない"
 
   GlobalExceptionHandler:
     base_response:
       rule: "全ハンドラは ErrorResponse.of(messageId, request.getRequestURI(), MDC.get('traceId')) で基底を生成する。"
     message_args_propagation:
       rule: >-
-        args を保持する例外（AuthException / BusinessException / EntityNotFoundException）の各ハンドラは、
+        args を保持する例外（AuthException / BusinessException / EntityNotFoundException / PayloadTooLargeException）。InvalidRequestException は args を持たず、details（FieldError）を ErrorResponse.setDetails() へ設定するの各ハンドラは、
         ex.getArgs() を ErrorResponse.setMessageArgs() へ設定して伝播すること。
         設定漏れはメッセージ引数（プレースホルダ置換値）の欠落を招く。
     field_errors:

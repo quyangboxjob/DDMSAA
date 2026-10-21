@@ -139,11 +139,14 @@ behavior_contracts:
   AuthStateStore:
     contracts:
       - method: "saveMagicLinkToken(token, userId, ttlSeconds)"
+        condition: 同じ userId の旧 token が存在する（再送）
+        action: "逆引きキー auth:magic-link:user:{userId} から旧 token を取得して auth:magic-link:{旧token} を DEL（旧リンクを失効）し、新しい auth:magic-link:{token} と逆引きキーを同じ TTL で保存する。旧 token が無ければ新規保存のみ"
+      - method: "saveMagicLinkToken(token, userId, ttlSeconds)"
         condition: token が既存
-        action: 上書きする（resend ユースケース）
+        action: 上書きする
       - method: consumeMagicLinkToken(token)
         condition: "正常（初回呼び出し）"
-        action: "ユーザーIDを返し、同時にトークンを削除する（GETDEL、原子的操作）"
+        action: "ユーザーIDを返し、同時にトークンを削除する（GETDEL、原子的操作）。続けて逆引きキー auth:magic-link:user:{userId} も削除する（値が当該 token のときだけ）"
       - method: consumeMagicLinkToken(token)
         condition: "2回目以降の呼び出し / 期限切れ"
         action: null を返す（例外なし）

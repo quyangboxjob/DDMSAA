@@ -81,6 +81,8 @@ ddmsaa-backend/                       （マルチモジュール・マイクロ
 | Converter | MapStruct | Entity ↔ DTO | 誤りやすい手書きマッピング禁止 |
 
 - **Controller は Entity を返してはならない**。一律 DTO を `Result<T>` でラップして返す。
+- **機能（feature）をまたぐ呼び出し**：feature パッケージは他の feature の Service・Mapper を直接参照しない。他の機能に処理を依頼する必要があるとき（例：承認が注文の状態を変える、注文の申請が承認依頼を作る、各機能が通知・監査を記録する）は、共通の中立パッケージ `com.example.ddmsaa.core.shared.port` に**ポート（interface）**を置き、呼ぶ側はポートに依存し、実装は担当する feature が提供する（依存方向を一方向に保ち、feature 間の循環を作らない）。ポートの一覧・責務・担当は `詳細設計/業務/order/spec-order-detail-sd.md` §1.1.1 を正とする。
+- **列挙（T07）の置き場所**：`Role`（T07-1）は auth-service と business-service-core の両方で使うため `com.example.ddmsaa.common.enums`。それ以外の T07 列挙（`UserStatus`・`OrderStatus` など）は複数の feature から参照されるため `com.example.ddmsaa.core.shared.enums` に置く（feature の `dto` 配下には置かない）。列挙は値型なので、feature から `shared.enums` を参照してよい。
 - 1 つの Controller は 1 組のリソースに対応させる（REST パスは複数形 kebab-case。spec-naming-rule §2.1 参照）。
 
 ---
@@ -115,6 +117,8 @@ Result.ok(PageResult.of(list, total, pageNum, pageSize));
 | 例外型 | HTTP | messageId |
 |---------|:----:|---------------|
 | `MethodArgumentNotValidException` / `ConstraintViolationException` | 400 | `E0008` |
+| `MethodArgumentTypeMismatchException`（クエリ・パスの型変換失敗。不正な列挙値を含む）/ `HttpMessageNotReadableException`（JSON・ボディの列挙値・日付の形式不正）/ `MissingServletRequestParameterException` / `MissingServletRequestPartException`（multipart の必須パート欠落）/ `MissingPathVariableException` | 400 | `E0008`。`details[]` に項目（形式不正の詳細・パーサのメッセージは返さない） |
+| `InvalidRequestException`（messageId 保持・既定 `E0008`。Service 層の業務判定で見つかった入力不整合。`BusinessException` を継承しない） | 400 | 例外の messageId（既定 `E0008`、空ファイルは `E0053`）。`details[]` に項目 |
 | `AuthException`（messageId 保持）/ `AuthenticationException`（Spring Security）/ JWT 期限切れ | 401 | `AuthException` は例外の messageId（既定 `E0004`）、`AuthenticationException` は `E0004`、JWT 期限切れは `E0001` |
 | `AccessDeniedException`（ロール/データ範囲の不足） | 403 | `E0002` |
 | `EntityNotFoundException`（messageId 保持。リソース不存在） | 404 | 例外の messageId（既定 `E0005`） |
@@ -178,6 +182,7 @@ Result.ok(PageResult.of(list, total, pageNum, pageSize));
 <!-- rule: be.method-security-preauthorize -->
 - **機能レベル**：`@PreAuthorize("hasRole('ADMIN')")` 等を Controller メソッドに付与する（ロール列挙はプロジェクトで定義する。例：`ADMIN`。API yaml の `Role` 参照）。
 - **データ範囲（行レベル）**：ロールごとの範囲はプロジェクトで定義する（例：部門長は自部門のみ＝`department_id`、ユーザーは本人のみ＝`user_id` で絞り込み）。現在のログイン者の JWT（UserContext）から role と主体を取得し、Service/SQL で強制的に絞り込む。**フロントエンドに依存しない**。
+- **権限拒否の監査（`PERMISSION_DENIED`。BR-AUD-001）**：403 は business-service-core の `PermissionDeniedAuditListener`（Spring Security の `AuthorizationDeniedEvent` を受ける）が `AuditLogPort.recordDenied` で記録する。範囲外の 1 件参照・操作による 404（BR-AUTH-006）は、範囲判定を行う `OrderAccessPort` などが `EntityNotFoundException` を投げる直前に同じ `recordDenied` を呼ぶ。`recordDenied` は呼び出し元の事務が巻き戻っても残るよう別事務（`REQUIRES_NEW`）で記録する。一覧での自動除外は記録しない。
 - **項目閲覧（列レベル）**：詳細等は `spec-03-auth-ui.md` §3 の項目マトリクスに従い、共通の `MaskingService.maskByRole(dto, viewerRole, isSelf)` で一括処理する。マスク対象項目は `null` に設定し、Controller 内に分散させてはならない。
 
 ---

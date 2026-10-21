@@ -427,11 +427,37 @@ resource_files:
         default: 300
         unit: 秒
         description: 署名付き URL の標準有効期間
-      - key: app.export.file-expiry-days
+      - key: app.export.file-expiry-hours
         type: Integer
-        default: 7
-        unit: 日
-        description: "エクスポートファイル保持日数（所有: business-service-core）"
+        default: 24
+        unit: 時間
+        description: "CSV 出力ファイルの有効期限（完了から。BR-RPT-002。所有: business-service-core）。旧 app.export.file-expiry-days（7 日）は廃止"
+      - key: app.scan.type
+        type: Enum
+        values: [none, clamd]
+        default: none
+        env_var: SCAN_TYPE
+        description: "ウイルススキャンの方式。none は開発用（スキャンせず SAFE とし warn ログを出す）。clamd は ClamAV の clamd へ TCP（INSTREAM）で依頼する。本番は clamd（所有: business-service-core / BAT-05）"
+      - key: app.scan.clamd.host
+        type: String
+        default: localhost
+        env_var: CLAMD_HOST
+        description: "clamd のホスト（app.scan.type=clamd のとき）"
+      - key: app.scan.clamd.port
+        type: Integer
+        default: 3310
+        env_var: CLAMD_PORT
+        description: "clamd の TCP ポート"
+      - key: app.scan.clamd.timeout-seconds
+        type: Integer
+        default: 30
+        unit: 秒
+        description: "1 ファイルのスキャン待ち時間の上限。超過は PENDING のまま次回に再試行"
+      - key: app.mail.from
+        type: String
+        default: "no-reply@ddmsaa.local"
+        env_var: MAIL_FROM
+        description: "業務通知メール（BAT-01）の送信元。Magic Link の app.auth.mail-from とは別キー（所有: business-service-core）"
       - key: app.cors.allowed-origins
         type: String
         default: "http://localhost:3000"

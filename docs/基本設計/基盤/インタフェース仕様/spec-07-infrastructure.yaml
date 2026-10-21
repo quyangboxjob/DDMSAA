@@ -66,6 +66,44 @@ types:
       - "String presignedUrl(String objectKey, int expirySeconds)"
 
   # ----------------------------------------------------------------
+  # §7.1 ウイルススキャン（infrastructure.scan。2026-10-21 追加）
+  # ----------------------------------------------------------------
+
+  - fqcn: com.example.ddmsaa.infrastructure.scan.VirusScanService
+    kind: interface
+    package: com.example.ddmsaa.infrastructure.scan
+    purpose: 添付ファイルのウイルススキャンを抽象化するインタフェース。結果は SAFE / REJECTED / 実施不能（例外）の 3 通り
+    methods:
+      - "ScanResult scan(InputStream content, long contentLength)  // ScanResult = SAFE | REJECTED。スキャナ不達・タイムアウトは VirusScanUnavailableException"
+
+  - fqcn: com.example.ddmsaa.infrastructure.scan.ClamdVirusScanService
+    kind: class
+    package: com.example.ddmsaa.infrastructure.scan
+    implements:
+      - com.example.ddmsaa.infrastructure.scan.VirusScanService
+    annotations:
+      - "@Component"
+      - "@ConditionalOnProperty(name = \"app.scan.type\", havingValue = \"clamd\")"
+    purpose: ClamAV の clamd へ TCP（INSTREAM）で依頼する実装。追加ライブラリなし（ソケット実装）
+    constructors:
+      - "ClamdVirusScanService(String host, int port, int timeoutSeconds)"
+    methods:
+      - "ScanResult scan(InputStream content, long contentLength)"
+
+  - fqcn: com.example.ddmsaa.infrastructure.scan.NoopVirusScanService
+    kind: class
+    package: com.example.ddmsaa.infrastructure.scan
+    implements:
+      - com.example.ddmsaa.infrastructure.scan.VirusScanService
+    annotations:
+      - "@Component"
+      - "@ConditionalOnProperty(name = \"app.scan.type\", havingValue = \"none\", matchIfMissing = true)"
+    purpose: 開発・テスト用。スキャンせず SAFE を返し、warn ログ（本番で none を使っていないか検知できるように）を出す
+    constructors: []
+    methods:
+      - "ScanResult scan(InputStream content, long contentLength)"
+
+  # ----------------------------------------------------------------
   # §8 サービス間通信（infrastructure.rest）
   # 準拠: spec-04-common-component-ui.md §8
   # ----------------------------------------------------------------
