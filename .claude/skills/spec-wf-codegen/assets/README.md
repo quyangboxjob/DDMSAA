@@ -20,7 +20,7 @@
 |---|---|---|
 | Converter | **MapStruct**：`@Mapper(componentModel = "spring")` 接口，不手写实现 | coding-rule §2；spec-10-business-core.yaml §6 |
 | Mapper XML | 开启 `map-underscore-to-camel-case`；**Entity 映射优先用 `resultMap` 明示**，JOIN/复合映射必须 `resultMap`（简单单表查询可自动映射） | coding-rule §6；spec-10-business-core.yaml §5 |
-| Entity | 普通 POJO（getter/setter），不含业务方法；含审计列字段（`createdAt/createdBy/updatedAt/updatedBy`）供拦截器写入 | coding-rule §2、spec-07-infrastructure.yaml `MetaObjectHandler` |
+| Entity | 普通 POJO（getter/setter），不含业务方法；含审计列字段（`createdAt/createdBy/updatedAt/updatedBy`；`createdBy/updatedBy` 由拦截器写入，两个时间由数据库设置） | coding-rule §2、spec-07-infrastructure.yaml `MetaObjectHandler` |
 | 审计列 | **Service 不手填**。`MetaObjectHandler`（MyBatis Interceptor）在 INSERT 时填 `created_*`/`updated_*`，UPDATE 时填 `updated_*`，取值 `UserContext.getUserId()`（空则 `SYSTEM`） | spec-07-infrastructure.yaml |
 | 主键 | 默认 `VARCHAR(10)`，由 `next_business_id` 采番；`users` 例外（前缀 A/E/C + 4 位，应用层传前缀） | spec-database-rule §4.1 |
 | 枚举 | DB 为 INT + `*_codes` 表；API 为 UPPER_SNAKE 字符串；Java enum 自带 `int code` + `fromCode`；Entity 用 `Integer` | spec-database-rule §4.1-CODE、T07 |

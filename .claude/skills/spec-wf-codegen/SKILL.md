@@ -26,7 +26,7 @@ description: 根据 DDMSAA feature 详细设计生成 Spring Boot/MyBatis 后端
 ## 生成规则
 
 - 按 `assets/` 的模板逐层生成，顺序：枚举 → Entity → Mapper（接口 + XML）→ DTO → Converter → ServiceImpl → Controller → Batch。模板与 `docs/開発規約/spec-backend-coding-rule.md` 冲突时以规约为准，并报告模板需回写。
-- 关键裁定（详见 `assets/README.md`）：Converter 用 **MapStruct**；Mapper XML 以 **resultMap** 明示映射（开启下划线映射）；审计列由 `MetaObjectHandler` 自动写入，Service 不手填；枚举为 INT + `*_codes`，Entity 用 `Integer`；乐观锁 `updated_at`，冲突 `E0051`；业务规则按 `spec-08-business-rule-list.md` 的 BR 编号执行。
+- 关键裁定（详见 `assets/README.md`）：Converter 用 **MapStruct**；Mapper XML 以 **resultMap** 明示映射（开启下划线映射）；`created_by`/`updated_by` 由 `MetaObjectHandler` 自动写入，`created_at`/`updated_at` 由数据库（DEFAULT/触发器）设置，Mapper 的 INSERT/UPDATE 不写时间列，Service 不手填；枚举为 INT + `*_codes`，Entity 用 `Integer`；乐观锁 `updated_at`，冲突 `E0051`；业务规则按 `spec-08-business-rule-list.md` 的 BR 编号执行。
 
 1. 先确认详细设计、目标模块和必要脚手架均存在；缺少任何一项时停止并说明依赖。
 2. Entity、Mapper、DTO、Controller、服务逻辑和授权仅从 schema、OpenAPI、消息与认证设计导出。不要预设表、主键、用户标识、角色或 REST 路径。

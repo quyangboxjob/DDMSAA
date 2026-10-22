@@ -57,7 +57,7 @@ class MetaObjectHandlerTest {
     }
 
     @Test
-    @DisplayName("INSERT では 4 つの監査列を UserContext のユーザーで設定する（親クラスの項目も含む）")
+    @DisplayName("INSERT では createdBy / updatedBy を UserContext のユーザーで設定する（親クラスの項目も含む）")
     void insertSetsAllAuditColumns() throws Throwable {
         UserContext.set("E0001", "EMPLOYEE");
         Entity entity = new Entity();
@@ -67,14 +67,12 @@ class MetaObjectHandlerTest {
 
         assertThat(result).isEqualTo(1);
         assertThat(proceeded[0]).isEqualTo("called");
-        assertThat(entity.createdAt).isNotNull();
-        assertThat(entity.updatedAt).isEqualTo(entity.createdAt);
         assertThat(entity.createdBy).isEqualTo("E0001");
         assertThat(entity.updatedBy).isEqualTo("E0001");
     }
 
     @Test
-    @DisplayName("UPDATE では updatedAt / updatedBy だけを設定し created 系は変更しない")
+    @DisplayName("UPDATE では updatedBy だけを設定し created 系は変更しない")
     void updateSetsOnlyUpdatedColumns() throws Throwable {
         UserContext.set("A0001", "ADMIN");
         Entity entity = new Entity();
@@ -82,10 +80,24 @@ class MetaObjectHandlerTest {
 
         handler.intercept(invocation(SqlCommandType.UPDATE, entity, proceeded));
 
-        assertThat(entity.updatedAt).isNotNull();
         assertThat(entity.updatedBy).isEqualTo("A0001");
         assertThat(entity.createdAt).isNull();
         assertThat(entity.createdBy).isNull();
+    }
+
+    @Test
+    @DisplayName("日時列（createdAt / updatedAt）は INSERT・UPDATE のどちらでも設定しない（DB が正本）")
+    void timestampsAreLeftToTheDatabase() throws Throwable {
+        Entity inserted = new Entity();
+        Entity updated = new Entity();
+        Object[] proceeded = new Object[1];
+
+        handler.intercept(invocation(SqlCommandType.INSERT, inserted, proceeded));
+        handler.intercept(invocation(SqlCommandType.UPDATE, updated, proceeded));
+
+        assertThat(inserted.createdAt).isNull();
+        assertThat(inserted.updatedAt).isNull();
+        assertThat(updated.updatedAt).isNull();
     }
 
     @Test
@@ -147,6 +159,6 @@ class MetaObjectHandlerTest {
         handler.intercept(invocation(SqlCommandType.INSERT, param, proceeded));
 
         assertThat(first.createdBy).isEqualTo("SYSTEM");
-        assertThat(second.updatedAt).isNotNull();
+        assertThat(second.updatedBy).isEqualTo("SYSTEM");
     }
 }

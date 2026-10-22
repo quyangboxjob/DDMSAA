@@ -128,6 +128,7 @@ Result.ok(PageResult.of(list, total, pageNum, pageSize));
 | `MaxUploadSizeExceededException`（ファイルサイズ超過） | 413 | `E0010` |
 | `PayloadTooLargeException`（messageId 保持。Service 層で判定するサイズ超過。`BusinessException` を継承しない） | 413 | 例外の messageId（1 ファイル `E0010`、注文合計 `E0052`） |
 | ロック・レート制限（予約。Magic Link 認証では失敗ロックを使わないため現状未使用） | 429 | `E0003`（`E0005` は流用不可） |
+| `DuplicateKeyException`（一意制約違反。Service の事前チェックをすり抜けた同時登録の競合） | 409 | `E0007` |
 | `DataAccessException` / `Exception`（未捕捉のシステム例外。スタックトレースを error ログ出力） | 500 | `E0012` |
 | 下流到達不可 / タイムアウト（Gateway 層で変換。個別の対応は Gateway 設計が定める） | 502 / 504 | `E0013` / `E0043` |
 

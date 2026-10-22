@@ -46,4 +46,5 @@ public class {{Entity}} {
 - **MUST-NOT** 在 Entity 写业务方法；**MUST-NOT** 直接作为 Controller 返回值。
 - **MUST-NOT** 用 `float/double` 表示金额与数量。
 - 不使用 Lombok 与持久化注解，除非规约另有规定。
-- 乐观锁：Entity 的 `updatedAt` 会被 `MetaObjectHandler` 在 UPDATE 时覆盖为当前时间，因此校验用的"客户端传来的旧值"必须另用参数传递（见 mapper 模板 `expectedUpdatedAt`），不要复用该字段。
+- 时间戳：`createdAt`/`updatedAt` 由数据库设置（INSERT 的 DEFAULT、UPDATE 的触发器），`MetaObjectHandler` 只写 `createdBy`/`updatedBy`；Mapper 的 INSERT/UPDATE 不写这两列。写入后 Entity 里的 `updatedAt` 不是最新值，需要时重新读取。
+- 乐观锁：校验用的"客户端传来的旧值"另用参数传递（见 mapper 模板 `expectedUpdatedAt`），不要复用 Entity 的 `updatedAt`。

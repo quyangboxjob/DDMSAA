@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.MediaType;
@@ -308,6 +309,14 @@ class GlobalExceptionHandlerTest {
 
         assertBase(response, 413, "E0052");
         assertThat(response.getBody().getMessageArgs()).containsExactly("50");
+    }
+
+    @Test
+    @DisplayName("DuplicateKeyException（同時登録による一意制約違反）は 409 E0007")
+    void duplicateKeyIs409() {
+        DuplicateKeyException ex = new DuplicateKeyException("uq_customers_customer_code");
+
+        assertBase(handler.handleDuplicateKey(ex, request), 409, "E0007");
     }
 
     @Test

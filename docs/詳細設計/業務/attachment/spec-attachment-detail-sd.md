@@ -250,7 +250,7 @@ sequenceDiagram
 4. サイズを検査する（BR-FIL-002）：0 バイトは InvalidRequestException("E0053", "file", 理由)（400。Service 判定の 400）、10 MiB 超は PayloadTooLargeException("E0010")（413）。サイズは MultipartFile.getSize() による。フレームワークの上限（TBD-FIL-04）を超えた場合は MaxUploadSizeExceededException として同じ 413 E0010 になる
 5. 注文の合計容量を求める：SELECT COALESCE(SUM(file_size), 0) FROM order_attachments WHERE order_id = ? AND deleted_at IS NULL AND scan_status <> 3(REJECTED)（BR-FIL-005）。合計 + 今回のサイズ > 52,428,800 なら PayloadTooLargeException("E0052")（413）。BusinessException は 409 になるため使わない（coding-rule §4）
 6. ランダムな storage_path を発行する（UUID ベース。元のファイル名・注文 ID・拡張子を含めない）。FileStorageService.upload(storagePath, stream, size, 検出 MIME) で保存する。保存失敗は RuntimeException のまま伝播し 500 E0012・ロールバック（IF-02）
-7. order_attachments を INSERT：order_id、original_file_name（元のファイル名）、storage_path、content_type（検出 MIME）、file_size、visibility、scan_status=PENDING（code 1）、storage_purged_at=NULL。id は DB の next_business_id('AT', 8)。created_by / created_at（アップロード者・日時）は MetaObjectHandler が自動設定
+7. order_attachments を INSERT：order_id、original_file_name（元のファイル名）、storage_path、content_type（検出 MIME）、file_size、visibility、scan_status=PENDING（code 1）、storage_purged_at=NULL。id は DB の next_business_id('AT', 8)。created_by（アップロード者）は MetaObjectHandler が、created_at（日時）は DB の既定値が自動設定
 8. AuditLogPort.record("ATTACHMENT_UPLOAD", "ATTACHMENT", 添付 ID, detail{orderId, fileSize, visibility}) を同一トランザクション内で呼ぶ（audit_logs への INSERT は user 側の実装。ファイル本体・ファイル内容を detail に含めない。BR-AUD-001）
 9. トランザクション同期を登録する：ロールバック時は手順 6 で保存したオブジェクトを FileStorageService.delete で削除する（孤児オブジェクトを残さない。削除失敗は WARN ログ）。アップロード API はウイルススキャンを呼ばず、依頼の登録もしない（PENDING のまま保存するだけ。BAT-05 が 1 分ごとに PENDING を拾ってスキャンし、SAFE になるまで配信されない）
 10. Result.ok(添付 ID, "I0024", 添付 ID) を返す

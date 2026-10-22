@@ -16,19 +16,24 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.slf4j.MDC;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * サービス間 HTTP 呼び出し用の {@link ServiceClient} を生成するファクトリ。
  *
  * <p>base-url は {@code app.services.<serviceName>.base-url}、タイムアウトは
  * {@code app.services.connect-timeout-seconds}（既定 5）・
- * {@code app.services.read-timeout-seconds}（既定 30）から解決する。認証済みスレッドでは
- * X-User-Id / X-User-Role を、常に X-Request-Id（MDC の traceId、無ければ UUID）を付与する。</p>
+ * {@code app.services.read-timeout-seconds}（既定 30）から解決する。受信中の HTTP リクエストに
+ * Bearer の Authorization があれば、そのまま下流へ転送する（下流も JWT を自分で検証する。
+ * X-User-* ヘッダーは信用されない）。認証済みスレッドでは X-User-Id / X-User-Role（参考情報）を、
+ * 常に X-Request-Id（MDC の traceId、無ければ UUID）を付与する。</p>
  */
 @Component
 public class RestClientFactory {
@@ -80,6 +85,10 @@ public class RestClientFactory {
                             request.getHeaders().set("X-User-Role", role);
                         }
                     }
+                    String authorization = currentBearerAuthorization();
+                    if (authorization != null) {
+                        request.getHeaders().set(HttpHeaders.AUTHORIZATION, authorization);
+                    }
                     String traceId = MDC.get("traceId");
                     if (traceId == null || traceId.isBlank()) {
                         traceId = UUID.randomUUID().toString().replace("-", "");
@@ -92,6 +101,22 @@ public class RestClientFactory {
                 })
                 .build();
         return new RestServiceClient(restClient);
+    }
+
+    /**
+     * 受信中の HTTP リクエストの Bearer Authorization を返す。リクエストスレッド以外（バッチ等）や
+     * Bearer でない場合は null。
+     *
+     * @return Authorization ヘッダーの値。無ければ null
+     */
+    private static String currentBearerAuthorization() {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+            String value = attrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+            if (value != null && value.startsWith("Bearer ")) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private static BusinessException toBusinessException(byte[] body) {

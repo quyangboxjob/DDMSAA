@@ -69,8 +69,9 @@ behavior_contracts:
 
   MetaObjectHandler_optimistic_lock:
     rule: >-
-      MetaObjectHandler は UPDATE 時に updatedAt / updatedBy を常に現在値で上書きする（spec-07-infrastructure.yaml MetaObjectHandler 参照）。
-      そのため業務 Mapper の楽観ロックは、エンティティの updatedAt を条件に使ってはならず、
+      MetaObjectHandler は日時列を設定しない（created_at は DEFAULT、updated_at は DB トリガーが設定。spec-07-infrastructure.yaml MetaObjectHandler 参照）。
+      したがって Mapper の INSERT / UPDATE は日時列を指定せず、エンティティの updatedAt は書き込み後の最新値ではない。
+      業務 Mapper の楽観ロックは、エンティティの updatedAt を条件に使わず、
       別パラメータ `expectedUpdatedAt`（読み取り時点の値）を WHERE 条件（updated_at = #{expectedUpdatedAt}）に使うこと。
       更新件数 0 は競合として扱う。雛形は .claude/skills/spec-wf-codegen/assets/mapper.xml.tmpl を参照。
 

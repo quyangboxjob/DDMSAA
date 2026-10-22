@@ -35,6 +35,7 @@ types:
       - "ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handlePayloadTooLarge(PayloadTooLargeException ex, HttpServletRequest request)"
+      - "ResponseEntity<ErrorResponse> handleDuplicateKey(DuplicateKeyException ex, HttpServletRequest request)  // 一意制約違反（同時登録の競合）を 409 E0007 に変換する（2026-10-22 決定）"
       - "ResponseEntity<ErrorResponse> handleDataAccessException(DataAccessException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleException(Exception ex, HttpServletRequest request)"
 

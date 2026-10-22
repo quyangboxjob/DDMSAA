@@ -42,14 +42,15 @@ Mapper 接口对应的 SQL，落 `ddmsaa-backend/business-service-core/src/main/
     <!-- id は列に含めず DB DEFAULT（next_business_id）で採番。users は例外（アプリが前缀 A/E/C で採番した値を渡す） -->
     <insert id="insert" parameterType="{{basePkg}}.{{feature}}.entity.{{Entity}}"
             useGeneratedKeys="true" keyProperty="{{pkField}}" keyColumn="{{pkColumn}}">
-        INSERT INTO {{table}} ({{業務列}}, created_at, created_by, updated_at, updated_by)
-        VALUES ({{#{...}}}, #{createdAt}, #{createdBy}, #{updatedAt}, #{updatedBy})
-        <!-- created_*/updated_* は MetaObjectHandler が entity に設定済みの値を渡す -->
+        INSERT INTO {{table}} ({{業務列}}, created_by, updated_by)
+        VALUES ({{#{...}}}, #{createdBy}, #{updatedBy})
+        <!-- created_by/updated_by は MetaObjectHandler が entity に設定済みの値。created_at/updated_at は列に含めない（DB の DEFAULT CURRENT_TIMESTAMP） -->
     </insert>
 
     <update id="updateWithLock">
         UPDATE {{table}}
-        SET {{可変列 = #{entity.…}}}, updated_at = #{entity.updatedAt}, updated_by = #{entity.updatedBy}
+        SET {{可変列 = #{entity.…}}}, updated_by = #{entity.updatedBy}
+        <!-- updated_at は指定しない（DB トリガー trg_set_updated_at_* が設定する） -->
         WHERE {{pkColumn}} = #{entity.{{pkField}}}
           AND updated_at = #{expectedUpdatedAt}
           AND deleted_at IS NULL

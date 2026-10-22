@@ -16,6 +16,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @DisplayName("RestClientFactory のサービス間呼び出し")
 class RestClientFactoryTest {
@@ -29,6 +32,7 @@ class RestClientFactoryTest {
         }
         UserContext.clear();
         MDC.clear();
+        RequestContextHolder.resetRequestAttributes();
     }
 
     private MockEnvironment startServer(AtomicReference<com.sun.net.httpserver.Headers> headers,
@@ -79,6 +83,37 @@ class RestClientFactoryTest {
         assertThat(headers.get().getFirst("X-User-Id")).isNull();
         assertThat(headers.get().getFirst("X-User-Role")).isNull();
         assertThat(headers.get().getFirst("X-Request-Id")).matches("[0-9a-f]{32}");
+    }
+
+    @Test
+    @DisplayName("受信中のリクエストの Bearer Authorization を下流へそのまま転送する")
+    void forwardsBearerAuthorization() throws Exception {
+        AtomicReference<com.sun.net.httpserver.Headers> headers = new AtomicReference<>();
+        MockEnvironment env = startServer(headers, 200, "ok", 5);
+        MockHttpServletRequest incoming = new MockHttpServletRequest();
+        incoming.addHeader("Authorization", "Bearer jwt-from-caller");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(incoming));
+
+        new RestClientFactory(env).create("core").get("/ping", String.class);
+
+        assertThat(headers.get().getFirst("Authorization")).isEqualTo("Bearer jwt-from-caller");
+    }
+
+    @Test
+    @DisplayName("リクエストスレッド以外、または Bearer でない場合は Authorization を付けない")
+    void doesNotForwardWithoutBearer() throws Exception {
+        AtomicReference<com.sun.net.httpserver.Headers> headers = new AtomicReference<>();
+        MockEnvironment env = startServer(headers, 200, "ok", 5);
+        RestClientFactory factory = new RestClientFactory(env);
+
+        factory.create("core").get("/ping", String.class);
+        assertThat(headers.get().getFirst("Authorization")).isNull();
+
+        MockHttpServletRequest basic = new MockHttpServletRequest();
+        basic.addHeader("Authorization", "Basic abc");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(basic));
+        factory.create("core").get("/ping", String.class);
+        assertThat(headers.get().getFirst("Authorization")).isNull();
     }
 
     @Test

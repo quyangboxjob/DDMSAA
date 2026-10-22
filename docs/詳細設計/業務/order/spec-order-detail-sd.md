@@ -236,7 +236,7 @@
 
 ```
 T1. orders を UPDATE（status、cancel_reason など。WHERE id = ? AND updated_at = ? AND status IN (前状態)。0 行は E0051）
-T2. order_status_histories を INSERT（order_id、from_status、to_status、reason。変更者・日時は created_by / created_at を MetaObjectHandler が設定）
+T2. order_status_histories を INSERT（order_id、from_status、to_status、reason。変更者は created_by を MetaObjectHandler が、日時は created_at を DB の既定値が設定）
 T3. AuditLogPort.record(ORDER_*, "ORDER", 注文 ID, detail) を呼ぶ（audit_logs の INSERT は user 側の実装。actor は UserContext。detail は任意の補足。null 可）
 T4. submit のみ：ApprovalRequestPort.openRequest(orderId, 申請者, 再計算後の合計金額) を呼ぶ（approval_requests の INSERT は approval 側の実装。該当ルールなしは E0006 で全体ロールバック）
 T5. submit / cancel：NotificationPort.enqueue(ORDER_SUBMITTED | ORDER_CANCELLED, subject) を呼ぶ（宛先解決と notification_logs への QUEUED の INSERT は approval 側の実装。送信は BAT-01 がコミット後に行う）

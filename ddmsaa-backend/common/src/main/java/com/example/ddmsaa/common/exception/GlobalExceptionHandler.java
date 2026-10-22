@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -54,6 +55,7 @@ public class GlobalExceptionHandler {
     private static final String E_FORBIDDEN = "E0002";
 
     private static final String E_NOT_FOUND = "E0005";
+    private static final String E_ALREADY_EXISTS = "E0007";
 
     private static final String E_FILE_TOO_LARGE = "E0010";
 
@@ -294,6 +296,21 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(), traceId());
         return respond(HttpStatus.PAYLOAD_TOO_LARGE,
                 base(ex.getMessageId(), ex.getArgs(), request));
+    }
+
+    /**
+     * 一意制約違反（{@link DuplicateKeyException}）を 409 / E0007 に変換する。Service の事前チェックを
+     * すり抜けた同時登録（競合）がシステムエラー（500）にならないようにする。
+     *
+     * @param ex 例外
+     * @param request リクエスト
+     * @return 409 の ErrorResponse（E0007）
+     */
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateKey(DuplicateKeyException ex,
+            HttpServletRequest request) {
+        log.warn("Duplicate key: path={}, traceId={}", request.getRequestURI(), traceId());
+        return respond(HttpStatus.CONFLICT, base(E_ALREADY_EXISTS, null, request));
     }
 
     /**

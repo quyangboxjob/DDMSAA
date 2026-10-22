@@ -49,7 +49,7 @@ public interface {{Entity}}Mapper {
 ## 4. 本层硬约束（must / must-not）
 - **MUST** 一个 Entity ↔ 一个 `<Entity>Mapper` 接口 + 同名 XML；namespace = 接口 FQCN。
 - **MUST** 多参数用 `@Param`；分页方法返回 `List<{{Entity}}>`，`PageHelper.startPage()` 在 ServiceImpl 调用。
-- **MUST** 乐观锁方法单独接收 `expectedUpdatedAt`（不复用 Entity 的 `updatedAt`，它会被拦截器覆盖）。
+- **MUST** 乐观锁方法单独接收 `expectedUpdatedAt`（不复用 Entity 的 `updatedAt`，写入后它不是数据库里的最新值）。
 - **MUST** 一览类方法的参数里带数据范围条件（EMPLOYEE 的担当顾客集合、CUSTOMER 的自社 ID），范围由 Service 求出后传入。
 - **MUST-NOT** 写跨聚合业务编排、字符串拼 SQL。
 - **MUST-NOT** 物理 `DELETE`（除 spec-database-rule §4.3 的例外表）；履历表无逻辑删除。

@@ -256,7 +256,7 @@ sequenceDiagram
 2. 承認依頼の status が PENDING でなければ BusinessException("E0006")（409）。先に別の ADMIN が処理した場合を含む（BR-APR-005）
 3. 操作者（UserContext.getUserId()）= approval_requests.created_by なら BusinessException("E0056")（409。BR-APR-002）
 4. OrderStatePort.transition(order_id, PENDING_APPROVAL, APPROVED, null) を呼ぶ。order 側が注文行を FOR UPDATE でロックし、状態が PENDING_APPROVAL か確認（違えば 409 E0006、注文が不存在・論理削除済みなら 404 E0005）、orders.status を更新し、order_status_histories を INSERT し、ORDER_APPROVE 監査を記録する（本機能は注文テーブル・監査を直接書かない）。戻り値 OrderTransition から customerId・salesUserId を得る
-5. approval_histories に INSERT（approval_request_id、approval_action=APPROVE、reason=NULL。操作者・日時は created_by / created_at に自動設定）
+5. approval_histories に INSERT（approval_request_id、approval_action=APPROVE、reason=NULL。操作者は created_by（MetaObjectHandler）、日時は created_at（DB の既定値）に自動設定）
 6. approval_requests を UPDATE：status=APPROVED、approver_user_id=操作者、acted_at=現在時刻（UPDATE … WHERE id=? AND status=PENDING。更新行数 0 は E0006）
 7. NotificationPort.enqueue(ORDER_APPROVED, NotificationSubject.forOrder(注文番号, customerId, salesUserId, 申請者＝approval_requests.created_by, PENDING_APPROVAL)) を同一トランザクションで呼ぶ。宛先は §1.2.10（BR-NTF-003）。手順 2 の状態検査により 1 つの承認依頼につき 1 回だけ到達するため通知は二重にならない
 8. Result.ok(null, "I0022") を返す

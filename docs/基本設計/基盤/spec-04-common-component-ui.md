@@ -408,7 +408,8 @@ messageId の形式・区分・番号帯は `基本設計/共通/spec-00-doc-sta
 
 - 配置：`com.example.ddmsaa.infrastructure.rest.RestClientFactory`
 - **自動透過ヘッダ**（下流への伝播）：
-  - `X-User-Id` / `X-User-Role` — `UserContext.getUserId()` / `getRole()`（認証済みスレッドのみ）。Gateway の下流伝播方式と統一。生 Bearer は `UserContext` に保持しないため `Authorization` 転送は行わない。
+  - `Authorization` — 受信中の HTTP リクエストの Bearer をそのまま転送する（下流も JWT を自分で検証する。2026-10-22 決定）。リクエストスレッド以外（バッチ等）では付与しない。
+  - `X-User-Id` / `X-User-Role` — `UserContext.getUserId()` / `getRole()`（認証済みスレッドのみ。参考情報で、下流は信用しない）。
   - `X-Request-Id` — `MDC.get("traceId")`。空なら UUID（ハイフンなし）を生成して常時付与。
 - **タイムアウト設定**：接続 / 読み取りタイムアウトを設定化（`app.services.connect-timeout-seconds` / `app.services.read-timeout-seconds`、秒単位）。接続失敗→`BusinessException(E0013)`、読み取りタイムアウト→`BusinessException(E0043)`、下流 4xx/5xx→ラップ。
 

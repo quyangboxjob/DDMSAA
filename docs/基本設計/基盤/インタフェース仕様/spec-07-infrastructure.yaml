@@ -142,7 +142,7 @@ types:
     annotations:
       - "@Component"
       - "@Intercepts({@Signature(type = org.apache.ibatis.executor.Executor.class, method = \"update\", args = {org.apache.ibatis.mapping.MappedStatement.class, Object.class})})"
-    purpose: "MyBatis Interceptor として INSERT 実行時に created_at・updated_at・created_by・updated_by を、UPDATE 実行時に updated_at・updated_by を UserContext（または SYSTEM フォールバック）から自動設定する監査列ハンドラ。"
+    purpose: "MyBatis Interceptor として INSERT 実行時に created_by・updated_by を、UPDATE 実行時に updated_by を UserContext（または SYSTEM フォールバック）から自動設定する監査列ハンドラ。日時列（created_at・updated_at）は設定しない（DB の既定値・updated_at トリガーが正本。2026-10-22 決定）。"
     constructors:
       - "MetaObjectHandler()"
     methods:
@@ -169,13 +169,11 @@ behavior_contracts:
   MetaObjectHandler:
     audit_columns:
       INSERT:
-        - { field: createdAt,  type: OffsetDateTime, value: "OffsetDateTime.now()" }
-        - { field: updatedAt,  type: OffsetDateTime, value: "OffsetDateTime.now()" }
         - { field: createdBy,  type: String,         value: "UserContext.getUserId() または 'SYSTEM'" }
         - { field: updatedBy,  type: String,         value: "UserContext.getUserId() または 'SYSTEM'" }
       UPDATE:
-        - { field: updatedAt,  type: OffsetDateTime, value: "OffsetDateTime.now()" }
         - { field: updatedBy,  type: String,         value: "UserContext.getUserId() または 'SYSTEM'" }
+    timestamps: "created_at・updated_at は Java 側で設定しない。INSERT は列の DEFAULT CURRENT_TIMESTAMP、UPDATE は trg_set_updated_at_* が設定する。Mapper の INSERT / UPDATE 文は日時列を指定せず、更新後の値は再読込で取得する。"
     contracts:
       - condition: "UserContext.getUserId() が null（非 HTTP スレッド・バッチ等）"
         action: "'SYSTEM' をフォールバック値として使用する。早期リターンしない。"
@@ -235,9 +233,13 @@ behavior_contracts:
       - header: "X-User-Id / X-User-Role"
         source: UserContext.getUserId() / UserContext.getRole()
         condition: >
-          認証済みスレッド（UserContext.getUserId() が非 null）のみ付与。
-          Gateway が下流へ伝播する内部識別方式（X-User-Id / X-User-Role）と統一する。
-          生 Bearer トークンは UserContext に保持しないため Authorization 転送は行わない。
+          認証済みスレッド（UserContext.getUserId() が非 null）のみ付与する参考情報。
+          下流サービスは X-User-* を信用せず、JWT から識別する（JwtAuthenticationFilter）。
+      - header: Authorization
+        source: 受信中の HTTP リクエストの Authorization ヘッダー（RequestContextHolder）
+        condition: >
+          Bearer の場合のみ、そのまま下流へ転送する（2026-10-22 決定。下流も JWT を自分で検証するため、
+          ヘッダー信頼に依存しない）。リクエストスレッド以外（バッチ等）では付与しない。
       - header: X-Request-Id
         source: MDC の traceId
         condition: 常に付与。MDC が空の場合は UUID（ハイフンなし）を生成して付与する
