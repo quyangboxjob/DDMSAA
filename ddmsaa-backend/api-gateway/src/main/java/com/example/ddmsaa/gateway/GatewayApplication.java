@@ -1,5 +1,6 @@
 package com.example.ddmsaa.gateway;
 
+import java.util.TimeZone;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import reactor.core.publisher.Hooks;
@@ -22,6 +23,8 @@ public class GatewayApplication {
      * @param args コマンドライン引数
      */
     public static void main(String[] args) {
+        // システムタイムゾーンは Asia/Tokyo（spec-11）。エラー応答の timestamp などを日本時間にする。
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"));
         Hooks.enableAutomaticContextPropagation();
         SpringApplication.run(GatewayApplication.class, args);
     }

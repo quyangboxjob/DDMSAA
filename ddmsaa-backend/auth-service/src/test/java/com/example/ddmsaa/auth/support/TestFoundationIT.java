@@ -60,7 +60,8 @@ class TestFoundationIT extends AbstractIntegrationTest {
         MvcResult init = postJson("/api/v1/auth/login-init", "{\"userId\":\"E0001\"}");
         ApiResponseAssert.assertThat(init).isSuccess().hasMessageId("I0001");
         assertThat(mailSender.sentCount()).isEqualTo(1);
-        assertThat(mailSender.simpleMessages().get(0).getTo()).containsExactly("employee@example.com");
+        assertThat(mailSender.simpleMessages().get(0).getTo())
+                .containsExactly("employee@example.com");
         Matcher matcher = TOKEN.matcher(mailSender.lastSimpleText());
         assertThat(matcher.find()).isTrue();
         String token = matcher.group(1);

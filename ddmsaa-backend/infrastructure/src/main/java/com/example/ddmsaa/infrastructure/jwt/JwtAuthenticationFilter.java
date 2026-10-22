@@ -1,6 +1,11 @@
 package com.example.ddmsaa.infrastructure.jwt;
 
 import com.example.ddmsaa.common.exception.AuthException;
+import com.example.ddmsaa.common.response.ErrorResponse;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,6 +15,7 @@ import java.io.IOException;
 import java.util.List;
 import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,6 +33,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private static final String MDC_USER_ID = "userId";
+
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            .findAndAddModules()
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .build();
 
     private static final List<String> PERMIT_ALL_PREFIXES = List.of("/api/v1/auth/", "/actuator/");
 
@@ -64,7 +76,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     claims = jwtUtil.validateAndGetClaims(header.substring(BEARER_PREFIX.length()));
                 } catch (AuthException e) {
                     SecurityContextHolder.clearContext();
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    writeUnauthorized(request, response, e.getMessageId());
                     return;
                 }
                 String userId = claims.getSubject();
@@ -82,6 +94,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserContext.clear();
             MDC.remove(MDC_USER_ID);
         }
+    }
+
+    /**
+     * 401 と {@link ErrorResponse}（E0001 期限切れ・E0040 未指定・E0041 不正）を書き込む。
+     * 本文を返すことで、画面側が messageId で「セッション切れ」と判別できる（spec-12 §3）。
+     *
+     * @param request リクエスト
+     * @param response レスポンス
+     * @param messageId エラーメッセージ ID
+     * @throws IOException 書き込みに失敗した場合
+     */
+    private static void writeUnauthorized(HttpServletRequest request,
+            HttpServletResponse response, String messageId) throws IOException {
+        ErrorResponse body = ErrorResponse.of(messageId, request.getRequestURI(),
+                MDC.get("traceId"));
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        MAPPER.writeValue(response.getWriter(), body);
     }
 
     /**

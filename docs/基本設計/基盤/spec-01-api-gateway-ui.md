@@ -263,7 +263,7 @@ OPTIONS リクエストは `CorsWebFilter` で即座に `200 OK` を返し、認
 ### §6.5 既知の制限（現行実装）
 
 - **未マッチルートの 404 に TraceId なし**：どのルートにも一致しないリクエストの 404 応答は、`TraceIdGlobalFilter` を経由しないため `traceId` が付かない。
-- **UnknownHostException は 500 扱い**：下流ホスト名の解決失敗は現状 500 `E0012` に分類される。502 に分類するのが望ましい（待改）。
+- **（解消済み 2026-10-22）UnknownHostException・NoRouteToHostException**：下流ホストの名前解決・経路失敗は 502 `E0013` に分類する。
 - **セキュリティヘッダ（§5）は単独実装なし**：`nosniff` 等のヘッダ付与用フィルタは未実装で、Spring Security 既定ヘッダ（WebFlux）に依存している。§5 の全ヘッダ（`Strict-Transport-Security` 等）が揃うとは限らない。
 
 ---

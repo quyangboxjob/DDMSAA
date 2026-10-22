@@ -44,7 +44,8 @@ class MapperXmlTest {
     }
 
     @Test
-    @DisplayName("findAuthView: users / user_contacts / system_locks を LEFT JOIN し users の論理削除を除外する")
+    @DisplayName("findAuthView: users / user_contacts / system_locks を "
+            + "LEFT JOIN し users の論理削除を除外する")
     void findAuthView_sqlContract() {
         String sql = sql("com.example.ddmsaa.auth.mapper.UserAuthMapper.findAuthView");
 

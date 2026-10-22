@@ -49,10 +49,11 @@ class SupportClassesTest {
         TestJwt testJwt = new TestJwt(SECRET, "ddmsaa");
         JwtUtil util = realJwtUtil();
 
-        assertThatThrownBy(() -> util.validateAndGetClaims(testJwt.expiredToken("A0001", Role.ADMIN)))
-                .isInstanceOf(AuthException.class).hasMessageContaining("E0001");
         assertThatThrownBy(
-                () -> util.validateAndGetClaims(testJwt.tokenWithWrongSignature("A0001", Role.ADMIN)))
+                () -> util.validateAndGetClaims(testJwt.expiredToken("A0001", Role.ADMIN)))
+                .isInstanceOf(AuthException.class).hasMessageContaining("E0001");
+        assertThatThrownBy(() -> util.validateAndGetClaims(
+                testJwt.tokenWithWrongSignature("A0001", Role.ADMIN)))
                 .isInstanceOf(AuthException.class).hasMessageContaining("E0041");
     }
 
@@ -68,7 +69,8 @@ class SupportClassesTest {
     @Test
     @DisplayName("TestJwt.bearer は Bearer 接頭辞付きの値を返す")
     void bearerHasPrefix() {
-        assertThat(new TestJwt(SECRET, "ddmsaa").bearer("A0001", Role.ADMIN)).startsWith("Bearer ey");
+        assertThat(new TestJwt(SECRET, "ddmsaa").bearer("A0001", Role.ADMIN))
+                .startsWith("Bearer ey");
     }
 
     @Test
@@ -85,7 +87,8 @@ class SupportClassesTest {
         assertThat(storage.presignedUrl("a/b.txt", 300)).contains("a/b.txt");
         storage.delete("a/b.txt");
         assertThat(storage.contains("a/b.txt")).isFalse();
-        assertThatThrownBy(() -> storage.download("a/b.txt")).isInstanceOf(NoSuchElementException.class);
+        assertThatThrownBy(() -> storage.download("a/b.txt"))
+                .isInstanceOf(NoSuchElementException.class);
         storage.upload("c", new ByteArrayInputStream(data), data.length, "x");
         storage.clear();
         assertThat(storage.keys()).isEmpty();
@@ -107,7 +110,8 @@ class SupportClassesTest {
         assertThat(scan.scanCount()).isEqualTo(3);
         scan.reset();
         assertThat(scan.scanCount()).isZero();
-        assertThat(scan.scan(new ByteArrayInputStream(new byte[] {1}), 1)).isEqualTo(ScanResult.SAFE);
+        assertThat(scan.scan(new ByteArrayInputStream(new byte[] {1}), 1))
+                .isEqualTo(ScanResult.SAFE);
     }
 
     @Test

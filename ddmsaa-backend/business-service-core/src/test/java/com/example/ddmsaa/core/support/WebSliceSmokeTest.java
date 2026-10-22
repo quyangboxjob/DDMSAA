@@ -44,7 +44,8 @@ class WebSliceSmokeTest {
     @DisplayName("期限切れの JWT は 401 になり、コントローラへ届かない")
     void expiredJwtIsUnauthorized() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/v1/ping")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.expiredToken("E0001", Role.EMPLOYEE)))
+                .header(HttpHeaders.AUTHORIZATION,
+                        "Bearer " + jwt.expiredToken("E0001", Role.EMPLOYEE)))
                 .andReturn();
 
         org.assertj.core.api.Assertions.assertThat(result.getResponse().getStatus()).isEqualTo(401);

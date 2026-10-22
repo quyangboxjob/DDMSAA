@@ -75,6 +75,29 @@ class GatewayErrorHandlerTest {
     }
 
     @Test
+    @DisplayName("UnknownHostException（下流ホストの名前解決失敗）は 502 / E0013 になる")
+    void handle_unknownHost_returns502() throws Exception {
+        MockServerWebExchange exchange = newExchange();
+
+        handler.handle(exchange, new RuntimeException("wrap",
+                new java.net.UnknownHostException("auth-service"))).block();
+
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(body(exchange).get("messageId").asText()).isEqualTo("E0013");
+    }
+
+    @Test
+    @DisplayName("NoRouteToHostException は 502 / E0013 になる")
+    void handle_noRouteToHost_returns502() throws Exception {
+        MockServerWebExchange exchange = newExchange();
+
+        handler.handle(exchange, new java.net.NoRouteToHostException("no route")).block();
+
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(body(exchange).get("messageId").asText()).isEqualTo("E0013");
+    }
+
+    @Test
     @DisplayName("TimeoutException は 504 / E0043 になる")
     void handle_timeoutException_returns504() throws Exception {
         MockServerWebExchange exchange = newExchange();

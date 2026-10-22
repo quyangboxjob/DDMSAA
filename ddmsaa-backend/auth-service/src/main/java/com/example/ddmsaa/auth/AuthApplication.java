@@ -1,5 +1,6 @@
 package com.example.ddmsaa.auth;
 
+import java.util.TimeZone;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -23,6 +24,9 @@ public class AuthApplication {
      * @param args コマンドライン引数
      */
     public static void main(String[] args) {
+        // システムタイムゾーンは Asia/Tokyo（spec-11）。JVM の既定が UTC の環境でも、
+        // 日付の既定値や JDBC のセッション時刻が日本時間になるようにする。
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"));
         SpringApplication.run(AuthApplication.class, args);
     }
 }

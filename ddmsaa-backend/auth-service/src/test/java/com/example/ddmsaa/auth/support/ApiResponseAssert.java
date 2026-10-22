@@ -23,7 +23,8 @@ public class ApiResponseAssert extends AbstractAssert<ApiResponseAssert, MvcResu
     private ApiResponseAssert(MvcResult actual) {
         super(actual, ApiResponseAssert.class);
         try {
-            String text = actual.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+            String text = actual.getResponse()
+                    .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
             this.body = text.isEmpty() ? MAPPER.nullNode() : MAPPER.readTree(text);
         } catch (UnsupportedEncodingException e) {
             throw new IllegalStateException(e);

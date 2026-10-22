@@ -1,6 +1,8 @@
 package com.example.ddmsaa.gateway.error;
 
 import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +114,8 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
             if (current instanceof TimeoutException) {
                 return HttpStatus.GATEWAY_TIMEOUT;
             }
-            if (current instanceof ConnectException) {
+            if (current instanceof ConnectException || current instanceof UnknownHostException
+                    || current instanceof NoRouteToHostException) {
                 return HttpStatus.BAD_GATEWAY;
             }
             current = current.getCause();

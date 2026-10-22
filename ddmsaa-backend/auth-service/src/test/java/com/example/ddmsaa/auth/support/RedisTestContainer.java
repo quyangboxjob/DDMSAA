@@ -25,7 +25,8 @@ public final class RedisTestContainer {
     @SuppressWarnings("resource") // JVM 全体で共有し、終了時に Ryuk が片付ける
     public static synchronized GenericContainer<?> get() {
         if (container == null) {
-            GenericContainer<?> created = new GenericContainer<>(IMAGE).withExposedPorts(REDIS_PORT);
+            GenericContainer<?> created =
+                    new GenericContainer<>(IMAGE).withExposedPorts(REDIS_PORT);
             created.start();
             container = created;
         }

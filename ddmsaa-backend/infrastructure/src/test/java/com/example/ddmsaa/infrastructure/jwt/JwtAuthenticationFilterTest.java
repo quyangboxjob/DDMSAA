@@ -85,6 +85,9 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(request("/api/v1/orders", "Bearer invalid"), response, chain);
 
         assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentType()).startsWith("application/json");
+        assertThat(response.getContentAsString()).contains("\"messageId\":\"E0041\"")
+                .contains("\"path\":\"/api/v1/orders\"");
         assertThat(chain.getRequest()).isNull();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         assertThat(UserContext.getUserId()).isNull();

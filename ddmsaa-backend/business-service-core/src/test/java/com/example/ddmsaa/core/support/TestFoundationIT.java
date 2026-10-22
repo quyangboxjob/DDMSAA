@@ -14,6 +14,9 @@ import org.springframework.test.web.servlet.MvcResult;
 @DisplayName("L3 テスト基盤（@SpringBootTest + Testcontainers）")
 class TestFoundationIT extends AbstractIntegrationTest {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     @Test
     @DisplayName("機構A の schema（31 テーブル）と参照マスタが入っている")
     void schemaAndReferenceDataAreLoaded() {
@@ -39,6 +42,17 @@ class TestFoundationIT extends AbstractIntegrationTest {
     @DisplayName("DB のタイムゾーンは Asia/Tokyo")
     void databaseTimeZoneIsTokyo() {
         assertThat(jdbc.queryForObject("SHOW timezone", String.class)).isEqualTo("Asia/Tokyo");
+    }
+
+    @Test
+    @DisplayName("アプリの ObjectMapper は timestamptz を +09:00・マイクロ秒 6 桁で出力する")
+    void applicationObjectMapperUsesApiDateTimeFormat() throws Exception {
+        java.time.OffsetDateTime fromDb = jdbc.queryForObject(
+                "SELECT TIMESTAMPTZ '2026-10-21 16:05:30.123456+00'",
+                java.time.OffsetDateTime.class);
+
+        assertThat(objectMapper.writeValueAsString(fromDb))
+                .isEqualTo("\"2026-10-22T01:05:30.123456+09:00\"");
     }
 
     @Test

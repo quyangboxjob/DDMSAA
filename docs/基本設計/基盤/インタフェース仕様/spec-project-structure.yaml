@@ -241,6 +241,7 @@ source_files:
 
   common:
     main:
+      - com.example.ddmsaa.common.config.JacksonConfig
       - com.example.ddmsaa.common.exception.AuthException
       - com.example.ddmsaa.common.exception.BusinessException
       - com.example.ddmsaa.common.exception.EntityNotFoundException
@@ -257,6 +258,7 @@ source_files:
       - com.example.ddmsaa.common.security.DefaultMaskingService
       - com.example.ddmsaa.common.web.filter.TraceIdFilter
     test:
+      - com.example.ddmsaa.common.config.JacksonConfigTest
       - com.example.ddmsaa.common.exception.AuthExceptionTest
       - com.example.ddmsaa.common.exception.BusinessExceptionTest
       - com.example.ddmsaa.common.exception.EntityNotFoundExceptionTest
