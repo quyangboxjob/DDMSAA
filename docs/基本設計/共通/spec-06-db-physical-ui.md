@@ -137,7 +137,7 @@ EMPLOYEE と担当顧客の割当（属性を持つため業務エンティテ�
 | 2 | 商品コード | product_code | varchar(50) |  |  | ○ |  | 未削除行で一意 |
 | 3 | 商品名 | product_name | varchar(200) |  |  | ○ |  |  |
 | 4 | 商品カテゴリ | product_category | varchar(100) |  |  |  |  |  |
-| 5 | 標準単価 | standard_unit_price | numeric(15,2) |  |  | ○ | 0 | 0 以上（chk_products_standard_unit_price） |
+| 5 | 標準単価 | standard_unit_price | numeric(15,2) |  |  | ○ | 0 | 0 以上（chk_products_std_unit_price） |
 | 6 | 税区分 | tax_category | int |  | ○ | ○ |  | →tax_category_codes.tax_category_code。参照: 税区分（T07-5：1=STANDARD, 2=REDUCED, 3=EXEMPT）。 |
 | 7 | 状態 | status | int |  | ○ | ○ |  | →product_status_codes.product_status_code。参照: 商品状態（T07-4：1=ACTIVE, 2=INACTIVE）。 |
 
@@ -164,7 +164,7 @@ EMPLOYEE と担当顧客の割当（属性を持つため業務エンティテ�
 | 6 | 小計 | subtotal_amount | numeric(15,2) |  |  | ○ | 0 | サーバー再計算値 |
 | 7 | 税額 | tax_amount | numeric(15,2) |  |  | ○ | 0 | サーバー再計算値 |
 | 8 | 合計 | total_amount | numeric(15,2) |  |  | ○ | 0 | サーバー再計算値 |
-| 9 | 訂正元注文ID | revised_from_order_id | varchar(10) |  | ○ |  |  | →orders.id。取消済み（CANCELLED）・同一顧客の元注文。新規作成時のみ設定し、1 注文につき訂正は 1 回（uq_orders_revised_from_order_id、BR-ORD-009） |
+| 9 | 訂正元注文ID | revised_from_order_id | varchar(10) |  | ○ |  |  | →orders.id。取消済み（CANCELLED）・同一顧客の元注文。新規作成時のみ設定し、1 注文につき訂正は 1 回（uq_orders_revised_from、BR-ORD-009） |
 | 10 | 取消し理由 | cancel_reason | varchar(500) |  |  |  |  | CANCELLED のとき必須（chk_orders_cancel_reason） |
 
 #### TBL-order-items 注文明細（物理名：`order_items`）
@@ -208,7 +208,7 @@ EMPLOYEE と担当顧客の割当（属性を持つため業務エンティテ�
 | 2 | 金額下限 | min_amount | numeric(15,2) |  |  | ○ | 0 |  |
 | 3 | 金額上限 | max_amount | numeric(15,2) |  |  |  |  | NULL=上限なし |
 | 4 | 承認段階 | approval_step | numeric |  |  | ○ | 1 |  |
-| 5 | 承認者ロール | approver_role | int |  | ○ | ○ |  | →user_role_codes.user_role_code。参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。初版は 1=ADMIN 固定（chk_approval_rules_approver_role） |
+| 5 | 承認者ロール | approver_role | int |  | ○ | ○ |  | →user_role_codes.user_role_code。参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。初版は 1=ADMIN 固定（chk_apr_rules_approver_role） |
 | 6 | 有効フラグ | is_active | boolean |  |  | ○ | TRUE |  |
 | 7 | 適用開始日 | effective_from_date | date |  |  | ○ |  |  |
 | 8 | 適用終了日 | effective_to_date | date |  |  |  |  |  |
@@ -249,7 +249,7 @@ EMPLOYEE と担当顧客の割当（属性を持つため業務エンティテ�
 | 3 | 元ファイル名 | original_file_name | varchar(255) |  |  | ○ |  |  |
 | 4 | 保存パス | storage_path | varchar(512) |  |  | ○ |  | オブジェクトストレージのキー。利用者へ返さない |
 | 5 | コンテンツタイプ | content_type | varchar(100) |  |  | ○ |  |  |
-| 6 | ファイルサイズ | file_size | numeric |  |  | ○ | 0 | バイト。1〜10485760（chk_order_attachments_file_size） |
+| 6 | ファイルサイズ | file_size | numeric |  |  | ○ | 0 | バイト。1〜10485760（chk_ord_atts_file_size） |
 | 7 | 公開範囲 | visibility | int |  | ○ | ○ |  | →attachment_visibility_codes.attachment_visibility_code。参照: 添付公開範囲（T07-9：1=INTERNAL, 2=CUSTOMER）。 |
 | 8 | スキャン状態 | scan_status | int |  | ○ | ○ |  | →scan_status_codes.scan_status_code。参照: スキャン状態（T07-10：1=PENDING, 2=SAFE, 3=REJECTED）。 |
 | 9 | ファイル削除日時 | storage_purged_at | timestamptz |  |  |  |  | ストレージ上のファイルを削除した日時（BAT-04）。NULL=未削除 |
@@ -370,55 +370,55 @@ erDiagram
 | customers | uq_customers_customer_code | customer_code | 部分ユニーク | 一意性（未削除行のみ） |
 | customers | idx_customers_status | status | 一般 | 外部キー（§6.2） |
 | customer_contacts | pk_customer_contacts | id | 主キー | 主キー |
-| customer_contacts | idx_customer_contacts_customer_id_is_active | customer_id, is_active | 一般 | 検索 |
+| customer_contacts | idx_cus_cnt_cus_id_is_active | customer_id, is_active | 一般 | 検索 |
 | customer_assignments | pk_customer_assignments | id | 主キー | 主キー |
-| customer_assignments | uq_customer_assignments_customer_id_user_id | customer_id, user_id | 部分ユニーク | 一意性（未削除行のみ） |
-| customer_assignments | idx_customer_assignments_user_id_is_active | user_id, is_active | 一般 | 検索 |
+| customer_assignments | uq_cus_asg_cus_id_user_id | customer_id, user_id | 部分ユニーク | 一意性（未削除行のみ） |
+| customer_assignments | idx_cus_asg_user_id_is_active | user_id, is_active | 一般 | 検索 |
 | products | pk_products | id | 主キー | 主キー |
 | products | uq_products_product_code | product_code | 部分ユニーク | 一意性（未削除行のみ） |
 | products | idx_products_tax_category | tax_category | 一般 | 外部キー（§6.2） |
 | products | idx_products_status | status | 一般 | 外部キー（§6.2） |
 | tax_rates | pk_tax_rates | tax_category | 主キー | 主キー |
 | orders | pk_orders | id | 主キー | 主キー |
-| orders | idx_orders_customer_id_order_date | customer_id, order_date | 一般 | 検索 |
-| orders | idx_orders_sales_user_id_status | sales_user_id, status | 一般 | 検索 |
+| orders | idx_orders_cus_id_order_date | customer_id, order_date | 一般 | 検索 |
+| orders | idx_orders_sales_user_status | sales_user_id, status | 一般 | 検索 |
 | orders | idx_orders_status_order_date | status, order_date | 一般 | 検索 |
-| orders | uq_orders_revised_from_order_id | revised_from_order_id | 部分ユニーク | 一意性（訂正は 1 回。revised_from_order_id IS NOT NULL AND deleted_at IS NULL） |
+| orders | uq_orders_revised_from | revised_from_order_id | 部分ユニーク | 一意性（訂正は 1 回。revised_from_order_id IS NOT NULL AND deleted_at IS NULL） |
 | order_items | pk_order_items | id | 主キー | 主キー |
-| order_items | uq_order_items_order_id_line_number | order_id, line_number | 部分ユニーク | 一意性（未削除行のみ） |
+| order_items | uq_order_items_order_line_no | order_id, line_number | 部分ユニーク | 一意性（未削除行のみ） |
 | order_items | idx_order_items_product_id | product_id | 一般 | 検索 |
 | order_items | idx_order_items_tax_category | tax_category | 一般 | 外部キー（§6.2） |
 | order_status_histories | pk_order_status_histories | id | 主キー | 主キー |
-| order_status_histories | idx_order_status_histories_order_id_created_at | order_id, created_at | 一般 | 検索 |
-| order_status_histories | idx_order_status_histories_from_status | from_status | 一般 | 外部キー（§6.2） |
-| order_status_histories | idx_order_status_histories_to_status | to_status | 一般 | 外部キー（§6.2） |
+| order_status_histories | idx_ord_sts_hist_order_created | order_id, created_at | 一般 | 検索 |
+| order_status_histories | idx_ord_sts_hist_from_status | from_status | 一般 | 外部キー（§6.2） |
+| order_status_histories | idx_ord_sts_hist_to_status | to_status | 一般 | 外部キー（§6.2） |
 | approval_rules | pk_approval_rules | id | 主キー | 主キー |
-| approval_rules | idx_approval_rules_is_active_effective_from_date | is_active, effective_from_date | 一般 | 検索 |
-| approval_rules | idx_approval_rules_approver_role | approver_role | 一般 | 外部キー（§6.2） |
+| approval_rules | idx_apr_rules_active_eff_from | is_active, effective_from_date | 一般 | 検索 |
+| approval_rules | idx_apr_rules_approver_role | approver_role | 一般 | 外部キー（§6.2） |
 | approval_requests | pk_approval_requests | id | 主キー | 主キー |
-| approval_requests | idx_approval_requests_order_id_status | order_id, status | 一般 | 検索 |
-| approval_requests | idx_approval_requests_approver_user_id_status | approver_user_id, status | 一般 | 検索 |
+| approval_requests | idx_apr_req_order_id_status | order_id, status | 一般 | 検索 |
+| approval_requests | idx_apr_req_approver_status | approver_user_id, status | 一般 | 検索 |
 | approval_requests | idx_approval_requests_status | status | 一般 | 外部キー（§6.2） |
 | approval_histories | pk_approval_histories | id | 主キー | 主キー |
-| approval_histories | idx_approval_histories_approval_request_id | approval_request_id | 一般 | 検索 |
-| approval_histories | idx_approval_histories_approval_action | approval_action | 一般 | 外部キー（§6.2） |
+| approval_histories | idx_apr_hist_apr_request_id | approval_request_id | 一般 | 検索 |
+| approval_histories | idx_apr_hist_apr_action | approval_action | 一般 | 外部キー（§6.2） |
 | order_attachments | pk_order_attachments | id | 主キー | 主キー |
-| order_attachments | uq_order_attachments_storage_path | storage_path | 部分ユニーク | 一意性（未削除行のみ） |
-| order_attachments | idx_order_attachments_order_id_visibility_scan_status | order_id, visibility, scan_status | 一般 | 検索 |
-| order_attachments | idx_order_attachments_visibility | visibility | 一般 | 外部キー（§6.2） |
-| order_attachments | idx_order_attachments_scan_status | scan_status | 一般 | 外部キー（§6.2） |
+| order_attachments | uq_ord_atts_storage_path | storage_path | 部分ユニーク | 一意性（未削除行のみ） |
+| order_attachments | idx_ord_atts_order_vis_scan | order_id, visibility, scan_status | 一般 | 検索 |
+| order_attachments | idx_ord_atts_visibility | visibility | 一般 | 外部キー（§6.2） |
+| order_attachments | idx_ord_atts_scan_status | scan_status | 一般 | 外部キー（§6.2） |
 | notification_logs | pk_notification_logs | id | 主キー | 主キー |
-| notification_logs | idx_notification_logs_status_created_at | status, created_at | 一般 | 検索 |
-| notification_logs | idx_notification_logs_status_next_attempt_at | status, next_attempt_at | 一般 | 送信ワーカーの抽出 |
+| notification_logs | idx_ntf_logs_status_created | status, created_at | 一般 | 検索 |
+| notification_logs | idx_ntf_logs_status_next_try | status, next_attempt_at | 一般 | 送信ワーカーの抽出 |
 | notification_logs | idx_notification_logs_order_id | order_id | 一般 | 検索 |
-| notification_logs | idx_notification_logs_export_job_id | export_job_id | 一般 | 外部キー（§6.2） |
-| notification_logs | idx_notification_logs_notification_event | notification_event | 一般 | 外部キー（§6.2） |
+| notification_logs | idx_ntf_logs_export_job_id | export_job_id | 一般 | 外部キー（§6.2） |
+| notification_logs | idx_ntf_logs_ntf_event | notification_event | 一般 | 外部キー（§6.2） |
 | export_jobs | pk_export_jobs | id | 主キー | 主キー |
-| export_jobs | idx_export_jobs_created_by_status | created_by, status | 一般 | 検索 |
+| export_jobs | idx_export_jobs_creator_status | created_by, status | 一般 | 検索 |
 | export_jobs | idx_export_jobs_status | status | 一般 | 外部キー（§6.2） |
 | audit_logs | pk_audit_logs | id | 主キー | 主キー |
-| audit_logs | idx_audit_logs_actor_user_id_created_at | actor_user_id, created_at | 一般 | 検索 |
-| audit_logs | idx_audit_logs_target_type_target_id | target_type, target_id | 一般 | 検索 |
+| audit_logs | idx_audit_logs_actor_created | actor_user_id, created_at | 一般 | 検索 |
+| audit_logs | idx_audit_logs_tgt_type_id | target_type, target_id | 一般 | 検索 |
 | `*_codes` | `pk_{enum}_codes` / `uq_{enum}_codes_{enum}_name` | 主キー / 名称 | 主キー / ユニーク | 各コードテーブル |
 
 <!-- rule: db.soft-delete-partial-unique -->
@@ -446,14 +446,14 @@ erDiagram
 | users | chk_users_customer_id | チェック | (role = 3) = (customer_id IS NOT NULL) |
 | user_contacts | fk_user_contacts_users | 外部キー | user_id → users.user_id |
 | system_locks | fk_system_locks_users | 外部キー | user_id → users.user_id |
-| customers | fk_customers_customer_status_codes | 外部キー | status → customer_status_codes.customer_status_code |
+| customers | fk_customers_cus_sts_codes | 外部キー | status → customer_status_codes.customer_status_code |
 | customer_contacts | fk_customer_contacts_customers | 外部キー | customer_id → customers.id |
-| customer_assignments | fk_customer_assignments_customers | 外部キー | customer_id → customers.id |
+| customer_assignments | fk_cus_asg_customers | 外部キー | customer_id → customers.id |
 | customer_assignments | fk_customer_assignments_users | 外部キー | user_id → users.user_id |
 | products | fk_products_tax_category_codes | 外部キー | tax_category → tax_category_codes.tax_category_code |
-| products | fk_products_product_status_codes | 外部キー | status → product_status_codes.product_status_code |
-| products | chk_products_standard_unit_price | チェック | standard_unit_price >= 0 |
-| tax_rates | fk_tax_rates_tax_category_codes | 外部キー | tax_category → tax_category_codes.tax_category_code |
+| products | fk_products_prd_sts_codes | 外部キー | status → product_status_codes.product_status_code |
+| products | chk_products_std_unit_price | チェック | standard_unit_price >= 0 |
+| tax_rates | fk_tax_rates_tax_cat_codes | 外部キー | tax_category → tax_category_codes.tax_category_code |
 | tax_rates | chk_tax_rates_tax_rate | チェック | tax_rate BETWEEN 0 AND 100 |
 | orders | fk_orders_customers | 外部キー | customer_id → customers.id |
 | orders | fk_orders_users | 外部キー | sales_user_id → users.user_id |
@@ -462,35 +462,111 @@ erDiagram
 | orders | chk_orders_cancel_reason | チェック | status <> 5 OR cancel_reason IS NOT NULL |
 | order_items | fk_order_items_orders | 外部キー | order_id → orders.id |
 | order_items | fk_order_items_products | 外部キー | product_id → products.id |
-| order_items | fk_order_items_tax_category_codes | 外部キー | tax_category → tax_category_codes.tax_category_code |
+| order_items | fk_order_items_tax_cat_codes | 外部キー | tax_category → tax_category_codes.tax_category_code |
 | order_items | chk_order_items_quantity | チェック | quantity > 0 |
 | order_items | chk_order_items_unit_price | チェック | unit_price >= 0 |
-| order_status_histories | fk_order_status_histories_orders | 外部キー | order_id → orders.id |
-| order_status_histories | fk_order_status_histories_from_status | 外部キー | from_status → order_status_codes.order_status_code |
-| order_status_histories | fk_order_status_histories_to_status | 外部キー | to_status → order_status_codes.order_status_code |
-| approval_rules | fk_approval_rules_user_role_codes | 外部キー | approver_role → user_role_codes.user_role_code |
-| approval_rules | chk_approval_rules_approver_role | チェック | approver_role = 1 |
+| order_status_histories | fk_ord_sts_hist_orders | 外部キー | order_id → orders.id |
+| order_status_histories | fk_ord_sts_hist_from_status | 外部キー | from_status → order_status_codes.order_status_code |
+| order_status_histories | fk_ord_sts_hist_to_status | 外部キー | to_status → order_status_codes.order_status_code |
+| approval_rules | fk_apr_rules_user_role_codes | 外部キー | approver_role → user_role_codes.user_role_code |
+| approval_rules | chk_apr_rules_approver_role | チェック | approver_role = 1 |
 | approval_rules | chk_approval_rules_max_amount | チェック | max_amount IS NULL OR max_amount >= min_amount |
-| approval_rules | chk_approval_rules_effective_to_date | チェック | effective_to_date IS NULL OR effective_to_date >= effective_from_date |
+| approval_rules | chk_apr_rules_eff_to_date | チェック | effective_to_date IS NULL OR effective_to_date >= effective_from_date |
 | approval_requests | fk_approval_requests_orders | 外部キー | order_id → orders.id |
 | approval_requests | fk_approval_requests_users | 外部キー | approver_user_id → users.user_id |
-| approval_requests | fk_approval_requests_approval_request_status_codes | 外部キー | status → approval_request_status_codes.approval_request_status_code |
-| approval_histories | fk_approval_histories_approval_requests | 外部キー | approval_request_id → approval_requests.id |
-| approval_histories | fk_approval_histories_approval_action_codes | 外部キー | approval_action → approval_action_codes.approval_action_code |
+| approval_requests | fk_apr_req_apr_req_sts_codes | 外部キー | status → approval_request_status_codes.approval_request_status_code |
+| approval_histories | fk_apr_hist_apr_requests | 外部キー | approval_request_id → approval_requests.id |
+| approval_histories | fk_apr_hist_apr_action_codes | 外部キー | approval_action → approval_action_codes.approval_action_code |
 | approval_histories | chk_approval_histories_reason | チェック | approval_action <> 2 OR reason IS NOT NULL |
 | order_attachments | fk_order_attachments_orders | 外部キー | order_id → orders.id |
-| order_attachments | fk_order_attachments_attachment_visibility_codes | 外部キー | visibility → attachment_visibility_codes.attachment_visibility_code |
-| order_attachments | fk_order_attachments_scan_status_codes | 外部キー | scan_status → scan_status_codes.scan_status_code |
-| order_attachments | chk_order_attachments_file_size | チェック | file_size > 0 AND file_size <= 10485760 |
-| notification_logs | fk_notification_logs_notification_event_codes | 外部キー | notification_event → notification_event_codes.notification_event_code |
+| order_attachments | fk_ord_atts_att_vis_codes | 外部キー | visibility → attachment_visibility_codes.attachment_visibility_code |
+| order_attachments | fk_ord_atts_scan_sts_codes | 外部キー | scan_status → scan_status_codes.scan_status_code |
+| order_attachments | chk_ord_atts_file_size | チェック | file_size > 0 AND file_size <= 10485760 |
+| notification_logs | fk_ntf_logs_ntf_evt_codes | 外部キー | notification_event → notification_event_codes.notification_event_code |
 | notification_logs | fk_notification_logs_orders | 外部キー | order_id → orders.id |
-| notification_logs | fk_notification_logs_export_jobs | 外部キー | export_job_id → export_jobs.id |
-| notification_logs | fk_notification_logs_notification_status_codes | 外部キー | status → notification_status_codes.notification_status_code |
-| export_jobs | fk_export_jobs_export_status_codes | 外部キー | status → export_status_codes.export_status_code |
+| notification_logs | fk_ntf_logs_export_jobs | 外部キー | export_job_id → export_jobs.id |
+| notification_logs | fk_ntf_logs_ntf_sts_codes | 外部キー | status → notification_status_codes.notification_status_code |
+| export_jobs | fk_export_jobs_exp_sts_codes | 外部キー | status → export_status_codes.export_status_code |
 | audit_logs | fk_audit_logs_users | 外部キー | actor_user_id → users.user_id |
 
-> 同じ表を複数回参照する外部キーは `fk_{table}_{column}` とした（例：`fk_order_status_histories_from_status`）。
-> 1 表から `users` を役割別に参照する列は `{役割}_user_id`（`sales_user_id`、`approver_user_id`、`actor_user_id`）とした。`開発規約/spec-database-rule.md` §4.2 の `{単数}_id` 規則の拡張であり、規約側への追記が必要（§8 TBD-DB-01）。
+> 同じ表を複数回参照する外部キーは `fk_{table}_{column}` とした（例：`fk_ord_sts_hist_from_status`）。
+> 1 表から `users` を役割別に参照する列は `{役割}_user_id`（`sales_user_id`、`approver_user_id`、`actor_user_id`）とした。`開発規約/spec-database-rule.md` §4.2 の `{単数}_id` 規則の拡張であり、規約側（§4.2）へ追記済み（TBD-DB-01 解決）。
+
+
+### 5.1 名称の短縮（30 文字規約）
+
+`開発規約/spec-database-rule.md` §2.4 / §6.1 の 30 文字制限を、制約名・インデックス名にも厳格に適用する（TBD-DB-02 解決）。命名パターンどおりに作ると 30 文字を超える名前は、下表の**登録名**を用いる（`spec-06-db-physical.yaml` の各 `name` と一致させる）。
+
+- 短縮は 30 文字を超える名前に限る。30 文字以内の名前はパターンどおりとする。
+- 略語：approval→apr / attachment→att（複数形 atts）/ notification→ntf / customer→cus / order→ord / assignment→asg / status→sts / visibility→vis / category→cat / histories→hist / request→req / export→exp / event→evt / standard→std / effective→eff / target→tgt。
+- 略語で足りない場合は、列名の一部を省いてよい（例：`idx_apr_req_approver_status`）。省いた列は yaml の `columns` を正とする。
+- 新しい名前を追加するときは、30 文字を超える場合に限りこの表へ登録する。
+
+| 登録名（30 文字以内） | パターンどおりの名前 |
+|---|---|
+| `chk_apr_rules_approver_role` | `chk_approval_rules_approver_role` |
+| `chk_apr_rules_eff_to_date` | `chk_approval_rules_effective_to_date` |
+| `chk_ord_atts_file_size` | `chk_order_attachments_file_size` |
+| `chk_products_std_unit_price` | `chk_products_standard_unit_price` |
+| `fk_apr_hist_apr_action_codes` | `fk_approval_histories_approval_action_codes` |
+| `fk_apr_hist_apr_requests` | `fk_approval_histories_approval_requests` |
+| `fk_apr_req_apr_req_sts_codes` | `fk_approval_requests_approval_request_status_codes` |
+| `fk_apr_rules_user_role_codes` | `fk_approval_rules_user_role_codes` |
+| `fk_cus_asg_customers` | `fk_customer_assignments_customers` |
+| `fk_customers_cus_sts_codes` | `fk_customers_customer_status_codes` |
+| `fk_export_jobs_exp_sts_codes` | `fk_export_jobs_export_status_codes` |
+| `fk_ntf_logs_export_jobs` | `fk_notification_logs_export_jobs` |
+| `fk_ntf_logs_ntf_evt_codes` | `fk_notification_logs_notification_event_codes` |
+| `fk_ntf_logs_ntf_sts_codes` | `fk_notification_logs_notification_status_codes` |
+| `fk_ord_atts_att_vis_codes` | `fk_order_attachments_attachment_visibility_codes` |
+| `fk_ord_atts_scan_sts_codes` | `fk_order_attachments_scan_status_codes` |
+| `fk_ord_sts_hist_from_status` | `fk_order_status_histories_from_status` |
+| `fk_ord_sts_hist_orders` | `fk_order_status_histories_orders` |
+| `fk_ord_sts_hist_to_status` | `fk_order_status_histories_to_status` |
+| `fk_order_items_tax_cat_codes` | `fk_order_items_tax_category_codes` |
+| `fk_products_prd_sts_codes` | `fk_products_product_status_codes` |
+| `fk_tax_rates_tax_cat_codes` | `fk_tax_rates_tax_category_codes` |
+| `idx_apr_hist_apr_action` | `idx_approval_histories_approval_action` |
+| `idx_apr_hist_apr_request_id` | `idx_approval_histories_approval_request_id` |
+| `idx_apr_req_approver_status` | `idx_approval_requests_approver_user_id_status` |
+| `idx_apr_req_order_id_status` | `idx_approval_requests_order_id_status` |
+| `idx_apr_rules_active_eff_from` | `idx_approval_rules_is_active_effective_from_date` |
+| `idx_apr_rules_approver_role` | `idx_approval_rules_approver_role` |
+| `idx_audit_logs_actor_created` | `idx_audit_logs_actor_user_id_created_at` |
+| `idx_audit_logs_tgt_type_id` | `idx_audit_logs_target_type_target_id` |
+| `idx_cus_asg_user_id_is_active` | `idx_customer_assignments_user_id_is_active` |
+| `idx_cus_cnt_cus_id_is_active` | `idx_customer_contacts_customer_id_is_active` |
+| `idx_export_jobs_creator_status` | `idx_export_jobs_created_by_status` |
+| `idx_ntf_logs_export_job_id` | `idx_notification_logs_export_job_id` |
+| `idx_ntf_logs_ntf_event` | `idx_notification_logs_notification_event` |
+| `idx_ntf_logs_status_created` | `idx_notification_logs_status_created_at` |
+| `idx_ntf_logs_status_next_try` | `idx_notification_logs_status_next_attempt_at` |
+| `idx_ord_atts_order_vis_scan` | `idx_order_attachments_order_id_visibility_scan_status` |
+| `idx_ord_atts_scan_status` | `idx_order_attachments_scan_status` |
+| `idx_ord_atts_visibility` | `idx_order_attachments_visibility` |
+| `idx_ord_sts_hist_from_status` | `idx_order_status_histories_from_status` |
+| `idx_ord_sts_hist_order_created` | `idx_order_status_histories_order_id_created_at` |
+| `idx_ord_sts_hist_to_status` | `idx_order_status_histories_to_status` |
+| `idx_orders_cus_id_order_date` | `idx_orders_customer_id_order_date` |
+| `idx_orders_sales_user_status` | `idx_orders_sales_user_id_status` |
+| `pk_apr_req_sts_codes` | `pk_approval_request_status_codes` |
+| `uq_apr_action_codes_name` | `uq_approval_action_codes_approval_action_name` |
+| `uq_apr_req_sts_codes_name` | `uq_approval_request_status_codes_approval_request_status_name` |
+| `uq_att_vis_codes_name` | `uq_attachment_visibility_codes_attachment_visibility_name` |
+| `uq_cus_asg_cus_id_user_id` | `uq_customer_assignments_customer_id_user_id` |
+| `uq_cus_sts_codes_name` | `uq_customer_status_codes_customer_status_name` |
+| `uq_exp_sts_codes_name` | `uq_export_status_codes_export_status_name` |
+| `uq_ntf_evt_codes_name` | `uq_notification_event_codes_notification_event_name` |
+| `uq_ntf_sts_codes_name` | `uq_notification_status_codes_notification_status_name` |
+| `uq_ord_atts_storage_path` | `uq_order_attachments_storage_path` |
+| `uq_ord_sts_codes_name` | `uq_order_status_codes_order_status_name` |
+| `uq_order_items_order_line_no` | `uq_order_items_order_id_line_number` |
+| `uq_orders_revised_from` | `uq_orders_revised_from_order_id` |
+| `uq_prd_sts_codes_name` | `uq_product_status_codes_product_status_name` |
+| `uq_scan_sts_codes_name` | `uq_scan_status_codes_scan_status_name` |
+| `uq_tax_cat_codes_name` | `uq_tax_category_codes_tax_category_name` |
+| `uq_user_role_codes_name` | `uq_user_role_codes_user_role_name` |
+| `uq_user_sts_codes_name` | `uq_user_status_codes_user_status_name` |
 
 <!-- devtool:endblock -->
 <!-- devtool:block id="basic.common.06-db-physical-ui.s06" -->
@@ -518,8 +594,8 @@ erDiagram
 
 | # | 事項 |
 |---|---|
-| TBD-DB-01 | 役割別の `users` 参照列（`sales_user_id` 等）の命名を `spec-database-rule.md` §4.2 に追記するか |
-| TBD-DB-02 | `spec-database-rule.md` §6.1/§2.4 の 30 文字制限を制約・インデックス名にも適用するか（適用する場合、`fk_order_status_histories_from_status` など複数の名前が超過する。テンプレート例 `uq_user_role_codes_user_role_name` も 33 文字） |
+| ~~TBD-DB-01~~ | 解決済み：役割別の `users` 参照列（`{役割}_user_id`）の命名を `spec-database-rule.md` §4.2 に追記した（2026-10-21） |
+| ~~TBD-DB-02~~ | 解決済み：30 文字制限を制約名・インデックス名にも厳格に適用し、超過する 63 件は §5.1 の登録名へ短縮した（2026-10-21） |
 | TBD-DB-03 | `users` の採番桁数（A/E/C+4桁）はロールごとに最大 9,999 名。顧客利用者の想定数によっては桁数の見直しが必要 |
 | ~~TBD-DB-04~~ | 解決済み：`schema-definition.yaml`・`spec-data-dictionary-mapping-ui.md`・`spec-13-data-dictionary-ui.md` を本書と同期した（2026-10-20） |
 

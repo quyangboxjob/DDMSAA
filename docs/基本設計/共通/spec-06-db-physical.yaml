@@ -51,7 +51,7 @@ tables:
       - { logical: ロール名, physical: user_role_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_user_role_codes, columns: [user_role_code], type: 主キー, purpose: 主キー }
-      - { name: uq_user_role_codes_user_role_name, columns: [user_role_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_user_role_codes_name, columns: [user_role_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-user-status-codes
@@ -65,7 +65,7 @@ tables:
       - { logical: 利用者状態名, physical: user_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_user_status_codes, columns: [user_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_user_status_codes_user_status_name, columns: [user_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_user_sts_codes_name, columns: [user_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-customer-status-codes
@@ -79,7 +79,7 @@ tables:
       - { logical: 顧客状態名, physical: customer_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_customer_status_codes, columns: [customer_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_customer_status_codes_customer_status_name, columns: [customer_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_cus_sts_codes_name, columns: [customer_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-product-status-codes
@@ -93,7 +93,7 @@ tables:
       - { logical: 商品状態名, physical: product_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_product_status_codes, columns: [product_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_product_status_codes_product_status_name, columns: [product_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_prd_sts_codes_name, columns: [product_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-tax-category-codes
@@ -107,7 +107,7 @@ tables:
       - { logical: 税区分名, physical: tax_category_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_tax_category_codes, columns: [tax_category_code], type: 主キー, purpose: 主キー }
-      - { name: uq_tax_category_codes_tax_category_name, columns: [tax_category_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_tax_cat_codes_name, columns: [tax_category_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-order-status-codes
@@ -121,7 +121,7 @@ tables:
       - { logical: 注文状態名, physical: order_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_order_status_codes, columns: [order_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_order_status_codes_order_status_name, columns: [order_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_ord_sts_codes_name, columns: [order_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-approval-request-status-codes
@@ -134,8 +134,8 @@ tables:
       - { logical: 承認依頼状態コード, physical: approval_request_status_code, type: int, pk: true, not_null: true, note: "T07 の属性コード。採番しない" }
       - { logical: 承認依頼状態名, physical: approval_request_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
-      - { name: pk_approval_request_status_codes, columns: [approval_request_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_approval_request_status_codes_approval_request_status_name, columns: [approval_request_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: pk_apr_req_sts_codes, columns: [approval_request_status_code], type: 主キー, purpose: 主キー }
+      - { name: uq_apr_req_sts_codes_name, columns: [approval_request_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-approval-action-codes
@@ -149,7 +149,7 @@ tables:
       - { logical: 承認操作名, physical: approval_action_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_approval_action_codes, columns: [approval_action_code], type: 主キー, purpose: 主キー }
-      - { name: uq_approval_action_codes_approval_action_name, columns: [approval_action_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_apr_action_codes_name, columns: [approval_action_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-attachment-visibility-codes
@@ -163,7 +163,7 @@ tables:
       - { logical: 添付公開範囲名, physical: attachment_visibility_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_attachment_visibility_codes, columns: [attachment_visibility_code], type: 主キー, purpose: 主キー }
-      - { name: uq_attachment_visibility_codes_attachment_visibility_name, columns: [attachment_visibility_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_att_vis_codes_name, columns: [attachment_visibility_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-scan-status-codes
@@ -177,7 +177,7 @@ tables:
       - { logical: スキャン状態名, physical: scan_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_scan_status_codes, columns: [scan_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_scan_status_codes_scan_status_name, columns: [scan_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_scan_sts_codes_name, columns: [scan_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-notification-event-codes
@@ -191,7 +191,7 @@ tables:
       - { logical: 通知イベント名, physical: notification_event_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_notification_event_codes, columns: [notification_event_code], type: 主キー, purpose: 主キー }
-      - { name: uq_notification_event_codes_notification_event_name, columns: [notification_event_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_ntf_evt_codes_name, columns: [notification_event_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-notification-status-codes
@@ -205,7 +205,7 @@ tables:
       - { logical: 通知状態名, physical: notification_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_notification_status_codes, columns: [notification_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_notification_status_codes_notification_status_name, columns: [notification_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_ntf_sts_codes_name, columns: [notification_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-export-status-codes
@@ -219,7 +219,7 @@ tables:
       - { logical: 出力状態名, physical: export_status_name, type: varchar(50), not_null: true, note: "T07 の英語名（API 値）" }
     indexes:
       - { name: pk_export_status_codes, columns: [export_status_code], type: 主キー, purpose: 主キー }
-      - { name: uq_export_status_codes_export_status_name, columns: [export_status_name], type: ユニーク, purpose: 一意性 }
+      - { name: uq_exp_sts_codes_name, columns: [export_status_name], type: ユニーク, purpose: 一意性 }
     constraints: []
 
   - id: TBL-users
@@ -293,7 +293,7 @@ tables:
       - { name: uq_customers_customer_code, columns: [customer_code], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 一意性（未削除行のみ） }
       - { name: idx_customers_status, columns: [status], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
-      - { name: fk_customers_customer_status_codes, type: 外部キー, content: "status → customer_status_codes.customer_status_code" }
+      - { name: fk_customers_cus_sts_codes, type: 外部キー, content: "status → customer_status_codes.customer_status_code" }
 
   - id: TBL-customer-contacts
     physical_name: customer_contacts
@@ -311,7 +311,7 @@ tables:
       - { logical: 有効フラグ, physical: is_active, type: boolean, not_null: true, default: "TRUE" }
     indexes:
       - { name: pk_customer_contacts, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_customer_contacts_customer_id_is_active, columns: [customer_id, is_active], type: 一般, purpose: 検索 }
+      - { name: idx_cus_cnt_cus_id_is_active, columns: [customer_id, is_active], type: 一般, purpose: 検索 }
     constraints:
       - { name: fk_customer_contacts_customers, type: 外部キー, content: "customer_id → customers.id" }
 
@@ -330,10 +330,10 @@ tables:
       - { logical: 割当日, physical: assigned_date, type: date, not_null: true, default: "CURRENT_DATE" }
     indexes:
       - { name: pk_customer_assignments, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: uq_customer_assignments_customer_id_user_id, columns: [customer_id, user_id], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 一意性（未削除行のみ） }
-      - { name: idx_customer_assignments_user_id_is_active, columns: [user_id, is_active], type: 一般, purpose: 検索 }
+      - { name: uq_cus_asg_cus_id_user_id, columns: [customer_id, user_id], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 一意性（未削除行のみ） }
+      - { name: idx_cus_asg_user_id_is_active, columns: [user_id, is_active], type: 一般, purpose: 検索 }
     constraints:
-      - { name: fk_customer_assignments_customers, type: 外部キー, content: "customer_id → customers.id" }
+      - { name: fk_cus_asg_customers, type: 外部キー, content: "customer_id → customers.id" }
       - { name: fk_customer_assignments_users, type: 外部キー, content: "user_id → users.user_id" }
 
   - id: TBL-products
@@ -348,7 +348,7 @@ tables:
       - { logical: 商品コード, physical: product_code, type: varchar(50), not_null: true, note: "未削除行で一意" }
       - { logical: 商品名, physical: product_name, type: varchar(200), not_null: true }
       - { logical: 商品カテゴリ, physical: product_category, type: varchar(100) }
-      - { logical: 標準単価, physical: standard_unit_price, type: "numeric(15,2)", not_null: true, default: "0", note: "0 以上（chk_products_standard_unit_price）" }
+      - { logical: 標準単価, physical: standard_unit_price, type: "numeric(15,2)", not_null: true, default: "0", note: "0 以上（chk_products_std_unit_price）" }
       - { logical: 税区分, physical: tax_category, type: int, fk: true, not_null: true, references: "tax_category_codes.tax_category_code", note: "参照: 税区分（T07-5：1=STANDARD, 2=REDUCED, 3=EXEMPT）。" }
       - { logical: 状態, physical: status, type: int, fk: true, not_null: true, references: "product_status_codes.product_status_code", note: "参照: 商品状態（T07-4：1=ACTIVE, 2=INACTIVE）。" }
     indexes:
@@ -358,8 +358,8 @@ tables:
       - { name: idx_products_status, columns: [status], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
       - { name: fk_products_tax_category_codes, type: 外部キー, content: "tax_category → tax_category_codes.tax_category_code" }
-      - { name: fk_products_product_status_codes, type: 外部キー, content: "status → product_status_codes.product_status_code" }
-      - { name: chk_products_standard_unit_price, type: チェック, content: "standard_unit_price >= 0" }
+      - { name: fk_products_prd_sts_codes, type: 外部キー, content: "status → product_status_codes.product_status_code" }
+      - { name: chk_products_std_unit_price, type: チェック, content: "standard_unit_price >= 0" }
 
   - id: TBL-tax-rates
     physical_name: tax_rates
@@ -372,7 +372,7 @@ tables:
     indexes:
       - { name: pk_tax_rates, columns: [tax_category], type: 主キー, purpose: 主キー }
     constraints:
-      - { name: fk_tax_rates_tax_category_codes, type: 外部キー, content: "tax_category → tax_category_codes.tax_category_code" }
+      - { name: fk_tax_rates_tax_cat_codes, type: 外部キー, content: "tax_category → tax_category_codes.tax_category_code" }
       - { name: chk_tax_rates_tax_rate, type: チェック, content: "tax_rate BETWEEN 0 AND 100" }
 
   - id: TBL-orders
@@ -391,14 +391,14 @@ tables:
       - { logical: 小計, physical: subtotal_amount, type: "numeric(15,2)", not_null: true, default: "0", note: "サーバー再計算値" }
       - { logical: 税額, physical: tax_amount, type: "numeric(15,2)", not_null: true, default: "0", note: "サーバー再計算値" }
       - { logical: 合計, physical: total_amount, type: "numeric(15,2)", not_null: true, default: "0", note: "サーバー再計算値" }
-      - { logical: 訂正元注文ID, physical: revised_from_order_id, type: varchar(10), fk: true, references: "orders.id", note: "取消済み（CANCELLED）・同一顧客の元注文。新規作成時のみ設定し、1 注文につき訂正は 1 回（uq_orders_revised_from_order_id、BR-ORD-009）" }
+      - { logical: 訂正元注文ID, physical: revised_from_order_id, type: varchar(10), fk: true, references: "orders.id", note: "取消済み（CANCELLED）・同一顧客の元注文。新規作成時のみ設定し、1 注文につき訂正は 1 回（uq_orders_revised_from、BR-ORD-009）" }
       - { logical: 取消し理由, physical: cancel_reason, type: varchar(500), note: "CANCELLED のとき必須（chk_orders_cancel_reason）" }
     indexes:
       - { name: pk_orders, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_orders_customer_id_order_date, columns: [customer_id, order_date], type: 一般, purpose: 検索 }
-      - { name: idx_orders_sales_user_id_status, columns: [sales_user_id, status], type: 一般, purpose: 検索 }
+      - { name: idx_orders_cus_id_order_date, columns: [customer_id, order_date], type: 一般, purpose: 検索 }
+      - { name: idx_orders_sales_user_status, columns: [sales_user_id, status], type: 一般, purpose: 検索 }
       - { name: idx_orders_status_order_date, columns: [status, order_date], type: 一般, purpose: 検索 }
-      - { name: uq_orders_revised_from_order_id, columns: [revised_from_order_id], type: 部分ユニーク, where: "revised_from_order_id IS NOT NULL AND deleted_at IS NULL", purpose: 一意性（訂正は 1 回） }
+      - { name: uq_orders_revised_from, columns: [revised_from_order_id], type: 部分ユニーク, where: "revised_from_order_id IS NOT NULL AND deleted_at IS NULL", purpose: 一意性（訂正は 1 回） }
     constraints:
       - { name: fk_orders_customers, type: 外部キー, content: "customer_id → customers.id" }
       - { name: fk_orders_users, type: 外部キー, content: "sales_user_id → users.user_id" }
@@ -428,13 +428,13 @@ tables:
       - { logical: 明細税額, physical: tax_amount, type: "numeric(15,2)", not_null: true, default: "0", note: "HALF_UP(line_amount × tax_rate / 100)" }
     indexes:
       - { name: pk_order_items, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: uq_order_items_order_id_line_number, columns: [order_id, line_number], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 一意性（未削除行のみ） }
+      - { name: uq_order_items_order_line_no, columns: [order_id, line_number], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 一意性（未削除行のみ） }
       - { name: idx_order_items_product_id, columns: [product_id], type: 一般, purpose: 検索 }
       - { name: idx_order_items_tax_category, columns: [tax_category], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
       - { name: fk_order_items_orders, type: 外部キー, content: "order_id → orders.id" }
       - { name: fk_order_items_products, type: 外部キー, content: "product_id → products.id" }
-      - { name: fk_order_items_tax_category_codes, type: 外部キー, content: "tax_category → tax_category_codes.tax_category_code" }
+      - { name: fk_order_items_tax_cat_codes, type: 外部キー, content: "tax_category → tax_category_codes.tax_category_code" }
       - { name: chk_order_items_quantity, type: チェック, content: "quantity > 0" }
       - { name: chk_order_items_unit_price, type: チェック, content: "unit_price >= 0" }
 
@@ -454,13 +454,13 @@ tables:
       - { logical: 理由, physical: reason, type: varchar(500), note: "取消し・差戻しの理由（CUSTOMER には返さない。BR-APR-006）" }
     indexes:
       - { name: pk_order_status_histories, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_order_status_histories_order_id_created_at, columns: [order_id, created_at], type: 一般, purpose: 検索 }
-      - { name: idx_order_status_histories_from_status, columns: [from_status], type: 一般, purpose: 外部キー（§6.2） }
-      - { name: idx_order_status_histories_to_status, columns: [to_status], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: idx_ord_sts_hist_order_created, columns: [order_id, created_at], type: 一般, purpose: 検索 }
+      - { name: idx_ord_sts_hist_from_status, columns: [from_status], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: idx_ord_sts_hist_to_status, columns: [to_status], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
-      - { name: fk_order_status_histories_orders, type: 外部キー, content: "order_id → orders.id" }
-      - { name: fk_order_status_histories_from_status, type: 外部キー, content: "from_status → order_status_codes.order_status_code" }
-      - { name: fk_order_status_histories_to_status, type: 外部キー, content: "to_status → order_status_codes.order_status_code" }
+      - { name: fk_ord_sts_hist_orders, type: 外部キー, content: "order_id → orders.id" }
+      - { name: fk_ord_sts_hist_from_status, type: 外部キー, content: "from_status → order_status_codes.order_status_code" }
+      - { name: fk_ord_sts_hist_to_status, type: 外部キー, content: "to_status → order_status_codes.order_status_code" }
 
   - id: TBL-approval-rules
     physical_name: approval_rules
@@ -474,22 +474,22 @@ tables:
       - { logical: 金額下限, physical: min_amount, type: "numeric(15,2)", not_null: true, default: "0" }
       - { logical: 金額上限, physical: max_amount, type: "numeric(15,2)", note: "NULL=上限なし" }
       - { logical: 承認段階, physical: approval_step, type: numeric, not_null: true, default: "1" }
-      - { logical: 承認者ロール, physical: approver_role, type: int, fk: true, not_null: true, references: "user_role_codes.user_role_code", note: "参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。初版は 1=ADMIN 固定（chk_approval_rules_approver_role）" }
+      - { logical: 承認者ロール, physical: approver_role, type: int, fk: true, not_null: true, references: "user_role_codes.user_role_code", note: "参照: ロール（T07-1：1=ADMIN, 2=EMPLOYEE, 3=CUSTOMER）。初版は 1=ADMIN 固定（chk_apr_rules_approver_role）" }
       - { logical: 有効フラグ, physical: is_active, type: boolean, not_null: true, default: "TRUE" }
       - { logical: 適用開始日, physical: effective_from_date, type: date, not_null: true }
       - { logical: 適用終了日, physical: effective_to_date, type: date }
     indexes:
       - { name: pk_approval_rules, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_approval_rules_is_active_effective_from_date, columns: [is_active, effective_from_date], type: 一般, purpose: 検索 }
-      - { name: idx_approval_rules_approver_role, columns: [approver_role], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: idx_apr_rules_active_eff_from, columns: [is_active, effective_from_date], type: 一般, purpose: 検索 }
+      - { name: idx_apr_rules_approver_role, columns: [approver_role], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
-      - { name: fk_approval_rules_user_role_codes, type: 外部キー, content: "approver_role → user_role_codes.user_role_code" }
-      - { name: chk_approval_rules_approver_role, type: チェック, content: "approver_role = 1" }
+      - { name: fk_apr_rules_user_role_codes, type: 外部キー, content: "approver_role → user_role_codes.user_role_code" }
+      - { name: chk_apr_rules_approver_role, type: チェック, content: "approver_role = 1" }
       - { name: chk_approval_rules_max_amount, type: チェック, content: "max_amount IS NULL OR max_amount >= min_amount" }
-      - { name: chk_approval_rules_effective_to_date, type: チェック, content: "effective_to_date IS NULL OR effective_to_date >= effective_from_date" }
-      - { name: chk_approval_rules_approver_role, type: チェック, content: "approver_role = 1" }
+      - { name: chk_apr_rules_eff_to_date, type: チェック, content: "effective_to_date IS NULL OR effective_to_date >= effective_from_date" }
+      - { name: chk_apr_rules_approver_role, type: チェック, content: "approver_role = 1" }
       - { name: chk_approval_rules_max_amount, type: チェック, content: "max_amount IS NULL OR max_amount >= min_amount" }
-      - { name: chk_approval_rules_effective_to_date, type: チェック, content: "effective_to_date IS NULL OR effective_to_date >= effective_from_date" }
+      - { name: chk_apr_rules_eff_to_date, type: チェック, content: "effective_to_date IS NULL OR effective_to_date >= effective_from_date" }
 
   - id: TBL-approval-requests
     physical_name: approval_requests
@@ -508,13 +508,13 @@ tables:
       - { logical: 処理日時, physical: acted_at, type: timestamptz }
     indexes:
       - { name: pk_approval_requests, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_approval_requests_order_id_status, columns: [order_id, status], type: 一般, purpose: 検索 }
-      - { name: idx_approval_requests_approver_user_id_status, columns: [approver_user_id, status], type: 一般, purpose: 検索 }
+      - { name: idx_apr_req_order_id_status, columns: [order_id, status], type: 一般, purpose: 検索 }
+      - { name: idx_apr_req_approver_status, columns: [approver_user_id, status], type: 一般, purpose: 検索 }
       - { name: idx_approval_requests_status, columns: [status], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
       - { name: fk_approval_requests_orders, type: 外部キー, content: "order_id → orders.id" }
       - { name: fk_approval_requests_users, type: 外部キー, content: "approver_user_id → users.user_id" }
-      - { name: fk_approval_requests_approval_request_status_codes, type: 外部キー, content: "status → approval_request_status_codes.approval_request_status_code" }
+      - { name: fk_apr_req_apr_req_sts_codes, type: 外部キー, content: "status → approval_request_status_codes.approval_request_status_code" }
 
   - id: TBL-approval-histories
     physical_name: approval_histories
@@ -531,11 +531,11 @@ tables:
       - { logical: 理由, physical: reason, type: varchar(500), note: "差戻し時は必須（1〜500 文字）" }
     indexes:
       - { name: pk_approval_histories, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_approval_histories_approval_request_id, columns: [approval_request_id], type: 一般, purpose: 検索 }
-      - { name: idx_approval_histories_approval_action, columns: [approval_action], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: idx_apr_hist_apr_request_id, columns: [approval_request_id], type: 一般, purpose: 検索 }
+      - { name: idx_apr_hist_apr_action, columns: [approval_action], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
-      - { name: fk_approval_histories_approval_requests, type: 外部キー, content: "approval_request_id → approval_requests.id" }
-      - { name: fk_approval_histories_approval_action_codes, type: 外部キー, content: "approval_action → approval_action_codes.approval_action_code" }
+      - { name: fk_apr_hist_apr_requests, type: 外部キー, content: "approval_request_id → approval_requests.id" }
+      - { name: fk_apr_hist_apr_action_codes, type: 外部キー, content: "approval_action → approval_action_codes.approval_action_code" }
       - { name: chk_approval_histories_reason, type: チェック, content: "approval_action <> 2 OR reason IS NOT NULL" }
 
   - id: TBL-order-attachments
@@ -551,21 +551,21 @@ tables:
       - { logical: 元ファイル名, physical: original_file_name, type: varchar(255), not_null: true }
       - { logical: 保存パス, physical: storage_path, type: varchar(512), not_null: true, note: "オブジェクトストレージのキー。利用者へ返さない" }
       - { logical: コンテンツタイプ, physical: content_type, type: varchar(100), not_null: true }
-      - { logical: ファイルサイズ, physical: file_size, type: numeric, not_null: true, default: "0", note: "バイト。1〜10485760（chk_order_attachments_file_size）" }
+      - { logical: ファイルサイズ, physical: file_size, type: numeric, not_null: true, default: "0", note: "バイト。1〜10485760（chk_ord_atts_file_size）" }
       - { logical: 公開範囲, physical: visibility, type: int, fk: true, not_null: true, references: "attachment_visibility_codes.attachment_visibility_code", note: "参照: 添付公開範囲（T07-9：1=INTERNAL, 2=CUSTOMER）。" }
       - { logical: スキャン状態, physical: scan_status, type: int, fk: true, not_null: true, references: "scan_status_codes.scan_status_code", note: "参照: スキャン状態（T07-10：1=PENDING, 2=SAFE, 3=REJECTED）。" }
       - { logical: ファイル削除日時, physical: storage_purged_at, type: timestamptz, note: "ストレージ上のファイルを削除した日時（BAT-04）。NULL=未削除" }
     indexes:
       - { name: pk_order_attachments, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: uq_order_attachments_storage_path, columns: [storage_path], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 一意性（未削除行のみ） }
-      - { name: idx_order_attachments_order_id_visibility_scan_status, columns: [order_id, visibility, scan_status], type: 一般, purpose: 検索 }
-      - { name: idx_order_attachments_visibility, columns: [visibility], type: 一般, purpose: 外部キー（§6.2） }
-      - { name: idx_order_attachments_scan_status, columns: [scan_status], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: uq_ord_atts_storage_path, columns: [storage_path], type: 部分ユニーク, where: "deleted_at IS NULL", purpose: 一意性（未削除行のみ） }
+      - { name: idx_ord_atts_order_vis_scan, columns: [order_id, visibility, scan_status], type: 一般, purpose: 検索 }
+      - { name: idx_ord_atts_visibility, columns: [visibility], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: idx_ord_atts_scan_status, columns: [scan_status], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
       - { name: fk_order_attachments_orders, type: 外部キー, content: "order_id → orders.id" }
-      - { name: fk_order_attachments_attachment_visibility_codes, type: 外部キー, content: "visibility → attachment_visibility_codes.attachment_visibility_code" }
-      - { name: fk_order_attachments_scan_status_codes, type: 外部キー, content: "scan_status → scan_status_codes.scan_status_code" }
-      - { name: chk_order_attachments_file_size, type: チェック, content: "file_size > 0 AND file_size <= 10485760" }
+      - { name: fk_ord_atts_att_vis_codes, type: 外部キー, content: "visibility → attachment_visibility_codes.attachment_visibility_code" }
+      - { name: fk_ord_atts_scan_sts_codes, type: 外部キー, content: "scan_status → scan_status_codes.scan_status_code" }
+      - { name: chk_ord_atts_file_size, type: チェック, content: "file_size > 0 AND file_size <= 10485760" }
 
   - id: TBL-export-jobs
     physical_name: export_jobs
@@ -586,10 +586,10 @@ tables:
       - { logical: ファイル削除日時, physical: storage_purged_at, type: timestamptz, note: "ストレージ上のファイルを削除した日時（BAT-03）。NULL=未削除" }
     indexes:
       - { name: pk_export_jobs, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_export_jobs_created_by_status, columns: [created_by, status], type: 一般, purpose: 検索 }
+      - { name: idx_export_jobs_creator_status, columns: [created_by, status], type: 一般, purpose: 検索 }
       - { name: idx_export_jobs_status, columns: [status], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
-      - { name: fk_export_jobs_export_status_codes, type: 外部キー, content: "status → export_status_codes.export_status_code" }
+      - { name: fk_export_jobs_exp_sts_codes, type: 外部キー, content: "status → export_status_codes.export_status_code" }
 
   - id: TBL-notification-logs
     physical_name: notification_logs
@@ -611,16 +611,16 @@ tables:
       - { logical: 送信日時, physical: sent_at, type: timestamptz }
     indexes:
       - { name: pk_notification_logs, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_notification_logs_status_created_at, columns: [status, created_at], type: 一般, purpose: 検索 }
-      - { name: idx_notification_logs_status_next_attempt_at, columns: [status, next_attempt_at], type: 一般, purpose: 送信ワーカーの抽出 }
+      - { name: idx_ntf_logs_status_created, columns: [status, created_at], type: 一般, purpose: 検索 }
+      - { name: idx_ntf_logs_status_next_try, columns: [status, next_attempt_at], type: 一般, purpose: 送信ワーカーの抽出 }
       - { name: idx_notification_logs_order_id, columns: [order_id], type: 一般, purpose: 検索 }
-      - { name: idx_notification_logs_export_job_id, columns: [export_job_id], type: 一般, purpose: 外部キー（§6.2） }
-      - { name: idx_notification_logs_notification_event, columns: [notification_event], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: idx_ntf_logs_export_job_id, columns: [export_job_id], type: 一般, purpose: 外部キー（§6.2） }
+      - { name: idx_ntf_logs_ntf_event, columns: [notification_event], type: 一般, purpose: 外部キー（§6.2） }
     constraints:
-      - { name: fk_notification_logs_notification_event_codes, type: 外部キー, content: "notification_event → notification_event_codes.notification_event_code" }
+      - { name: fk_ntf_logs_ntf_evt_codes, type: 外部キー, content: "notification_event → notification_event_codes.notification_event_code" }
       - { name: fk_notification_logs_orders, type: 外部キー, content: "order_id → orders.id" }
-      - { name: fk_notification_logs_export_jobs, type: 外部キー, content: "export_job_id → export_jobs.id" }
-      - { name: fk_notification_logs_notification_status_codes, type: 外部キー, content: "status → notification_status_codes.notification_status_code" }
+      - { name: fk_ntf_logs_export_jobs, type: 外部キー, content: "export_job_id → export_jobs.id" }
+      - { name: fk_ntf_logs_ntf_sts_codes, type: 外部キー, content: "status → notification_status_codes.notification_status_code" }
 
   - id: TBL-audit-logs
     physical_name: audit_logs
@@ -640,8 +640,8 @@ tables:
       - { logical: 監査詳細, physical: audit_detail, type: jsonb, note: "メール本文・ファイル本体・Magic Link token を含めない" }
     indexes:
       - { name: pk_audit_logs, columns: [id], type: 主キー, purpose: 主キー }
-      - { name: idx_audit_logs_actor_user_id_created_at, columns: [actor_user_id, created_at], type: 一般, purpose: 検索 }
-      - { name: idx_audit_logs_target_type_target_id, columns: [target_type, target_id], type: 一般, purpose: 検索 }
+      - { name: idx_audit_logs_actor_created, columns: [actor_user_id, created_at], type: 一般, purpose: 検索 }
+      - { name: idx_audit_logs_tgt_type_id, columns: [target_type, target_id], type: 一般, purpose: 検索 }
     constraints:
       - { name: fk_audit_logs_users, type: 外部キー, content: "actor_user_id → users.user_id" }
 

@@ -218,7 +218,7 @@ sequenceDiagram
 | `productCode` | 必須・1〜50 文字 | `E0008` | 400 |
 | `productName` | 必須・1〜200 文字 | `E0008` | 400 |
 | `productCategory` | 任意・100 文字以内 | `E0008` | 400 |
-| `standardUnitPrice` | 必須・0 以上（`chk_products_standard_unit_price`）・整数部 13 桁以内・小数 2 桁以内（`numeric(15,2)`、07 の `multipleOf: 0.01`） | `E0008` | 400 |
+| `standardUnitPrice` | 必須・0 以上（`chk_products_std_unit_price`）・整数部 13 桁以内・小数 2 桁以内（`numeric(15,2)`、07 の `multipleOf: 0.01`） | `E0008` | 400 |
 | `taxCategory` | 必須・`STANDARD` / `REDUCED` / `EXEMPT` | `E0008` | 400 |
 | `productCode` | 未削除行に同じ商品コードが存在（`uq_products_product_code`） | `E0007` | 409 |
 
@@ -585,7 +585,7 @@ ProductEditPage (src/pages/product/product-edit-page.tsx)
 | UT-ID | 推奨層 | 被テスト | 種別 | 前提条件 | 入力要点 | 期待結果 | 追跡 |
 |-------|:------:|---------|------|---------|---------|---------|------|
 | UT-PRD-001 | L1 | `createProduct` / `ProductServiceImpl.createProduct` | 異常 | ADMIN、同じ商品コードの未削除商品が存在 | 既存と同じ `productCode` | 409 `E0007`、商品・監査が保存されない | F-PRD-03 / 手順 2 |
-| UT-PRD-002 | L2 | `createProduct` | 検証 | ADMIN の JWT | `standardUnitPrice` が負の値 | 400 `E0008` | 入力検証、`chk_products_standard_unit_price` |
+| UT-PRD-002 | L2 | `createProduct` | 検証 | ADMIN の JWT | `standardUnitPrice` が負の値 | 400 `E0008` | 入力検証、`chk_products_std_unit_price` |
 | UT-PRD-003 | L2 | `updateProduct` | 権限 | EMPLOYEE の JWT | — | 403 `E0002` | BR-PRD-001 / spec-03 §2 |
 | UT-PRD-004 | L1 | `createOrder`（商品状態の判定。order 機能の `OrderServiceImpl.createOrder`） | 異常 | 無効（INACTIVE）の商品 | その商品を明細に含めて注文を作成 | 409 `E0054`。判定の実装は order 詳細設計 §1.2 | BR-PRD-003 / `ProductLookupPort.findForOrder` |
 | UT-PRD-005 | L3 | `updateProduct`＋`updateOrder`／`submitOrder`（order 機能） | 正常 | 実 DB、申請済み（PENDING_APPROVAL）の注文 | 注文の商品の単価・名称・税区分を `updateProduct` で改定 | 申請済み注文の明細（`order_items`）の複写値・金額・税額は変わらない | BR-PRD-002 |

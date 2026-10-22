@@ -380,11 +380,11 @@ sequenceDiagram
 3. 担当者を決める（BR-ORD-008）：
    - EMPLOYEE：sales_user_id = UserContext.getUserId()。要求の salesUserId は無視する
    - ADMIN：salesUserId が未指定、又は CustomerLookupPort.isActiveAssignee(customerId, salesUserId) が false（顧客の有効な担当 EMPLOYEE でない。停用者の扱いは TBD-ORD-07）なら InvalidRequestException（400 E0008。field = salesUserId）
-4. 訂正元（BR-ORD-009）：revisedFromOrderId が指定された場合、元注文を取得（不存在・範囲外の扱いは TBD-ORD-12）し、次のいずれかなら BusinessException("E0006")（409）：状態が CANCELLED でない／顧客が異なる／すでに訂正元として使われている（revised_from_order_id が同じ未削除の注文がある。DB は uq_orders_revised_from_order_id でも保証）
+4. 訂正元（BR-ORD-009）：revisedFromOrderId が指定された場合、元注文を取得（不存在・範囲外の扱いは TBD-ORD-12）し、次のいずれかなら BusinessException("E0006")（409）：状態が CANCELLED でない／顧客が異なる／すでに訂正元として使われている（revised_from_order_id が同じ未削除の注文がある。DB は uq_orders_revised_from でも保証）
 5. 明細の検証（§1.2.0 (f)）：ProductLookupPort.findForOrder の結果で、すべての商品が存在し有効（ProductSnapshot.status = ACTIVE）であること。無効・map にない ID（不存在）は BusinessException("E0054")（409。BR-PRD-003）。訂正モードで元注文の無効商品を含めたまま送られた場合も同じ
 6. 明細の複写と金額計算（§1.2.0 (e) M1〜M7）。桁あふれは InvalidRequestException（400 E0008）
 7. orders を INSERT（status = DRAFT(1)、sales_user_id、customer_id、order_date、小計・税額・合計、revised_from_order_id、cancel_reason = NULL。id 列は含めず DB の DEFAULT `next_business_id('OD', 8)` で採番し、useGeneratedKeys で受け取る。created_by/updated_by は MetaObjectHandler が自動設定）
-   uq_orders_revised_from_order_id の一意制約違反（DuplicateKeyException。同時作成）は BusinessException("E0006")（409）に変換する
+   uq_orders_revised_from の一意制約違反（DuplicateKeyException。同時作成）は BusinessException("E0006")（409）に変換する
 8. order_items を INSERT（id は DEFAULT `next_business_id('OI', 8)`。order_id、line_number、product_id、複写値、数量、金額）
 9. order_status_histories を INSERT（from_status = NULL、to_status = DRAFT、reason = NULL）
 10. AuditLogPort.record("ORDER_CREATE", "ORDER", 注文番号, detail) を呼ぶ（audit_logs の INSERT は user 側。§1.2.0 (d) T3）
@@ -497,7 +497,7 @@ sequenceDiagram
 3. 担当者（BR-ORD-008）：ADMIN は salesUserId を指定する（必須）。現在値と異なる場合は CustomerLookupPort.isActiveAssignee が true であること（不適合は InvalidRequestException＝400 E0008。未変更時の再検証は TBD-ORD-10）。EMPLOYEE は要求の salesUserId を無視し、現在の sales_user_id を維持する（EMPLOYEE が担当者を変更することはできない）
 4. 訂正元：revisedFromOrderId は更新では無視する（変更できない。BR-ORD-009）
 5. 明細の検証・複写・金額計算（§1.2.0 (e)(f)）。既存明細の無効商品は保存を妨げず、新規に追加した無効商品は 409 E0054
-6. order_items を置き換える：その注文の既存明細を論理削除（deleted_at = now()）し、要求の明細を line_number 1 から INSERT する（uq_order_items_order_id_line_number は未削除行のみが対象。方式の確認は TBD-ORD-11）
+6. order_items を置き換える：その注文の既存明細を論理削除（deleted_at = now()）し、要求の明細を line_number 1 から INSERT する（uq_order_items_order_line_no は未削除行のみが対象。方式の確認は TBD-ORD-11）
 7. orders を UPDATE（order_date、sales_user_id、小計・税額・合計。UPDATE … WHERE id = ? AND updated_at = ? AND status IN (DRAFT, RETURNED)。更新行数 0 は BusinessException("E0051")（409））。status は変更しない
 8. AuditLogPort.record("ORDER_UPDATE", "ORDER", 注文番号, detail) を呼ぶ。状態は変わらないので order_status_histories は記録しない
 9. 保存後の注文を再読込して OrderVo（再計算後の金額・新しい updatedAt）を返す。Controller が Result.ok(vo, "I0011") で包む。画面はこの updatedAt で続けて申請できる
@@ -1033,7 +1033,7 @@ OrderDetailPage (src/pages/order/order-detail-page.tsx)
 | 注文状態遷移・履歴 | §1.2.0 (c)(d) の遷移表と禁止遷移を正とする。状態が変わるすべての遷移（作成・申請・承認・差戻し・取消し）で `order_status_histories` に from → to と理由を記録する。`updateOrder` は状態が変わらないため履歴を記録しない |
 | 監査 | `ORDER_CREATE`／`ORDER_UPDATE`／`ORDER_SUBMIT`／`ORDER_APPROVE`／`ORDER_RETURN`／`ORDER_CANCEL`（`target_type=ORDER`、`target_id`＝注文番号。BR-AUD-001）を、業務データの更新と同一トランザクションで `AuditLogPort.record`（実装は `user`。§1.1.1）により `audit_logs` へ記録する（`ORDER_APPROVE`／`ORDER_RETURN` は `OrderStatePortImpl` が記録）。`PERMISSION_DENIED`：403 は core の `PermissionDeniedAuditListener`（`AuthorizationDeniedEvent`）、範囲外の単件 404 は `OrderAccessPort` 等の範囲判定処理が `E0005` を投げる前に `AuditLogPort.recordDenied`（`REQUIRES_NEW`）で記録する（一覧の自動除外は記録しない。`spec-backend-coding-rule.md` §8。決定済み） |
 | トランザクション・整合性 | 作成＝orders＋order_items＋order_status_histories＋audit_logs、更新＝orders＋order_items（論理削除＋再 INSERT）＋audit_logs、申請＝orders＋order_items＋order_status_histories＋audit_logs＋approval_requests（`ApprovalRequestPort`）＋notification_logs（`NotificationPort`）、取消し＝orders＋order_status_histories＋audit_logs＋notification_logs（`NotificationPort`）を、それぞれ `OrderServiceImpl` の 1 つのトランザクションで保存し（ポート実装は参加する）、原子的にロールバックする（BR-ORD-011）。承認・差戻しの注文側（orders 状態＋order_status_histories＋audit_logs）は `OrderStatePort.transition` が `approval` のトランザクションに参加して保存する。メール送信は含めず、QUEUED の投入だけを DB 操作とする |
-| 同時実行・ロック | `orders.updated_at` による楽観ロック（`updateOrder`・`submitOrder`・`cancelOrder`。不一致は 409 `E0051`。BR-ORD-006）。承認・差戻しは `updatedAt` を受け取らず、`approval` が `approval_requests` を行ロックして `PENDING` を確認し、`OrderStatePort.transition` が `orders` を `FOR UPDATE` で状態確認（`expectedFrom`）する（競合は 409 `E0006`。BR-ORD-006）。**ロック順序：承認・差戻しは先 `approval_requests`、後 `orders`。`submitOrder` は先 `orders`、後で `approval_requests` を新規 INSERT するだけ**（逆向きの待ち合いがなくデッドロックしない。§1.1.1）。取得時は `SELECT … FOR UPDATE` で注文行を直列化し、更新も `WHERE updated_at = ? AND status IN (前状態)` で保護する。`updatedAt` はマイクロ秒 6 桁の文字列で入出力する。訂正の二重作成は `uq_orders_revised_from_order_id` で防ぎ、違反は 409 `E0006` に変換する |
+| 同時実行・ロック | `orders.updated_at` による楽観ロック（`updateOrder`・`submitOrder`・`cancelOrder`。不一致は 409 `E0051`。BR-ORD-006）。承認・差戻しは `updatedAt` を受け取らず、`approval` が `approval_requests` を行ロックして `PENDING` を確認し、`OrderStatePort.transition` が `orders` を `FOR UPDATE` で状態確認（`expectedFrom`）する（競合は 409 `E0006`。BR-ORD-006）。**ロック順序：承認・差戻しは先 `approval_requests`、後 `orders`。`submitOrder` は先 `orders`、後で `approval_requests` を新規 INSERT するだけ**（逆向きの待ち合いがなくデッドロックしない。§1.1.1）。取得時は `SELECT … FOR UPDATE` で注文行を直列化し、更新も `WHERE updated_at = ? AND status IN (前状態)` で保護する。`updatedAt` はマイクロ秒 6 桁の文字列で入出力する。訂正の二重作成は `uq_orders_revised_from` で防ぎ、違反は 409 `E0006` に変換する |
 | 金額の整合性 | 単価は常にサーバーが商品マスタの標準単価から複写し（BR-PRD-002）、金額・税額・集計は明細からサーバーが再計算する（BR-ORD-003 / BR-ORD-004）。保存のたびと申請時に再複写し、PENDING_APPROVAL 以降はマスタが変わっても明細を変えない。numeric(15,2) / (15,3) を超える入力は 400 `E0008` |
 | 通知 | 申請（`ORDER_SUBMITTED`）・承認（`ORDER_APPROVED`）・差戻し（`ORDER_RETURNED`）・取消し（`ORDER_CANCELLED`）の宛先は BR-NTF-003。投入は `NotificationPort.enqueue`（実装は `approval`。承認・差戻しは `approval` 自身が呼び、申請・取消しは本機能が呼ぶ）、送信は BAT-01 |
 
@@ -1120,7 +1120,7 @@ OrderDetailPage (src/pages/order/order-detail-page.tsx)
 | UT-ORD-036 | L1 | `createOrder` | 異常 | 元注文の状態が CANCELLED 以外（例：APPROVED） | `revisedFromOrderId` に指定 | 409 `E0006` | BR-ORD-009 / 手順 4 |
 | UT-ORD-037 | L1 | `createOrder` | 異常 | 元注文の顧客が作成対象の顧客と異なる | `revisedFromOrderId` に指定 | 409 `E0006` | BR-ORD-009 / 手順 4 |
 | UT-ORD-038 | L1 | `createOrder` | 異常 | 訂正元の明細に無効商品が含まれる | 訂正元の明細をそのまま送信 | 409 `E0054`（新規追加として判定） | BR-ORD-009 / BR-PRD-003 / 手順 5 |
-| UT-ORD-039 | L3 | `createOrder` | 境界 | 実 DB。同じ CANCELLED 注文 | 2 件の作成を同じ `revisedFromOrderId` で同時実行 | 一方は成功、他方は 409 `E0006`（`uq_orders_revised_from_order_id`）。ロールバックされ孤児の明細・履歴が残らない | BR-ORD-009 / 手順 7 |
+| UT-ORD-039 | L3 | `createOrder` | 境界 | 実 DB。同じ CANCELLED 注文 | 2 件の作成を同じ `revisedFromOrderId` で同時実行 | 一方は成功、他方は 409 `E0006`（`uq_orders_revised_from`）。ロールバックされ孤児の明細・履歴が残らない | BR-ORD-009 / 手順 7 |
 | UT-ORD-040 | L3 | `createOrder` | 正常 | 実 DB | 有効な作成 | `orders`・`order_items`・`order_status_histories`（NULL → DRAFT）・`audit_logs`（`ORDER_CREATE`）が各々保存され、注文の `created_by` が操作者。`id` は `OD` + 8 桁、明細の `id` は `OI` + 8 桁 | BR-ORD-011 / BR-AUD-001 / 手順 7〜10 |
 | UT-ORD-041 | L1 | `updateOrder` | 正常 | ADMIN。DRAFT の注文 | 明細（行の追加・削除・数量変更）と注文日を変更 | 200 `I0011`。明細が置き換わり金額が再計算され、`updated_at` が更新される。`ORDER_UPDATE` 監査 1 件。状態は DRAFT のまま、状態履歴は増えない | BR-ORD-002 / 手順 5〜9 |
 | UT-ORD-042 | L1 | `updateOrder` | 正常 | EMPLOYEE（担当）。RETURNED の注文 | 明細を変更 | 200 `I0011`。状態は RETURNED のまま（再申請は `submitOrder`） | BR-ORD-002 / §1.2.0 (c) |
