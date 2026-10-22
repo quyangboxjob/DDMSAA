@@ -34,7 +34,7 @@ types:
     generics:
       - "T"
     components:
-      - {name: code,        type: int}
+      - {name: code,        type: String}   # 成功は "0"（spec-07-api-list.yaml と一致）
       - {name: message,     type: String}
       - {name: messageId,   type: String}
       - {name: messageArgs, type: "String[]"}

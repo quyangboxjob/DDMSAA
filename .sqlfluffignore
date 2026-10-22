@@ -1,0 +1,9 @@
+# design-reference SQL (not executed)
+docs/基本設計/データベース/queries/
+# non-production test seeds
+docs/基本設計/データベース/setup/21_*
+docs/基本設計/データベース/setup/22_*
+docs/基本設計/データベース/setup/23_*
+docs/基本設計/データベース/setup/24_*
+docs/基本設計/データベース/setup/25_*
+docs/基本設計/データベース/setup/26_*

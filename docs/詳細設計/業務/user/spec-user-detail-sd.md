@@ -146,7 +146,7 @@ sequenceDiagram
 **処理ロジック**
 
 ```
-1. userId で findAuthView を実行（各 JOIN に deleted_at IS NULL。spec-01-auth.yaml sql_contracts）
+1. userId で findAuthView を実行（users のみ deleted_at IS NULL。user_contacts・system_locks は論理削除なし。spec-01-auth.yaml sql_contracts）
 2. ログイン不可を判定する（BR-AUTH-001）。次のいずれかなら token を作らずメールも送らない：
    - 結果が null（不存在・論理削除）
    - users.status = DISABLED（UserAuthView.disabled = true）
@@ -172,7 +172,7 @@ sequenceDiagram
 
 | Mapper メソッド | 操作 | 対象テーブル.カラム | 主要条件 |
 |------------|------|----------|---------|
-| `UserAuthMapper.findAuthView` | SELECT | `users.user_id/role/status`、`user_contacts.email`、`system_locks.lock_started_at` | `users.user_id = #{userId} AND users.deleted_at IS NULL`、JOIN 側も `deleted_at IS NULL` |
+| `UserAuthMapper.findAuthView` | SELECT | `users.user_id/role/status`、`user_contacts.email`、`system_locks.lock_started_at` | `users.user_id = #{userId} AND users.deleted_at IS NULL`。`user_contacts`・`system_locks` は論理削除しないため JOIN 側に `deleted_at` 条件なし |
 | `AuthAuditMapper.insert` | INSERT | `audit_logs`（id は DB の `next_business_id('AL', 8)`、`created_by`＝`SYSTEM`） | — |
 
 **利用する共通コンポーネント**

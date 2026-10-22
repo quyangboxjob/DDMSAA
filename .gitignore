@@ -1,0 +1,19 @@
+# ---- build / IDE ----
+target/
+.mvn/wrapper/maven-wrapper.jar
+*.iml
+.idea/
+.vscode/
+*.log
+# ---- secrets / local ----
+.env
+docker/.env
+application-local.yml
+# ---- frontend ----
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/.env.local
+frontend/.env.*.local
+*.tsbuildinfo

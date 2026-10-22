@@ -33,7 +33,7 @@ DB の「初期構築」と「構築後の継続的なスキーマ変更」を**
 <!-- rule: mig.two-mechanism-split -->
 | 機構 | 担当 | 実行タイミング | 実行回数 | 対象 |
 |------|------|--------------|---------|------|
-| **機構A：docker 初期化** | `docker/postgres/init/00-setup.sh` → `setup/{00_bootstrap,01_schema_grants,10_schema,20_seed}.sql` | docker 初回起動かつデータボリュームが空のときのみ | **1 回**（以降スキップ。再実行は `down -v` で空に戻すしかない） | DB/ユーザー作成・**14 表の初期 schema**・主データ・開発サンプル |
+| **機構A：docker 初期化** | `docker/postgres/init/00-setup.sh` → `setup/{00_bootstrap,01_schema_grants,10_schema,20_seed}.sql` | docker 初回起動かつデータボリュームが空のときのみ | **1 回**（以降スキップ。再実行は `down -v` で空に戻すしかない） | DB/ユーザー作成・**31 表の初期 schema**・主データ（`20_seed.sql`）・開発サンプル（`21_seed_sample.sql`） |
 | **機構B：Flyway** | 各サービス（auth-service / business-service-core）起動時、または `flyway:migrate` | **アプリ起動の都度**（未適用分のみ適用） | 何度でも（適用済みはスキップ） | **初期移行データ（V1）**・初期構築以降のスキーマ変更（V2 以降）・参照マスタ（R__） |
 
 > 機構Aは「最初に一回だけ作る（DB/ユーザー＋schema）」。機構Bは「schema 構築後の初期データ（V1）と以降の変更（V2+）を当てる」。schema は Flyway のバージョン管理対象外、**baseline=version 0**（§4）。

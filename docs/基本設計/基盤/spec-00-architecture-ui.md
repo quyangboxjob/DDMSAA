@@ -303,9 +303,9 @@ app:
       ttl-seconds: 3600                # Magic Link 有効期限（=60分）
   services:                            # サービス間接続先（サービスディスカバリなし、設定注入）
     auth:
-      base-url: ${SVC_AUTH_URL:http://localhost:8081}
+      base-url: ${AUTH_SERVICE_URI:http://localhost:8081}
     core:
-      base-url: ${SVC_CORE_URL:http://localhost:8082}
+      base-url: ${CORE_SERVICE_URI:http://localhost:8082}
   file:
     storage-type: ${FILE_STORAGE_TYPE:local}   # 既定 local。s3 のときは下の s3.* を設定する
     s3:
@@ -503,8 +503,8 @@ SIGTERM 受信
 | `app.auth.max-login-failure-count` | ログイン失敗上限 | — （既定: 5） |
 | `app.auth.login-lockout-seconds` | ロック時間 / Redis TTL（秒） | — （既定: 1800） |
 | `app.auth.magic-link.ttl-seconds` | Magic Link 有効期限（秒） | — （既定: 3600） |
-| `app.services.auth.base-url` | auth-service 接続先 URL | `SVC_AUTH_URL` |
-| `app.services.core.base-url` | business-service-core 接続先 URL | `SVC_CORE_URL` |
+| `app.services.auth.base-url` | auth-service 接続先 URL | `AUTH_SERVICE_URI` |
+| `app.services.core.base-url` | business-service-core 接続先 URL | `CORE_SERVICE_URI` |
 | `app.file.storage-type` | ストレージ種別（`local` 既定 / `s3`） | `FILE_STORAGE_TYPE`（既定: local） |
 | `app.file.local.base-dir` | ローカルストレージ保存先（storage-type=local 時） | `FILE_LOCAL_BASE_DIR`（既定: `${java.io.tmpdir}/ddmsaa-files`） |
 | `app.file.s3.region` | S3 リージョン | `S3_REGION`（既定: ap-northeast-1） |

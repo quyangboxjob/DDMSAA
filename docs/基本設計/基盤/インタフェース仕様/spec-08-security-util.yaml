@@ -51,6 +51,7 @@ types:
     package: com.example.ddmsaa.infrastructure.auth
     annotations:
       - "@Component"
+      - "@ConditionalOnClass(name = \"org.springframework.data.redis.core.StringRedisTemplate\")"
     purpose: "Redis を通じた Magic Link トークンおよびログイン失敗カウント・ロック状態を管理する認証一時状態ストア。Magic Link は GETDEL で一回使い切り、失敗カウントは INCR + EXPIRE で原子的に管理する。"
     constructors:
       - "AuthStateStore(org.springframework.data.redis.core.StringRedisTemplate redisTemplate)"
@@ -65,6 +66,19 @@ types:
 # 行動契約（境界条件）
 # ============================================================
 behavior_contracts:
+
+  MetaObjectHandler_optimistic_lock:
+    rule: >-
+      MetaObjectHandler は UPDATE 時に updatedAt / updatedBy を常に現在値で上書きする（spec-07-infrastructure.yaml MetaObjectHandler 参照）。
+      そのため業務 Mapper の楽観ロックは、エンティティの updatedAt を条件に使ってはならず、
+      別パラメータ `expectedUpdatedAt`（読み取り時点の値）を WHERE 条件（updated_at = #{expectedUpdatedAt}）に使うこと。
+      更新件数 0 は競合として扱う。雛形は .claude/skills/spec-wf-codegen/assets/mapper.xml.tmpl を参照。
+
+  JwtSecretKey:
+    rule: >-
+      JwtUtil および api-gateway（JwtAuthGlobalFilter）の署名鍵は app.jwt.secret（環境変数 JWT_SECRET）の UTF-8 バイト列から
+      Keys.hmacShaKeyFor で導出する（HS256）。長さは 32 バイト以上必須。不足時・未設定時は IllegalStateException で起動（初回利用）に失敗させる。
+      両者で同一の導出方法を用いること。role は claim 名 `role`、subject は userId。
 
   JwtUtil:
     thread_safety: ステートレス。複数スレッドから同時呼び出し可
@@ -137,6 +151,9 @@ behavior_contracts:
         action: 冪等（未設定時に呼び出しても例外なし）
 
   AuthStateStore:
+    failure_counter_key:
+      key: "auth:login-failure:{userId}"
+      note: "ログイン失敗カウント用の Redis キー名。Magic Link 認証では失敗ロックを使わないため、incrementLoginFailure / isLocked / clearLoginFailure は現状未使用だが API として保持する。"
     contracts:
       - method: "saveMagicLinkToken(token, userId, ttlSeconds)"
         condition: 同じ userId の旧 token が存在する（再送）

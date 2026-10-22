@@ -2,7 +2,7 @@
 
 > 本目录存放 DDMSAA 项目用 **Claude Code** 做 AI 开发的命令（skills），共 21 个。每个 skill 对应开发流水线的一个阶段，用斜杠调用（如 `/spec-basic-design 06`、`/spec-wf-codegen order`）。
 > 本文件是**人看的索引**。各 skill 的执行指令见 `skills/<name>/SKILL.md`；**所有 skill 开工前先读 [`skills/DDMSAA-PROJECT-CONTEXT.md`](skills/DDMSAA-PROJECT-CONTEXT.md)**（路径、权威顺序、技术约束、已知文档冲突都在那里，只写一处）。
-> DDMSAA 目前**只有文档，没有代码**（`ddmsaa-backend/`、`frontend/`、建表 SQL 均未创建），所以写代码和测试的 skill 都有未满足的前置，见 §5。
+> DDMSAA 目前有文档和三块基盘（`ddmsaa-backend/`、建表 SQL + `docker/`、`frontend/`），还没有任何 feature 的业务代码；写 feature 代码和测试的 skill 的前置见 §5。
 
 ---
 
@@ -48,7 +48,7 @@ docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md
 | `/spec-detail-design` | ② 详细设计 | 业务/画面设计 + `spec-detail-temp.md` | `docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md` | ✅ 可用（7 份已补全，后续为更新模式） |
 | `/spec-wf-flowchart` | ②' 流程图 | 要件 + 基本设计 + 详细设计 + BR | `spec-<feature>-flow.md`、`spec-business-issue.md`、`spec-<feature>-filelist.md` | ✅ 可用 |
 | `/spec-scaffold-db` | ⓪ DB/Docker | 06 yaml、spec-db-connection、spec-01 | `docs/基本設計/データベース/setup/*.sql`、Compose 等 | ⚠ spec-01 §3 拓扑仍是占位，需先确认 |
-| `/spec-scaffold-backend` | ⓪ 后端基盘 | `基盤/インタフェース仕様/*.yaml`、spec-01 §2.2 | `ddmsaa-backend/` 多模块骨架 | ✅ 可用（版本和接口规格已定） |
+| `/spec-scaffold-backend` | ⓪ 后端基盘 | `基盤/インタフェース仕様/*.yaml`、spec-01 §2.2 | `ddmsaa-backend/` 多模块骨架 | ✅ 已执行（2026-10-22，323 个测试通过；Spotless 待做） |
 | `/spec-scaffold-frontend` | ⓪ 前端骨架 | spec-01 §2.1、frontend 规约、07/09 | `frontend/` 骨架 | ✅ 可用 |
 | `/spec-scaffold-test` | ⓪ 测试基盘 | 真实后端框架、spec-test-rule | 测试基类、测试 profile、JWT 测试工具 | ⛔ 需先有 `ddmsaa-backend` 与建库 SQL |
 | `/spec-scaffold-deploy` | ⓪' 容器化 | 后端模块、Compose | Dockerfile、app profile | ⏸ 暂缓（2026-10-21 决定先不做容器化部署） |
@@ -97,7 +97,7 @@ docs/詳細設計/業務/<feature>/spec-<feature>-detail-sd.md
 ## 5. DDMSAA 目前的前置缺口与建议顺序
 
 缺口：
-- 没有任何代码；没有 `docs/基本設計/データベース/setup/*.sql`、`db/migration/`、Compose/Dockerfile。
+- 后端基盘（2026-10-22）与本地 DB/Docker 环境（`docs/基本設計/データベース/setup/*.sql`、`docker/`，同日 `/spec-scaffold-db` 已执行）已生成；还没有 `db/migration/`（V1 初始数据：A0001、承认规则）、feature 代码。前端基盘 `frontend/` 已于同日由 `/spec-scaffold-frontend` 生成。
 - `spec-01` §3–§6 仍有占位；`spec-14/17/18/04` 多为模板。
 - 7 份详细设计已于 2026-10-21 补全并统一（8 个跨模块接口、InvalidRequestException、枚举位置、BAT-05 扫描等已决定），各自 §4 还有少量业务细节的待确认项，D7/D11 门标为“要确认”；`spec-04-business-flow-ui.md` 仍是空模板。无旧系统数据迁移；部署环境、域名、TLS、日志保存期限上线前确认。
 - 2026-10-21 已决定：UT 用例放 §5.1、编号 `UT-<FEATURE>-NNN`（3 位）；Mapper 用 resultMap 优先；文件存储默认 local；前端测试用 jsdom；容器化部署（`spec-scaffold-deploy`）暂缓。对应的文档已同步。

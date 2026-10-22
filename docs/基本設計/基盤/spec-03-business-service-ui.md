@@ -411,9 +411,9 @@ ServiceImpl で明示チェックし `BusinessException` を送出する（§3.4
 app:
   services:
     auth:
-      base-url: ${SVC_AUTH_URL:http://localhost:8081}
+      base-url: ${AUTH_SERVICE_URI:http://localhost:8081}
     core:
-      base-url: ${SVC_CORE_URL:http://localhost:8082}
+      base-url: ${CORE_SERVICE_URI:http://localhost:8082}
 ```
 
 ### §8.2 ヘッダ透過

@@ -1,0 +1,39 @@
+[sqlfluff]
+dialect = postgres
+templater = raw
+# 0 = no skip: 10_schema.sql exceeds the 20000-byte default and would otherwise be skipped unchecked
+large_file_skip_byte_limit = 0
+# 200 (not 120): multi-column INSERT data rows are inherently wide; DDL stays well under
+max_line_length = 200
+# test-only seed etc. excluded via .sqlfluffignore
+# Layout rules disabled: DDL + hand-maintained data inserts; enforce naming/casing/types, NOT whitespace layout.
+#   LT01 spacing / LT02 indent : allow hand-aligned VALUES & column alignment
+#   LT09 select-target newline / LT14 keyword newline : compact one-line INSERT...SELECT is intended
+#   AL03 expression alias : INSERT...SELECT projection needs no AS (target columns already named)
+#   PG01 index/FK lock-safety : migration lock-safety out of scope (human review / future Squawk); N/A on empty-DB build
+exclude_rules = LT01, LT02, LT09, LT14, AL03, PG01
+
+[sqlfluff:indentation]
+tab_space_size = 2
+indent_unit = space
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+# keyword-like special values (no parens) stay UPPER to match keyword style; real functions (now()) still lower
+ignore_words = current_timestamp,current_date,current_time,current_user,session_user,localtimestamp
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:references.keywords]
+# 'role' is an intentional column name (users.role, per data dictionary); valid unquoted in Postgres
+ignore_words = role
+
+[sqlfluff:layout:type:comma]
+line_position = trailing

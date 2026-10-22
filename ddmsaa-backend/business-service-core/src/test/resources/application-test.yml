@@ -1,0 +1,35 @@
+# テスト専用の設定（秘密値はここだけで使う隔離値。本番の鍵は使わない）。
+# データソースは AbstractIntegrationTest が Testcontainers の接続先で上書きする。
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/unused
+    username: unused
+    password: unused
+  flyway:
+    placeholders:
+      initial_admin_email: admin@example.com
+  mail:
+    host: localhost
+    port: 3025
+
+app:
+  jwt:
+    secret: test-only-secret-for-ddmsaa-must-be-32-bytes-or-more
+    issuer: ddmsaa
+    expiration-seconds: 3600
+  crypto:
+    aes-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  file:
+    storage-type: local
+    local:
+      base-dir: ${java.io.tmpdir}/ddmsaa-test-files
+  scan:
+    type: none
+  services:
+    auth:
+      base-url: http://localhost:0
+
+logging:
+  level:
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN

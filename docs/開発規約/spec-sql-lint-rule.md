@@ -91,6 +91,7 @@ SQLFluff 4.x のルール ID で管理する。方針は既存の `setup/10_sche
 | `aliasing.expression`（AL03） | `INSERT...SELECT` の射影カラムは、対象カラム名が INSERT 側で既定 → `AS` 別名は不要 |
 | `PG01`（index/FK ロック安全） | **マイグレーションのロック安全性は本 lint の対象外**（§7。人手レビュー / 将来の Squawk）。`10_schema` は空 DB への初期構築であり、`CONCURRENTLY` は適用できず誤検知となる |
 
+- **`EXCEPTION:` psql 変数を使うスクリプト**：`setup/00_bootstrap.sql`・`01_schema_grants.sql` は `:"db_user"` などの psql 変数を含み SQLFluff が解析できない（PRS）。ファイル内に `-- noqa: disable=PRS` 〜 `-- noqa: enable=PRS` を置いて免除する（変数は `docker/postgres/init/00-setup.sh` が `psql -v` で渡す）。
 - **オブジェクト名/列挙コードテーブル/型の正しさ**（VARCHAR(10) 採番主キー・コードテーブル + 外部キーの列挙など）は SQLFluff の管轄外。`spec-database-rule` + `spec-06-db-physical.yaml` との整合は、マイグレーション生成 skill（`spec-scaffold-db`/`spec-db-migration`）のゲート（DS6/MG6）で担保する。SQLFluff は**スタイル/構文のみ**を対象とする。
 - 文字コード/改行は本 lint の対象外とし、`開発規約/spec-backend-coding-rule.md` §12 に従う。
 - `10_schema.sql`（約30KB）は既定の 20000 バイトのスキップ上限を超えるため、`large_file_skip_byte_limit=0` により**必ず検査する**（未設定の場合は無言でスキップされ、未検査となる）。

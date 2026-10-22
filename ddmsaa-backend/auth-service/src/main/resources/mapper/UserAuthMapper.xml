@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ddmsaa.auth.mapper.UserAuthMapper">
+
+    <resultMap id="userAuthViewMap" type="com.example.ddmsaa.auth.mapper.UserAuthView">
+        <constructor>
+            <arg column="user_id" javaType="java.lang.String" name="userId"/>
+            <arg column="role" javaType="java.lang.Integer" name="role"/>
+            <arg column="disabled" javaType="_boolean" name="disabled"/>
+            <arg column="lock_started_at" javaType="java.time.OffsetDateTime"
+                 name="lockStartedAt"/>
+            <arg column="email" javaType="java.lang.String" name="email"/>
+        </constructor>
+    </resultMap>
+
+    <!-- READ ONLY。users のみ deleted_at を持つ（user_contacts / system_locks は論理削除なし） -->
+    <select id="findAuthView" resultMap="userAuthViewMap">
+        SELECT e.user_id,
+               e.role,
+               (e.status = 2) AS disabled,
+               sl.lock_started_at,
+               ec.email
+        FROM users e
+        LEFT JOIN user_contacts ec ON e.user_id = ec.user_id
+        LEFT JOIN system_locks sl ON e.user_id = sl.user_id
+        WHERE e.user_id = #{userId}
+          AND e.deleted_at IS NULL
+    </select>
+
+</mapper>

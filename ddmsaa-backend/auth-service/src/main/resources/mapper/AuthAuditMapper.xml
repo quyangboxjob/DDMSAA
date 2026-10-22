@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.ddmsaa.auth.mapper.AuthAuditMapper">
+
+    <!-- INSERT のみ。id は DB 既定値 next_business_id、created_by は既定値 SYSTEM -->
+    <insert id="insert">
+        INSERT INTO audit_logs (actor_user_id, audit_action, target_type, target_id, trace_id)
+        VALUES (#{actorUserId,jdbcType=VARCHAR},
+                #{auditAction,jdbcType=VARCHAR},
+                #{targetType,jdbcType=VARCHAR},
+                #{targetId,jdbcType=VARCHAR},
+                #{traceId,jdbcType=VARCHAR})
+    </insert>
+
+</mapper>

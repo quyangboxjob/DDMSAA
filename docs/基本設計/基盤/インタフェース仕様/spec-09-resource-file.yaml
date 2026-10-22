@@ -348,6 +348,14 @@ resource_files:
         type: Boolean
         value: true
         description: snake_case → camelCase 自動変換
+      - key: mybatis.mapper-locations
+        type: String
+        value: "classpath:mapper/*.xml"
+        description: MyBatis XML マッパー配置パス（業務 Mapper XML 用。core でも必要）
+      - key: management.endpoints.web.exposure.include
+        type: String
+        value: health
+        description: Actuator 公開エンドポイント
       - key: pagehelper.helper-dialect
         type: String
         value: postgresql
@@ -464,7 +472,8 @@ resource_files:
         env_var: CORS_ALLOWED_ORIGINS
         description: CORS 許可オリジン（infrastructure.SecurityConfig の CorsConfigurationSource 用）
     constraints:
-      - mybatis.mapper-locations は business-service-core には不要（auth-service のみ）
+      - mybatis.mapper-locations は auth-service・business-service-core の両方で必要（classpath:mapper/*.xml）
+      - business-service-core は Redis を使用しない（spring.data.redis.* を持たない）
       - app.crypto.aes-key 未設定時は起動時 IllegalStateException（fail-fast）
       - HikariCP 設定は business-service-core のみ（auth-service には不要）
 

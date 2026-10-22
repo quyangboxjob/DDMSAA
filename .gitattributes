@@ -1,0 +1,39 @@
+# LF 正規化
+* text=auto
+
+*.java  text eol=lf
+*.xml   text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.sql   text eol=lf
+*.sh    text eol=lf
+*.properties text eol=lf
+*.md    text eol=lf
+*.bat   text eol=crlf
+
+# frontend / scripts / config（LF 固定。開発規約 spec-backend-coding-rule §12）
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.json  text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.conf  text eol=lf
+*.sql   text eol=lf
+mvnw    text eol=lf
+.editorconfig text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.sqlfluff text eol=lf
+.sqlfluffignore text eol=lf
+.env.example text eol=lf
+.prettierrc.json text eol=lf
+.prettierignore text eol=lf
+
+# バイナリ
+*.jar   binary
+*.png   binary
+*.jpg   binary
+*.ttf   binary
+*.zip   binary

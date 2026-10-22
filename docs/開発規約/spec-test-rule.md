@@ -235,5 +235,6 @@
 - 詳細設計ディレクトリの `-testlist`／`-testreport` と `単体テスト／結合テスト` 配下レポートの使い分け・重複記録の扱い。
 - フロントエンドの機能単位の UT 用例一覧（§5.1 のフロントエンド版）の有無。
 - （決定済）画面結合テストの ID に使う画面 ID の表記は `SCR-<n>`（`spec-00-doc-standard-ui.md` §3）。機能別接頭辞は付けない。
-- L3 のデータベース（Testcontainers か常設 DB か）、シード戦略、CI での L3 実行可否（テスト基盤構築時の決定事項で、規約化されていない）。
+- （決定済 2026-10-22）L3 のデータベースは Testcontainers の PostgreSQL 16（auth-service は Redis 7 も）。schema は機構A の `setup/10_schema.sql`・`20_seed.sql` をそのまま流して作り（テスト専用 DDL を持たない）、各テストの前に業務データを空にする（参照マスタは残す）。管理者・承認ルールなどの業務データはテストが自分で用意する。Docker が使えない環境では L3（`*IT`）を実行できないため、`mvn test`（L1／L2）と `mvn verify`（L3 を含む）を分けて運用する。
+- CI での L3 実行可否（Docker の有無）。
 <!-- devtool:endblock -->

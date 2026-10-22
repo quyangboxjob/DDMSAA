@@ -119,6 +119,8 @@ Result.ok(PageResult.of(list, total, pageNum, pageSize));
 | `MethodArgumentNotValidException` / `ConstraintViolationException` | 400 | `E0008` |
 | `MethodArgumentTypeMismatchException`（クエリ・パスの型変換失敗。不正な列挙値を含む）/ `HttpMessageNotReadableException`（JSON・ボディの列挙値・日付の形式不正）/ `MissingServletRequestParameterException` / `MissingServletRequestPartException`（multipart の必須パート欠落）/ `MissingPathVariableException` | 400 | `E0008`。`details[]` に項目（形式不正の詳細・パーサのメッセージは返さない） |
 | `InvalidRequestException`（messageId 保持・既定 `E0008`。Service 層の業務判定で見つかった入力不整合。`BusinessException` を継承しない） | 400 | 例外の messageId（既定 `E0008`、空ファイルは `E0053`）。`details[]` に項目 |
+| `NoResourceFoundException` / `NoHandlerFoundException` / `HttpRequestMethodNotSupportedException`（存在しないパス・不許可メソッド） | 404 | `E0005` |
+| `HttpMediaTypeNotSupportedException` / `HttpMediaTypeNotAcceptableException` | 400 | `E0008` |
 | `AuthException`（messageId 保持）/ `AuthenticationException`（Spring Security）/ JWT 期限切れ | 401 | `AuthException` は例外の messageId（既定 `E0004`）、`AuthenticationException` は `E0004`、JWT 期限切れは `E0001` |
 | `AccessDeniedException`（ロール/データ範囲の不足） | 403 | `E0002` |
 | `EntityNotFoundException`（messageId 保持。リソース不存在） | 404 | 例外の messageId（既定 `E0005`） |

@@ -70,10 +70,10 @@ types:
       findAuthView:
         base_table: users e
         joins:
-          - "LEFT JOIN user_contacts ec ON e.user_id = ec.user_id AND ec.deleted_at IS NULL"
-          - "LEFT JOIN system_locks sl ON e.user_id = sl.user_id AND sl.deleted_at IS NULL"
+          - "LEFT JOIN user_contacts ec ON e.user_id = ec.user_id"
+          - "LEFT JOIN system_locks sl ON e.user_id = sl.user_id"
         where: "e.user_id = #{userId} AND e.deleted_at IS NULL"
-        note: "全 JOIN に deleted_at IS NULL 条件を含めること。ソフトデリート済みの連絡先・ロックレコードが結果に混入するとメール送信失敗・誤ロック判定が発生する。"
+        note: "user_contacts・system_locks は論理削除しない（deleted_at なし。06 yaml で soft_delete: false）。deleted_at IS NULL を条件に持つのは users のみ。"
 
   # ----------------------------------------------------------
   # 5. UserAuthView

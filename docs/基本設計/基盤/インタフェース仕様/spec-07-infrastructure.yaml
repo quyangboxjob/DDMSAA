@@ -217,6 +217,8 @@ behavior_contracts:
         action: IllegalArgumentException を送出
       - condition: "upload: 正常"
         action: "base-dir 配下（app.file.local.base-dir）へ書込。親ディレクトリは自動作成。"
+      - condition: "upload / download / delete / presignedUrl: objectKey を base-dir に解決・正規化した結果が base-dir 配下でない（../ 等のパス穿越）、または base-dir 自体を指す"
+        action: "IllegalArgumentException を送出（base-dir 外へのアクセスを拒否）"
       - condition: "download: ファイルが存在しない"
         action: "EntityNotFoundException(E0005) を送出"
       - condition: "delete: ファイルが存在しない"
@@ -249,4 +251,20 @@ behavior_contracts:
       - condition: 読み取りタイムアウト
         action: "BusinessException(E0043) を送出（HTTP 504 相当）"
       - condition: "ダウンストリームが 4xx を返却"
-        action: "そのままレスポンスを BusinessException にラップして再送出"
+        action: >-
+          レスポンスボディの ErrorResponse から messageId / messageArgs を取り出して BusinessException にラップして再送出する。
+          ボディが JSON でない、または messageId が無い場合は messageId E0008 にフォールバックする。
+      - condition: "接続系失敗（ConnectException / 接続タイムアウト）と読み取りタイムアウトの判別"
+        action: "接続フェーズの失敗は E0013、読み取りタイムアウトは E0043 にマップする（上記 2 契約の判別規則。SocketTimeout はメッセージに connect を含む場合のみ接続失敗とする）"
+
+  AuthStateStore_binding:
+    rule: >-
+      AuthStateStore は @ConditionalOnClass(StringRedisTemplate)（org.springframework.data.redis.core.StringRedisTemplate が classpath に
+      ある場合のみ）で条件化する。Redis を使わないサービス（business-service-core 等）では Bean を作成しない。
+
+  ClamdVirusScanService_protocol:
+    rule: >-
+      clamd へ zINSTREAM プロトコルで送る：コマンド "zINSTREAM\0"（NUL 終端）→ データをチャンク（既定 8192 バイト）に分割し、
+      各チャンクを [4 バイト・ビッグエンディアンのチャンク長][データ] で送信 → 終端として長さ 0 の 4 バイトを送信。
+      応答（NUL 終端）を読み、末尾が "OK" なら SAFE、"FOUND" なら REJECTED、
+      それ以外（"ERROR" を含む）および接続・送受信失敗・タイムアウトは VirusScanUnavailableException とする。

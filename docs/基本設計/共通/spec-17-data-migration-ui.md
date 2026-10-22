@@ -41,7 +41,7 @@
 <!-- devtool:block id="basic.common.17-data-migration-ui.s03" -->
 ## 3. 開発・テスト用サンプルデータ
 
-- 開発用サンプル（顧客・商品・EMPLOYEE・CUSTOMER 利用者・注文など）は Docker 初期化の `setup/20_seed.sql`（機構A。本番には適用しない）に置く。内容は `spec-scaffold-db` 実行時に決める（TBD-MIG-03）。
+- 開発用サンプル（顧客 3・連絡先 3・商品 4・EMPLOYEE 2・CUSTOMER 2・担当割当 3・下書き注文 2 とその明細・履歴）は Docker 初期化の `setup/21_seed_sample.sql`（機構A。本番には適用しない。`SEED_SAMPLE_DATA=false` で省略可）に置く。T07 コード表と税率（INI-01・02）は Flyway V1 の外部キーが先に参照するため `setup/20_seed.sql`（冪等）にも置き、`R__` は以降の変更を upsert する。初期管理者 A0001・承認ルール（INI-03〜05）はサンプルに含めず Flyway `V1` が投入する。
 - テスト用データはテストコードの fixture で用意し、本書の初期データ（INI-01〜05）を前提にしてよい。
 
 <!-- devtool:endblock -->
@@ -63,8 +63,8 @@
 
 | # | 事項 |
 |---|---|
-| TBD-MIG-02 | A0001 を固定投入した後、`next_business_id('A', 4)` が A0002 から始まるようにするシーケンスの扱い（`spec-database-rule.md` §4.1-SEQ） |
-| TBD-MIG-03 | 開発用サンプルデータの内容（`spec-scaffold-db` 実行時に決める） |
+| TBD-MIG-02（解決済み 2026-10-22） | `seq_id_a` を `START WITH 2` で作成する（`setup/10_schema.sql`）。A0001 を V1 で固定投入した後、`next_business_id('A', 4)` は A0002 を返す |
+| TBD-MIG-03（解決済み 2026-10-22） | 開発用サンプルの内容は `setup/21_seed_sample.sql`（§3） |
 | TBD-MIG-04 | INI-03（承認ルール）と INI-02（税率）を `V1` と `R__` のどちらに置くかの最終確認（本書は税率＝`R__`、承認ルール＝`V1`） |
 
 <!-- devtool:endblock -->

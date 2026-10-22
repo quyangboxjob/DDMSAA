@@ -1,0 +1,84 @@
+# =============================================================================
+# Message List (English translation catalog) - DDMSAA
+# -----------------------------------------------------------------------------
+# English translation of spec-09-message-list.yaml (ja master).
+#   - messageId and category are shared by all languages; only message text differs.
+#   - Numbering rules, number bands and HTTP status policy: see 基本設計/共通/spec-09-message-list-ui.md (not repeated here).
+#   - Placeholders {0},{1}... correspond one-to-one with the ja master.
+# =============================================================================
+
+messages:
+
+  # =========================================================== INFO
+  I0001: { category: INFO, message: "An authentication email has been sent. Please follow the link in the email." }
+  I0003: { category: INFO, message: "Logged in." }
+  I0010: { category: INFO, message: "Registered (ID: {0})." }
+  I0011: { category: INFO, message: "Updated." }
+  I0012: { category: INFO, message: "Deleted." }
+
+  # =========================================================== WARNING
+  W0010: { category: WARNING, message: "This will be deleted. Are you sure?" }
+  W0011: { category: WARNING, message: "Your input will be discarded. Are you sure?" }
+
+  # =========================================================== ERROR
+  # --- Authentication / authorization ---
+  E0001: { category: ERROR, message: "Your session has expired. Please log in again." }
+  E0002: { category: ERROR, message: "You do not have permission to perform this operation." }
+  E0003: { category: ERROR, message: "The operation limit has been reached. Please wait and try again." }
+  E0004: { category: ERROR, message: "Authentication failed." }
+  E0020: { category: ERROR, message: "Unable to log in." }
+  # --- Not found / business / validation / file ---
+  E0005: { category: ERROR, message: "The target was not found." }
+  E0006: { category: ERROR, message: "This operation cannot be performed in the current state." }
+  E0007: { category: ERROR, message: "Already exists." }
+  E0008: { category: ERROR, message: "The input contains errors." }
+  E0009: { category: ERROR, message: "This file format is not allowed." }
+  E0010: { category: ERROR, message: "The file size exceeds the limit." }
+  # --- System ---
+  E0012: { category: ERROR, message: "A system error occurred. Please contact the administrator." }
+  E0013: { category: ERROR, message: "Unable to connect to the service. Please try again later." }
+  # --- Client-side validation ---
+  E0030: { category: ERROR, message: "{0} is required." }
+  E0031: { category: ERROR, message: "{0} has an invalid format." }
+  E0032: { category: ERROR, message: "{0} must be {1} characters or fewer." }
+  E0033: { category: ERROR, message: "{0} must be {1} or greater." }
+  E0034: { category: ERROR, message: "{0} must be {1} or less." }
+  # --- API Gateway ---
+  E0040: { category: ERROR, message: "No authentication token was provided." }
+  E0041: { category: ERROR, message: "The authentication token is invalid." }
+  E0042: { category: ERROR, message: "The requested route does not exist." }
+  E0043: { category: ERROR, message: "The service response timed out." }
+
+  # =========================================================== 業務メッセージ（画面・API 設計で採番）
+  I0020: { category: INFO, message: "Approval has been requested." }
+  I0021: { category: INFO, message: "The order has been cancelled." }
+  I0022: { category: INFO, message: "Approved." }
+  I0023: { category: INFO, message: "Returned." }
+  I0024: { category: INFO, message: "Uploaded. The file cannot be downloaded until the virus scan completes." }
+  I0025: { category: INFO, message: "The user has been locked." }
+  I0026: { category: INFO, message: "Resend request accepted." }
+  I0027: { category: INFO, message: "CSV creation has been accepted. You can download it when it completes." }
+  I0028: { category: INFO, message: "CSV creation has completed." }
+  I0029: { category: INFO, message: "The user has been unlocked." }
+  I0030: { category: INFO, message: "Changing or disabling this item does not affect existing orders or their tax amounts." }
+  I0031: { category: INFO, message: "Changes apply to new approval requests only. Submitted orders are not affected." }
+  I0032: { category: INFO, message: "The user has been disabled." }
+  I0033: { category: INFO, message: "The user has been re-enabled." }
+  I0034: { category: INFO, message: "It has been activated." }
+  I0035: { category: INFO, message: "It has been deactivated." }
+  W0020: { category: WARNING, message: "This will request approval. You cannot edit the order after submitting. Continue?" }
+  W0021: { category: WARNING, message: "This will approve the order. Continue?" }
+  W0022: { category: WARNING, message: "This will cancel the order and cannot be undone. Continue?" }
+  W0023: { category: WARNING, message: "Disabling this user prevents them from signing in again (a signed-in user loses access within 60 minutes). Continue?" }
+  W0024: { category: WARNING, message: "This will resend the notification. Continue?" }
+  W0025: { category: WARNING, message: "Disabling this customer prevents new orders from being created for them. Continue?" }
+  W0026: { category: WARNING, message: "Disabling this product removes it from selection in new orders. Continue?" }
+  W0027: { category: WARNING, message: "This will lock the user. A locked user cannot sign in again (a signed-in user loses access within 60 minutes). Continue?" }
+  W0028: { category: WARNING, message: "The request will be returned. Are you sure?" }
+  E0050: { category: ERROR, message: "CSV creation failed. Check the conditions and try again." }
+  E0051: { category: ERROR, message: "Another user has updated this data. Display the latest content and try again." }
+  E0052: { category: ERROR, message: "The total size of the order attachments exceeds the limit (50 MiB)." }
+  E0053: { category: ERROR, message: "Empty files cannot be uploaded." }
+  E0054: { category: ERROR, message: "This cannot be performed because it includes an inactive customer or product, or a customer you are not assigned to." }
+  E0055: { category: ERROR, message: "This cannot be performed because there is only one active administrator." }
+  E0056: { category: ERROR, message: "You cannot approve or return an order that you submitted." }

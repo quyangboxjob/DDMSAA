@@ -19,12 +19,15 @@ types:
     kind: class
     annotation: "@RestControllerAdvice"
     purpose: 全 MVC サービス（auth-service / business-service-core）の例外を統一捕捉し ResponseEntity<ErrorResponse> を返却するグローバルハンドラ
-    constructors: []
+    constructors:
+      - "GlobalExceptionHandler(MessageCatalog messageCatalog)  // コンストラクタ注入。ErrorResponse.message の日本語正本取得に使う"
     methods:
       - "ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleInvalidRequest(InvalidRequestException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleRequestBinding(Exception ex, HttpServletRequest request)  // MethodArgumentTypeMismatchException / HttpMessageNotReadableException / MissingServletRequestParameterException / MissingServletRequestPartException / MissingPathVariableException を 400 E0008 に変換する（個別ハンドラに分けてもよい）"
+      - "ResponseEntity<ErrorResponse> handleNotFoundRoute(Exception ex, HttpServletRequest request)  // NoResourceFoundException / NoHandlerFoundException / HttpRequestMethodNotSupportedException を 404 E0005 に変換する"
+      - "ResponseEntity<ErrorResponse> handleUnsupportedMedia(Exception ex, HttpServletRequest request)  // HttpMediaTypeNotSupportedException / HttpMediaTypeNotAcceptableException を 400 E0008 に変換する"
       - "ResponseEntity<ErrorResponse> handleAuth(AuthException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request)"
       - "ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request)"
@@ -108,6 +111,14 @@ behavior_contracts:
   GlobalExceptionHandler:
     base_response:
       rule: "全ハンドラは ErrorResponse.of(messageId, request.getRequestURI(), MDC.get('traceId')) で基底を生成する。"
+    message_fallback:
+      rule: >-
+        GlobalExceptionHandler は MessageCatalog をコンストラクタ注入で受け取り、ErrorResponse.message には messageId に対応する日本語正本を設定する。
+        取得できない場合（未登録 messageId 等）は message に messageId 自体を設定する（兜底）。
+    route_and_media_type:
+      rule: >-
+        NoResourceFoundException / NoHandlerFoundException / HttpRequestMethodNotSupportedException は 404 E0005、
+        HttpMediaTypeNotSupportedException / HttpMediaTypeNotAcceptableException は 400 E0008 に変換する（500 にしない）。
     message_args_propagation:
       rule: >-
         args を保持する例外（AuthException / BusinessException / EntityNotFoundException / PayloadTooLargeException）。InvalidRequestException は args を持たず、details（FieldError）を ErrorResponse.setDetails() へ設定するの各ハンドラは、

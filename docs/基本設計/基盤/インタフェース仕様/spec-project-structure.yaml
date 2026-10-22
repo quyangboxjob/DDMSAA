@@ -26,7 +26,7 @@ dependency_versions:
   mybatis-starter.version: "3.0.4"   # mybatis-spring-boot-starter
   pagehelper.version: "2.1.1"        # pagehelper-spring-boot-starter（MyBatis 3.5.19 同梱）
   mapstruct.version: "1.6.3"         # org.mapstruct mapstruct + mapstruct-processor
-  aws-sdk.version: "2.x"             # software.amazon.awssdk:bom（AWS SDK for Java v2。s3 は BOM 管理で版数を子に書かない）
+  aws-sdk.version: "2.57.2"         # software.amazon.awssdk:bom（AWS SDK for Java v2。s3 は BOM 管理で版数を子に書かない）
   poi.version: "5.4.1"               # org.apache.poi poi-ooxml（BOM 外＝要 pin）。xlsx 帳票出力用
   pdfbox.version: "3.0.3"            # org.apache.pdfbox pdfbox（BOM 外＝要 pin）。注文書 PDF（日本語は IPAex ゴシックを埋め込む）
   tika.version: "2.9.2"              # org.apache.tika tika-core（BOM 外＝要 pin）。添付ファイルの MIME 検出
@@ -104,6 +104,9 @@ code_generation_pipeline:
     preserves: >
       javadoc は formatter で再整形しない（プロファイルの comment.format_javadoc_comments=false）。
       javadoc 文面・整列は spec（layer-1, SSOT）が正本のため。
+    current_limitation: >-
+      生成時の Spotless（eclipse.jdt）は download.eclipse.org からの取得が必要。当該サイトが利用できない間は
+      手作業で排版（上記 normalizes 相当）を維持し、取得可能になった後に全体へ一括 apply して統一する。
     keep_one_line_value_note: "keep_*_on_one_line の値は never ではなく one_line_never（Eclipse JDT 4.33 で検証）。"
   determinism_layers:
     layer_1_meaning: "spec が SSOT（メンバ集合 / code_body ロジック / javadoc 文面）。曖昧化禁止。"
@@ -180,6 +183,7 @@ dependencies:
   api-gateway:
     - { artifact: "common",                                     scope: internal }
     - { artifact: "spring-cloud-starter-gateway-server-webflux" }  # webflux を推移的に提供するため spring-boot-starter-webflux は重複追加しない
+    - { artifact: "spring-boot-starter-security" }  # SecurityConfig の @EnableWebFluxSecurity に必要
     - { artifact: "spring-boot-starter-actuator" }
     - { artifact: "jjwt-api" }
     - { artifact: "jjwt-impl",    scope: runtime }
@@ -203,6 +207,8 @@ dependencies:
     - { artifact: "jjwt-jackson", scope: runtime }
     - { artifact: "spring-boot-starter-test",   scope: test }
     - { artifact: "spring-security-test",        scope: test }
+    - { artifact: "testcontainers-junit-jupiter", scope: test }   # org.testcontainers:junit-jupiter（版数は Spring Boot BOM）
+    - { artifact: "testcontainers-postgresql",    scope: test }   # org.testcontainers:postgresql
 
   business-service-core:
     - { artifact: "common",                          scope: internal }
@@ -225,6 +231,8 @@ dependencies:
     - { artifact: "tika-core" }    # 添付の MIME 検出（org.apache.tika:tika-core。版数は tika.version）
     - { artifact: "spring-boot-starter-test",   scope: test }
     - { artifact: "spring-security-test",        scope: test }
+    - { artifact: "testcontainers-junit-jupiter", scope: test }   # org.testcontainers:junit-jupiter（版数は Spring Boot BOM）
+    - { artifact: "testcontainers-postgresql",    scope: test }   # org.testcontainers:postgresql
 
 # ============================================================
 # ソースファイル一覧（main / test）
@@ -284,6 +292,7 @@ source_files:
     main:
       - com.example.ddmsaa.gateway.GatewayApplication
       - com.example.ddmsaa.gateway.config.CorsConfig
+      - com.example.ddmsaa.gateway.config.SecurityConfig
       - com.example.ddmsaa.gateway.error.ErrorResponseWriter
       - com.example.ddmsaa.gateway.error.GatewayErrorHandler
       - com.example.ddmsaa.gateway.filter.JwtAuthGlobalFilter
@@ -300,13 +309,16 @@ source_files:
       - com.example.ddmsaa.auth.config.SecurityConfig
       - com.example.ddmsaa.auth.controller.AuthController
       - com.example.ddmsaa.auth.dto.LoginInitRequest
+      - com.example.ddmsaa.auth.dto.ResendMagicLinkRequest
       - com.example.ddmsaa.auth.dto.TokenResponse
       - com.example.ddmsaa.auth.dto.VerifyMagicLinkRequest
+      - com.example.ddmsaa.auth.mapper.AuthAuditMapper
       - com.example.ddmsaa.auth.mapper.UserAuthMapper
       - com.example.ddmsaa.auth.mapper.UserAuthView
       - com.example.ddmsaa.auth.service.AuthService
       - com.example.ddmsaa.auth.service.impl.AuthServiceImpl
     resources:
+      - "mapper/AuthAuditMapper.xml"
       - "mapper/UserAuthMapper.xml"
       - "application.yml"
     test:
@@ -317,7 +329,10 @@ source_files:
     main:
       - com.example.ddmsaa.core.BusinessServiceCoreApplication
       - com.example.ddmsaa.core.config.SecurityConfig
-      - com.example.ddmsaa.core.controller.PingController
+      - com.example.ddmsaa.core.controller.PingController   # GET /api/v1/ping（要認証。Result.ok("pong") を返す）
+      - com.example.ddmsaa.core.shared.config.SchedulingConfig
+      - com.example.ddmsaa.core.shared.port.*     # port インタフェース 8 個および値型（各業務間の依存方向を固定する共有ポート）
+      - com.example.ddmsaa.core.shared.enums.*    # T07 列挙 12 個
     resources:
       - "application.yml"
     test: []
@@ -444,7 +459,7 @@ env_vars:
   - { key: REDIS_PORT,               required: false, default: "6379",  services: [auth-service] }
   - { key: REDIS_PASSWORD,           required: false, default: "",       services: [auth-service] }
   - { key: MAIL_HOST,                required: false, default: localhost, services: [auth-service] }
-  - { key: MAIL_PORT,                required: false, default: "25",     services: [auth-service] }
+  - { key: MAIL_PORT,                required: false, default: "587",    services: [auth-service] }
   - { key: MAIL_USERNAME,            required: false, default: "",       services: [auth-service] }
   - { key: MAIL_PASSWORD,            required: false, default: "",       services: [auth-service] }
   - { key: SPRING_DATASOURCE_URL,      required: true,  services: [business-service-core] }
@@ -470,6 +485,9 @@ documentation_policy:
     coverage:
       - "型レベル: すべての public 型（class/interface/record/enum）は `javadoc` フィールドを持ち、その本文を逐語出力する。"
       - "メソッドレベル: method/constructor は `javadoc` フィールドを持つもののみ Javadoc を出力（@param/@return/@throws も同フィールド内に逐語記載）。`javadoc` の無い要素には Javadoc を付けない。"
+    spec_vs_convention: >-
+      yaml に `javadoc` フィールドがあればそれを逐語使用する。`javadoc` フィールドの無い要素は、
+      開発規約/spec-backend-coding-rule.md §11.1 に従って日本語 Javadoc を記述する（規約が yaml より優先）。
     no_discretion: "「trivial だから省略」等の生成器裁量を禁止。Javadoc の出力可否と文言は `javadoc` フィールドのみで決まる（決定論）。"
     prohibitions:
       - "spec に無い Javadoc を生成器が創作することを禁止。"

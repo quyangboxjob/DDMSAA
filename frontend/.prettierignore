@@ -1,0 +1,6 @@
+dist
+coverage
+test-results
+node_modules
+pnpm-lock.yaml
+src/i18n/generated

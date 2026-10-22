@@ -254,7 +254,7 @@ auth-service は以下の 3 テーブルを **READ ONLY** で参照し、`audit_
 **データアクセス実装：**
 
 - `UserAuthMapper`：MyBatis Mapper インターフェース（`com.example.ddmsaa.auth` パッケージ）。
-- `UserAuthView`：上記 3 テーブルの LEFT JOIN 結果を保持するクエリ結果 DTO（各テーブルの `deleted_at IS NULL` を条件に含む）。
+- `UserAuthView`：上記 3 テーブルの LEFT JOIN 結果を保持するクエリ結果 DTO（`users` のみ `deleted_at IS NULL` を条件に含む。`user_contacts`・`system_locks` は論理削除しないため `deleted_at` なし）。
 - auth-service は業務テーブルを**定義しない**（DDL を持たない）。
 - 詳細は `データベース/schema/schema-definition.yaml` および `データベース/spec-data-dictionary-mapping-ui.md` 参照。
 

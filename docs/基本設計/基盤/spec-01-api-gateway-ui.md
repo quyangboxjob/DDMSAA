@@ -66,22 +66,24 @@
 app:
   services:
     auth:
-      base-url: ${SVC_AUTH_URL:http://localhost:8081}
+      base-url: ${AUTH_SERVICE_URI:http://localhost:8081}
     core:
-      base-url: ${SVC_CORE_URL:http://localhost:8082}
+      base-url: ${CORE_SERVICE_URI:http://localhost:8082}
 
 spring:
   cloud:
     gateway:
-      routes:
-        - id: auth
-          uri: ${app.services.auth.base-url}
-          predicates:
-            - Path=/api/v1/auth/**
-        - id: business-core
-          uri: ${app.services.core.base-url}
-          predicates:
-            - Path=/api/v1/**
+      server:
+        webflux:
+          routes:
+            - id: auth
+              uri: ${app.services.auth.base-url}
+              predicates:
+                - Path=/api/v1/auth/**
+            - id: business-core
+              uri: ${app.services.core.base-url}
+              predicates:
+                - Path=/api/v1/**
 ```
 
 ### §2.3 ルーティング対応表
@@ -258,6 +260,12 @@ OPTIONS リクエストは `CorsWebFilter` で即座に `200 OK` を返し、認
 
 > 全 `messageId` の定義は `共通/spec-09-message-list.yaml` を参照。
 
+### §6.5 既知の制限（現行実装）
+
+- **未マッチルートの 404 に TraceId なし**：どのルートにも一致しないリクエストの 404 応答は、`TraceIdGlobalFilter` を経由しないため `traceId` が付かない。
+- **UnknownHostException は 500 扱い**：下流ホスト名の解決失敗は現状 500 `E0012` に分類される。502 に分類するのが望ましい（待改）。
+- **セキュリティヘッダ（§5）は単独実装なし**：`nosniff` 等のヘッダ付与用フィルタは未実装で、Spring Security 既定ヘッダ（WebFlux）に依存している。§5 の全ヘッダ（`Strict-Transport-Security` 等）が揃うとは限らない。
+
 ---
 
 <!-- devtool:endblock -->
@@ -344,13 +352,15 @@ spring:
     timeout-per-shutdown-phase: 30s
   cloud:
     gateway:
-      routes:
-        - id: auth
-          uri: ${app.services.auth.base-url}
-          predicates: [ "Path=/api/v1/auth/**" ]
-        - id: business-core
-          uri: ${app.services.core.base-url}
-          predicates: [ "Path=/api/v1/**" ]
+      server:
+        webflux:
+          routes:
+            - id: auth
+              uri: ${app.services.auth.base-url}
+              predicates: [ "Path=/api/v1/auth/**" ]
+            - id: business-core
+              uri: ${app.services.core.base-url}
+              predicates: [ "Path=/api/v1/**" ]
 
 app:
   jwt:
@@ -359,9 +369,9 @@ app:
     expiration-seconds: 3600
   services:
     auth:
-      base-url: ${SVC_AUTH_URL:http://localhost:8081}
+      base-url: ${AUTH_SERVICE_URI:http://localhost:8081}
     core:
-      base-url: ${SVC_CORE_URL:http://localhost:8082}
+      base-url: ${CORE_SERVICE_URI:http://localhost:8082}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 ```
