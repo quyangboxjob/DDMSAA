@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS public.user_role_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_user_role_codes PRIMARY KEY (user_role_code),
-    CONSTRAINT uq_user_role_codes_user_role_name UNIQUE (user_role_name)
+    CONSTRAINT uq_user_role_codes_name UNIQUE (user_role_name)
 );
 
 -- TBL-user-status-codes：利用者状態コード
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.user_status_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_user_status_codes PRIMARY KEY (user_status_code),
-    CONSTRAINT uq_user_status_codes_user_status_name UNIQUE (user_status_name)
+    CONSTRAINT uq_user_sts_codes_name UNIQUE (user_status_name)
 );
 
 -- TBL-customer-status-codes：顧客状態コード
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.customer_status_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_customer_status_codes PRIMARY KEY (customer_status_code),
-    CONSTRAINT uq_customer_status_codes_customer_status_name UNIQUE (customer_status_name)
+    CONSTRAINT uq_cus_sts_codes_name UNIQUE (customer_status_name)
 );
 
 -- TBL-product-status-codes：商品状態コード
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS public.product_status_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_product_status_codes PRIMARY KEY (product_status_code),
-    CONSTRAINT uq_product_status_codes_product_status_name UNIQUE (product_status_name)
+    CONSTRAINT uq_prd_sts_codes_name UNIQUE (product_status_name)
 );
 
 -- TBL-tax-category-codes：税区分コード
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS public.tax_category_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_tax_category_codes PRIMARY KEY (tax_category_code),
-    CONSTRAINT uq_tax_category_codes_tax_category_name UNIQUE (tax_category_name)
+    CONSTRAINT uq_tax_cat_codes_name UNIQUE (tax_category_name)
 );
 
 -- TBL-order-status-codes：注文状態コード
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS public.order_status_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_order_status_codes PRIMARY KEY (order_status_code),
-    CONSTRAINT uq_order_status_codes_order_status_name UNIQUE (order_status_name)
+    CONSTRAINT uq_ord_sts_codes_name UNIQUE (order_status_name)
 );
 
 -- TBL-approval-request-status-codes：承認依頼状態コード
@@ -137,8 +137,8 @@ CREATE TABLE IF NOT EXISTS public.approval_request_status_codes (
     created_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
-    CONSTRAINT pk_approval_request_status_codes PRIMARY KEY (approval_request_status_code),
-    CONSTRAINT uq_approval_request_status_codes_approval_request_status_name UNIQUE (approval_request_status_name)
+    CONSTRAINT pk_apr_req_sts_codes PRIMARY KEY (approval_request_status_code),
+    CONSTRAINT uq_apr_req_sts_codes_name UNIQUE (approval_request_status_name)
 );
 
 -- TBL-approval-action-codes：承認操作コード
@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS public.approval_action_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_approval_action_codes PRIMARY KEY (approval_action_code),
-    CONSTRAINT uq_approval_action_codes_approval_action_name UNIQUE (approval_action_name)
+    CONSTRAINT uq_apr_action_codes_name UNIQUE (approval_action_name)
 );
 
 -- TBL-attachment-visibility-codes：添付公開範囲コード
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS public.attachment_visibility_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_attachment_visibility_codes PRIMARY KEY (attachment_visibility_code),
-    CONSTRAINT uq_attachment_visibility_codes_attachment_visibility_name UNIQUE (attachment_visibility_name)
+    CONSTRAINT uq_att_vis_codes_name UNIQUE (attachment_visibility_name)
 );
 
 -- TBL-scan-status-codes：スキャン状態コード
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS public.scan_status_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_scan_status_codes PRIMARY KEY (scan_status_code),
-    CONSTRAINT uq_scan_status_codes_scan_status_name UNIQUE (scan_status_name)
+    CONSTRAINT uq_scan_sts_codes_name UNIQUE (scan_status_name)
 );
 
 -- TBL-notification-event-codes：通知イベントコード
@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS public.notification_event_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_notification_event_codes PRIMARY KEY (notification_event_code),
-    CONSTRAINT uq_notification_event_codes_notification_event_name UNIQUE (notification_event_name)
+    CONSTRAINT uq_ntf_evt_codes_name UNIQUE (notification_event_name)
 );
 
 -- TBL-notification-status-codes：通知状態コード
@@ -203,7 +203,7 @@ CREATE TABLE IF NOT EXISTS public.notification_status_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_notification_status_codes PRIMARY KEY (notification_status_code),
-    CONSTRAINT uq_notification_status_codes_notification_status_name UNIQUE (notification_status_name)
+    CONSTRAINT uq_ntf_sts_codes_name UNIQUE (notification_status_name)
 );
 
 -- TBL-export-status-codes：出力状態コード
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS public.export_status_codes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     CONSTRAINT pk_export_status_codes PRIMARY KEY (export_status_code),
-    CONSTRAINT uq_export_status_codes_export_status_name UNIQUE (export_status_name)
+    CONSTRAINT uq_exp_sts_codes_name UNIQUE (export_status_name)
 );
 
 -- TBL-customers：顧客
@@ -325,7 +325,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     deleted_at TIMESTAMPTZ,
     CONSTRAINT pk_products PRIMARY KEY (id),
-    CONSTRAINT chk_products_standard_unit_price CHECK (standard_unit_price >= 0)
+    CONSTRAINT chk_products_std_unit_price CHECK (standard_unit_price >= 0)
 );
 
 -- TBL-tax-rates：税率
@@ -417,9 +417,9 @@ CREATE TABLE IF NOT EXISTS public.approval_rules (
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     deleted_at TIMESTAMPTZ,
     CONSTRAINT pk_approval_rules PRIMARY KEY (id),
-    CONSTRAINT chk_approval_rules_approver_role CHECK (approver_role = 1),
+    CONSTRAINT chk_apr_rules_approver_role CHECK (approver_role = 1),
     CONSTRAINT chk_approval_rules_max_amount CHECK (max_amount IS NULL OR max_amount >= min_amount),
-    CONSTRAINT chk_approval_rules_effective_to_date CHECK (effective_to_date IS NULL OR effective_to_date >= effective_from_date)
+    CONSTRAINT chk_apr_rules_eff_to_date CHECK (effective_to_date IS NULL OR effective_to_date >= effective_from_date)
 );
 
 -- TBL-approval-requests：承認依頼
@@ -471,7 +471,7 @@ CREATE TABLE IF NOT EXISTS public.order_attachments (
     updated_by VARCHAR(10) NOT NULL DEFAULT 'SYSTEM',
     deleted_at TIMESTAMPTZ,
     CONSTRAINT pk_order_attachments PRIMARY KEY (id),
-    CONSTRAINT chk_order_attachments_file_size CHECK (file_size > 0 AND file_size <= 10485760)
+    CONSTRAINT chk_ord_atts_file_size CHECK (file_size > 0 AND file_size <= 10485760)
 );
 
 -- TBL-export-jobs：CSV 出力ジョブ
@@ -535,7 +535,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 -- 外部キー
 -- ---------------------------------------------------------------------
 ALTER TABLE public.customers
-    ADD CONSTRAINT fk_customers_customer_status_codes FOREIGN KEY (status) REFERENCES public.customer_status_codes (customer_status_code);
+    ADD CONSTRAINT fk_customers_cus_sts_codes FOREIGN KEY (status) REFERENCES public.customer_status_codes (customer_status_code);
 ALTER TABLE public.users
     ADD CONSTRAINT fk_users_user_role_codes FOREIGN KEY (role) REFERENCES public.user_role_codes (user_role_code);
 ALTER TABLE public.users
@@ -549,15 +549,15 @@ ALTER TABLE public.system_locks
 ALTER TABLE public.customer_contacts
     ADD CONSTRAINT fk_customer_contacts_customers FOREIGN KEY (customer_id) REFERENCES public.customers (id);
 ALTER TABLE public.customer_assignments
-    ADD CONSTRAINT fk_customer_assignments_customers FOREIGN KEY (customer_id) REFERENCES public.customers (id);
+    ADD CONSTRAINT fk_cus_asg_customers FOREIGN KEY (customer_id) REFERENCES public.customers (id);
 ALTER TABLE public.customer_assignments
     ADD CONSTRAINT fk_customer_assignments_users FOREIGN KEY (user_id) REFERENCES public.users (user_id);
 ALTER TABLE public.products
     ADD CONSTRAINT fk_products_tax_category_codes FOREIGN KEY (tax_category) REFERENCES public.tax_category_codes (tax_category_code);
 ALTER TABLE public.products
-    ADD CONSTRAINT fk_products_product_status_codes FOREIGN KEY (status) REFERENCES public.product_status_codes (product_status_code);
+    ADD CONSTRAINT fk_products_prd_sts_codes FOREIGN KEY (status) REFERENCES public.product_status_codes (product_status_code);
 ALTER TABLE public.tax_rates
-    ADD CONSTRAINT fk_tax_rates_tax_category_codes FOREIGN KEY (tax_category) REFERENCES public.tax_category_codes (tax_category_code);
+    ADD CONSTRAINT fk_tax_rates_tax_cat_codes FOREIGN KEY (tax_category) REFERENCES public.tax_category_codes (tax_category_code);
 ALTER TABLE public.orders
     ADD CONSTRAINT fk_orders_customers FOREIGN KEY (customer_id) REFERENCES public.customers (id);
 ALTER TABLE public.orders
@@ -571,41 +571,41 @@ ALTER TABLE public.order_items
 ALTER TABLE public.order_items
     ADD CONSTRAINT fk_order_items_products FOREIGN KEY (product_id) REFERENCES public.products (id);
 ALTER TABLE public.order_items
-    ADD CONSTRAINT fk_order_items_tax_category_codes FOREIGN KEY (tax_category) REFERENCES public.tax_category_codes (tax_category_code);
+    ADD CONSTRAINT fk_order_items_tax_cat_codes FOREIGN KEY (tax_category) REFERENCES public.tax_category_codes (tax_category_code);
 ALTER TABLE public.order_status_histories
-    ADD CONSTRAINT fk_order_status_histories_orders FOREIGN KEY (order_id) REFERENCES public.orders (id);
+    ADD CONSTRAINT fk_ord_sts_hist_orders FOREIGN KEY (order_id) REFERENCES public.orders (id);
 ALTER TABLE public.order_status_histories
-    ADD CONSTRAINT fk_order_status_histories_from_status FOREIGN KEY (from_status) REFERENCES public.order_status_codes (order_status_code);
+    ADD CONSTRAINT fk_ord_sts_hist_from_status FOREIGN KEY (from_status) REFERENCES public.order_status_codes (order_status_code);
 ALTER TABLE public.order_status_histories
-    ADD CONSTRAINT fk_order_status_histories_to_status FOREIGN KEY (to_status) REFERENCES public.order_status_codes (order_status_code);
+    ADD CONSTRAINT fk_ord_sts_hist_to_status FOREIGN KEY (to_status) REFERENCES public.order_status_codes (order_status_code);
 ALTER TABLE public.approval_rules
-    ADD CONSTRAINT fk_approval_rules_user_role_codes FOREIGN KEY (approver_role) REFERENCES public.user_role_codes (user_role_code);
+    ADD CONSTRAINT fk_apr_rules_user_role_codes FOREIGN KEY (approver_role) REFERENCES public.user_role_codes (user_role_code);
 ALTER TABLE public.approval_requests
     ADD CONSTRAINT fk_approval_requests_orders FOREIGN KEY (order_id) REFERENCES public.orders (id);
 ALTER TABLE public.approval_requests
     ADD CONSTRAINT fk_approval_requests_users FOREIGN KEY (approver_user_id) REFERENCES public.users (user_id);
 ALTER TABLE public.approval_requests
-    ADD CONSTRAINT fk_approval_requests_approval_request_status_codes FOREIGN KEY (status) REFERENCES public.approval_request_status_codes (approval_request_status_code);
+    ADD CONSTRAINT fk_apr_req_apr_req_sts_codes FOREIGN KEY (status) REFERENCES public.approval_request_status_codes (approval_request_status_code);
 ALTER TABLE public.approval_histories
-    ADD CONSTRAINT fk_approval_histories_approval_requests FOREIGN KEY (approval_request_id) REFERENCES public.approval_requests (id);
+    ADD CONSTRAINT fk_apr_hist_apr_requests FOREIGN KEY (approval_request_id) REFERENCES public.approval_requests (id);
 ALTER TABLE public.approval_histories
-    ADD CONSTRAINT fk_approval_histories_approval_action_codes FOREIGN KEY (approval_action) REFERENCES public.approval_action_codes (approval_action_code);
+    ADD CONSTRAINT fk_apr_hist_apr_action_codes FOREIGN KEY (approval_action) REFERENCES public.approval_action_codes (approval_action_code);
 ALTER TABLE public.order_attachments
     ADD CONSTRAINT fk_order_attachments_orders FOREIGN KEY (order_id) REFERENCES public.orders (id);
 ALTER TABLE public.order_attachments
-    ADD CONSTRAINT fk_order_attachments_attachment_visibility_codes FOREIGN KEY (visibility) REFERENCES public.attachment_visibility_codes (attachment_visibility_code);
+    ADD CONSTRAINT fk_ord_atts_att_vis_codes FOREIGN KEY (visibility) REFERENCES public.attachment_visibility_codes (attachment_visibility_code);
 ALTER TABLE public.order_attachments
-    ADD CONSTRAINT fk_order_attachments_scan_status_codes FOREIGN KEY (scan_status) REFERENCES public.scan_status_codes (scan_status_code);
+    ADD CONSTRAINT fk_ord_atts_scan_sts_codes FOREIGN KEY (scan_status) REFERENCES public.scan_status_codes (scan_status_code);
 ALTER TABLE public.export_jobs
-    ADD CONSTRAINT fk_export_jobs_export_status_codes FOREIGN KEY (status) REFERENCES public.export_status_codes (export_status_code);
+    ADD CONSTRAINT fk_export_jobs_exp_sts_codes FOREIGN KEY (status) REFERENCES public.export_status_codes (export_status_code);
 ALTER TABLE public.notification_logs
-    ADD CONSTRAINT fk_notification_logs_notification_event_codes FOREIGN KEY (notification_event) REFERENCES public.notification_event_codes (notification_event_code);
+    ADD CONSTRAINT fk_ntf_logs_ntf_evt_codes FOREIGN KEY (notification_event) REFERENCES public.notification_event_codes (notification_event_code);
 ALTER TABLE public.notification_logs
     ADD CONSTRAINT fk_notification_logs_orders FOREIGN KEY (order_id) REFERENCES public.orders (id);
 ALTER TABLE public.notification_logs
-    ADD CONSTRAINT fk_notification_logs_export_jobs FOREIGN KEY (export_job_id) REFERENCES public.export_jobs (id);
+    ADD CONSTRAINT fk_ntf_logs_export_jobs FOREIGN KEY (export_job_id) REFERENCES public.export_jobs (id);
 ALTER TABLE public.notification_logs
-    ADD CONSTRAINT fk_notification_logs_notification_status_codes FOREIGN KEY (status) REFERENCES public.notification_status_codes (notification_status_code);
+    ADD CONSTRAINT fk_ntf_logs_ntf_sts_codes FOREIGN KEY (status) REFERENCES public.notification_status_codes (notification_status_code);
 ALTER TABLE public.audit_logs
     ADD CONSTRAINT fk_audit_logs_users FOREIGN KEY (actor_user_id) REFERENCES public.users (user_id);
 
@@ -617,42 +617,42 @@ CREATE INDEX IF NOT EXISTS idx_customers_status ON public.customers (status);
 CREATE INDEX IF NOT EXISTS idx_users_customer_id ON public.users (customer_id);
 CREATE INDEX IF NOT EXISTS idx_users_role_status ON public.users (role, status);
 CREATE INDEX IF NOT EXISTS idx_users_status ON public.users (status);
-CREATE INDEX IF NOT EXISTS idx_customer_contacts_customer_id_is_active ON public.customer_contacts (customer_id, is_active);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_customer_assignments_customer_id_user_id ON public.customer_assignments (customer_id, user_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_customer_assignments_user_id_is_active ON public.customer_assignments (user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_cus_cnt_cus_id_is_active ON public.customer_contacts (customer_id, is_active);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_cus_asg_cus_id_user_id ON public.customer_assignments (customer_id, user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_cus_asg_user_id_is_active ON public.customer_assignments (user_id, is_active);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_products_product_code ON public.products (product_code) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_products_tax_category ON public.products (tax_category);
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products (status);
-CREATE INDEX IF NOT EXISTS idx_orders_customer_id_order_date ON public.orders (customer_id, order_date);
-CREATE INDEX IF NOT EXISTS idx_orders_sales_user_id_status ON public.orders (sales_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_cus_id_order_date ON public.orders (customer_id, order_date);
+CREATE INDEX IF NOT EXISTS idx_orders_sales_user_status ON public.orders (sales_user_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_status_order_date ON public.orders (status, order_date);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_revised_from_order_id ON public.orders (revised_from_order_id) WHERE revised_from_order_id IS NOT NULL AND deleted_at IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_order_items_order_id_line_number ON public.order_items (order_id, line_number) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_revised_from ON public.orders (revised_from_order_id) WHERE revised_from_order_id IS NOT NULL AND deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_order_items_order_line_no ON public.order_items (order_id, line_number) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON public.order_items (product_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_tax_category ON public.order_items (tax_category);
-CREATE INDEX IF NOT EXISTS idx_order_status_histories_order_id_created_at ON public.order_status_histories (order_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_order_status_histories_from_status ON public.order_status_histories (from_status);
-CREATE INDEX IF NOT EXISTS idx_order_status_histories_to_status ON public.order_status_histories (to_status);
-CREATE INDEX IF NOT EXISTS idx_approval_rules_is_active_effective_from_date ON public.approval_rules (is_active, effective_from_date);
-CREATE INDEX IF NOT EXISTS idx_approval_rules_approver_role ON public.approval_rules (approver_role);
-CREATE INDEX IF NOT EXISTS idx_approval_requests_order_id_status ON public.approval_requests (order_id, status);
-CREATE INDEX IF NOT EXISTS idx_approval_requests_approver_user_id_status ON public.approval_requests (approver_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_ord_sts_hist_order_created ON public.order_status_histories (order_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_ord_sts_hist_from_status ON public.order_status_histories (from_status);
+CREATE INDEX IF NOT EXISTS idx_ord_sts_hist_to_status ON public.order_status_histories (to_status);
+CREATE INDEX IF NOT EXISTS idx_apr_rules_active_eff_from ON public.approval_rules (is_active, effective_from_date);
+CREATE INDEX IF NOT EXISTS idx_apr_rules_approver_role ON public.approval_rules (approver_role);
+CREATE INDEX IF NOT EXISTS idx_apr_req_order_id_status ON public.approval_requests (order_id, status);
+CREATE INDEX IF NOT EXISTS idx_apr_req_approver_status ON public.approval_requests (approver_user_id, status);
 CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON public.approval_requests (status);
-CREATE INDEX IF NOT EXISTS idx_approval_histories_approval_request_id ON public.approval_histories (approval_request_id);
-CREATE INDEX IF NOT EXISTS idx_approval_histories_approval_action ON public.approval_histories (approval_action);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_order_attachments_storage_path ON public.order_attachments (storage_path) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_order_attachments_order_id_visibility_scan_status ON public.order_attachments (order_id, visibility, scan_status);
-CREATE INDEX IF NOT EXISTS idx_order_attachments_visibility ON public.order_attachments (visibility);
-CREATE INDEX IF NOT EXISTS idx_order_attachments_scan_status ON public.order_attachments (scan_status);
-CREATE INDEX IF NOT EXISTS idx_export_jobs_created_by_status ON public.export_jobs (created_by, status);
+CREATE INDEX IF NOT EXISTS idx_apr_hist_apr_request_id ON public.approval_histories (approval_request_id);
+CREATE INDEX IF NOT EXISTS idx_apr_hist_apr_action ON public.approval_histories (approval_action);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ord_atts_storage_path ON public.order_attachments (storage_path) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ord_atts_order_vis_scan ON public.order_attachments (order_id, visibility, scan_status);
+CREATE INDEX IF NOT EXISTS idx_ord_atts_visibility ON public.order_attachments (visibility);
+CREATE INDEX IF NOT EXISTS idx_ord_atts_scan_status ON public.order_attachments (scan_status);
+CREATE INDEX IF NOT EXISTS idx_export_jobs_creator_status ON public.export_jobs (created_by, status);
 CREATE INDEX IF NOT EXISTS idx_export_jobs_status ON public.export_jobs (status);
-CREATE INDEX IF NOT EXISTS idx_notification_logs_status_created_at ON public.notification_logs (status, created_at);
-CREATE INDEX IF NOT EXISTS idx_notification_logs_status_next_attempt_at ON public.notification_logs (status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_ntf_logs_status_created ON public.notification_logs (status, created_at);
+CREATE INDEX IF NOT EXISTS idx_ntf_logs_status_next_try ON public.notification_logs (status, next_attempt_at);
 CREATE INDEX IF NOT EXISTS idx_notification_logs_order_id ON public.notification_logs (order_id);
-CREATE INDEX IF NOT EXISTS idx_notification_logs_export_job_id ON public.notification_logs (export_job_id);
-CREATE INDEX IF NOT EXISTS idx_notification_logs_notification_event ON public.notification_logs (notification_event);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_user_id_created_at ON public.audit_logs (actor_user_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_target_type_target_id ON public.audit_logs (target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_ntf_logs_export_job_id ON public.notification_logs (export_job_id);
+CREATE INDEX IF NOT EXISTS idx_ntf_logs_ntf_event ON public.notification_logs (notification_event);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created ON public.audit_logs (actor_user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_tgt_type_id ON public.audit_logs (target_type, target_id);
 
 -- ---------------------------------------------------------------------
 -- updated_at トリガー（spec-database-rule.md §4.3-Trigger。全テーブル）
